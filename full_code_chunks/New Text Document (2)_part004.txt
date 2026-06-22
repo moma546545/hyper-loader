@@ -1,0 +1,2650 @@
+﻿                            await websocket.close(code=1008, reason="too many links")
+                        except Exception:
+                            pass
+                        return
+                    logger.info(f"Received link from extension: {url}")
+                    payload = {
+                        "url": str(url).strip(),
+                        "title": str(data.get("title", "")).strip(),
+                        "thumbnail": str(data.get("thumbnail", "")).strip(),
+                        "format": str(data.get("format", "MP4")).strip() or "MP4",
+                        "quality": str(data.get("quality", "1080p")).strip() or "1080p",
+                        "subtitle": str(data.get("subtitle", "None")).strip() or "None",
+                        "auto_download": bool(data.get("auto_download", True)),
+                        "source": "browser_extension",
+                    }
+                    event_bus.publish(ExtensionLinkReceivedEvent(payload))
+                    event_bus.publish(ShowNotificationEvent(f"Link received from extension: {url}"))
+        except Exception as exc:
+            logger.error(f"Extension server handler error: {exc}")
+
+    def _run_server(self):
+        try:
+            import websockets
+            self._loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(self._loop)
+            self._stop_event = asyncio.Event()
+
+            async def main():
+                async with websockets.serve(self._handler, self.host, self.port, max_size=self.max_message_size) as server:
+                    self.server = server
+                    logger.info(f"Extension WebSocket server listening on ws://{self.host}:{self.port}")
+                    await self._stop_event.wait()  # M-06: Wait until stop() is called
+                    logger.info("Extension server shutting down cleanly.")
+
+            self._loop.run_until_complete(main())
+        except ImportError:
+            logger.error("websockets library not installed. Extension server disabled.")
+        except Exception as exc:
+            logger.error(f"Failed to start extension server: {exc}")
+        finally:
+            if self._loop and not self._loop.is_closed():
+                self._loop.close()
+            self._loop = None
+
+    def start(self):
+        if self._thread and self._thread.is_alive():
+            return
+        self._thread = threading.Thread(target=self._run_server, daemon=True, name="ExtensionServer")
+        self._thread.start()
+        logger.info(f"Extension server started on ws://{self.host}:{self.port}")
+
+    def stop(self):
+        """M-06: Cleanly stop the WebSocket server."""
+        if self._loop and self._stop_event:
+            self._loop.call_soon_threadsafe(self._stop_event.set)
+            logger.info("Extension server stop signal sent.")
+        else:
+            logger.info("Extension server stopping (daemon)")
+
+# Singleton
+extension_server = ExtensionServer()
+
+
+
+
+====================================================================================================
+FILE: core\hotkeys.py
+====================================================================================================
+
+
+"""
+core/hotkeys.py — Global Hotkey System for SnapDownloader
+Registers system-wide keyboard shortcuts that work even when the window is minimized.
+Uses Python's keyboard library if available, with graceful fallback.
+"""
+import threading
+import logging
+from typing import Callable, Optional
+
+logger = logging.getLogger("SnapDownloader.Hotkeys")
+
+_KEYBOARD_AVAILABLE = False
+try:
+    import keyboard as _kb
+    _KEYBOARD_AVAILABLE = True
+except ImportError:
+    logger.info("[Hotkeys] 'keyboard' package not installed — global hotkeys disabled.")
+
+
+class GlobalHotkeyManager:
+    """
+    Manages system-wide keyboard shortcuts.
+
+    Usage:
+        manager = GlobalHotkeyManager()
+        manager.register("ctrl+shift+d", on_download_pressed)
+        manager.start()
+        # ...
+        manager.stop()
+    """
+
+    def __init__(self):
+        self._hotkeys: dict[str, Callable] = {}
+        self._handles: list = []
+        self._running = False
+        self._lock = threading.Lock()
+
+    def is_available(self) -> bool:
+        return _KEYBOARD_AVAILABLE
+
+    def register(self, hotkey: str, callback: Callable, description: str = ""):
+        """Register a hotkey combination."""
+        with self._lock:
+            self._hotkeys[hotkey] = (callback, description)
+        logger.debug(f"[Hotkeys] Registered: {hotkey!r} → {description}")
+
+    def unregister(self, hotkey: str):
+        with self._lock:
+            self._hotkeys.pop(hotkey, None)
+
+    def start(self):
+        if not _KEYBOARD_AVAILABLE or self._running:
+            return
+        self._running = True
+        self._bind_all()
+        logger.info("[Hotkeys] Global hotkeys active.")
+
+    def stop(self):
+        if not _KEYBOARD_AVAILABLE:
+            return
+        self._running = False
+        try:
+            _kb.unhook_all()
+        except Exception as exc:
+            logger.warning(f"[Hotkeys] Failed to unhook all hotkeys: {exc}")
+        self._handles.clear()
+        logger.info("[Hotkeys] Global hotkeys stopped.")
+
+    def _bind_all(self):
+        if not _KEYBOARD_AVAILABLE:
+            return
+        with self._lock:
+            pairs = list(self._hotkeys.items())
+        for combo, (cb, _) in pairs:
+            try:
+                handle = _kb.add_hotkey(combo, cb)
+                self._handles.append(handle)
+            except Exception as exc:
+                logger.warning(f"[Hotkeys] Failed to bind {combo!r}: {exc}")
+
+    def get_registered(self) -> list[dict]:
+        """Return list of registered hotkeys with descriptions."""
+        with self._lock:
+            return [
+                {"hotkey": k, "description": v[1]}
+                for k, v in self._hotkeys.items()
+            ]
+
+
+# ── Default SnapDownloader Hotkeys Definition ─────────────────────────────────
+
+def setup_default_hotkeys(window) -> GlobalHotkeyManager:
+    """
+    Register the default SnapDownloader hotkeys against a PremiumWindow instance.
+    Returns the configured manager (not yet started — call .start() after).
+    """
+    mgr = GlobalHotkeyManager()
+
+    if not mgr.is_available():
+        return mgr
+
+    def _safe(fn):
+        """Wrap callbacks to be Qt-safe (called from non-Qt thread)."""
+        from PySide6.QtCore import QMetaObject, Qt
+        def wrapper():
+            try:
+                QMetaObject.invokeMethod(window, fn, Qt.ConnectionType.QueuedConnection)
+            except Exception as exc:
+                logger.debug(f"[Hotkeys] invokeMethod failed for {fn}: {exc}")
+                try:
+                    getattr(window, fn)()
+                except Exception as fallback_exc:
+                    logger.warning(f"[Hotkeys] Fallback direct call failed for {fn}: {fallback_exc}")
+        return wrapper
+
+    # Paste & Analyze URL
+    mgr.register(
+        "ctrl+shift+v",
+        lambda: _trigger(window, "_paste_and_analyze"),
+        "Paste URL and Analyze"
+    )
+    mgr.register(
+        "ctrl+v",
+        lambda: _trigger(window, "_paste_and_analyze"),
+        "Paste URL and Analyze (Quick)"
+    )
+    # Show/Hide main window
+    mgr.register(
+        "ctrl+shift+s",
+        lambda: _trigger(window, "_toggle_window_visibility"),
+        "Show / Hide SnapDownloader"
+    )
+    # Quick Download from clipboard
+    mgr.register(
+        "ctrl+shift+d",
+        lambda: _trigger(window, "_hotkey_quick_download"),
+        "Quick Download from Clipboard"
+    )
+    # Pause all downloads
+    mgr.register(
+        "ctrl+shift+p",
+        lambda: _trigger(window, "_pause_queue_download"),
+        "Pause Queue"
+    )
+
+    return mgr
+
+
+def _trigger(window, method: str):
+    """Safely invoke a method on the window from a background thread."""
+    try:
+        fn = getattr(window, method, None)
+        if callable(fn):
+            # Schedule on Qt main thread
+            try:
+                from PySide6.QtCore import QMetaObject, Qt
+                QMetaObject.invokeMethod(window, method, Qt.ConnectionType.QueuedConnection)
+            except Exception:
+                fn()
+    except Exception as exc:
+        logger.debug(f"[Hotkeys] Trigger failed for {method}: {exc}")
+
+
+
+
+====================================================================================================
+FILE: core\i18n.py
+====================================================================================================
+
+
+"""
+core/i18n.py — Internationalization (i18n) Manager
+Provides translation support for the UI.
+"""
+import json
+import os
+import logging
+
+logger = logging.getLogger("SnapDownloader.i18n")
+
+LANG_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "lang")
+
+class I18nManager:
+    def __init__(self):
+        self.current_lang = "ar"  # Default to Arabic
+        self.translations = {}
+        self.language_labels = {
+            "ar": "Arabic",
+            "en": "English",
+            "es": "Spanish",
+            "fr": "French",
+        }
+        self.load_translations()
+
+    def load_translations(self):
+        if not os.path.exists(LANG_DIR):
+            os.makedirs(LANG_DIR, exist_ok=True)
+        self._ensure_builtin_languages()
+
+        path = os.path.join(LANG_DIR, f"{self.current_lang}.json")
+        if os.path.exists(path):
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    self.translations = json.load(f)
+            except Exception as exc:
+                logger.error(f"Failed to load translations: {exc}")
+                self.translations = {}
+        else:
+            logger.warning(f"Translation file not found: {path}")
+            self.translations = {}
+
+    def set_language(self, lang_code: str):
+        target = str(lang_code or "").strip().lower()
+        if target not in self.language_labels:
+            target = "en"
+        self.current_lang = target
+        self.load_translations()
+
+    def tr(self, text: str) -> str:
+        return self.translations.get(text, text)
+
+    def available_languages(self) -> dict:
+        return dict(self.language_labels)
+
+    def _ensure_builtin_languages(self):
+        builtins = {
+            "ar": self._ar_payload(),
+            "en": self._en_payload(),
+            "es": self._es_payload(),
+            "fr": self._fr_payload(),
+        }
+        for code, payload in builtins.items():
+            path = os.path.join(LANG_DIR, f"{code}.json")
+            if os.path.exists(path):
+                continue
+            try:
+                with open(path, "w", encoding="utf-8") as f:
+                    json.dump(payload, f, indent=2, ensure_ascii=False)
+            except Exception as exc:
+                logger.error(f"Failed to create default language {code}: {exc}")
+
+
+
+    def _ar_payload(self):
+        return {
+            "Ready": "جاهز",
+            "Analyzing...": "جاري التحليل...",
+            "Analyze Playlist": "تحليل قائمة التشغيل",
+            "Download Selected": "تحميل المختار",
+            "Fetch full playlists, select specific videos, and download in batch": "اجلب قوائم التشغيل كاملة، واختر مقاطع محددة، ثم حمّلها دفعة واحدة",
+            "Fetching playlist data...": "جارِ جلب بيانات قائمة التشغيل...",
+            "Total Size: --": "الحجم الكلي: --",
+            "Playlist is empty or invalid.": "قائمة التشغيل فارغة أو غير صالحة.",
+            "Playlist loaded successfully": "تم تحميل قائمة التشغيل بنجاح",
+            "Toggle Theme": "تبديل المظهر",
+            "Toggle Dark/Light": "تبديل الداكن/الفاتح",
+            "Settings": "الإعدادات",
+            "Downloads": "التحميلات",
+            "Search": "بحث",
+            "Browser": "المتصفح",
+            "Player": "المشغل",
+            "Tools": "الأدوات",
+            "Import Links": "استيراد الروابط",
+            "Export CSV": "تصدير CSV",
+            "Export JSON": "تصدير JSON",
+            "Theme": "المظهر",
+            "Language": "اللغة",
+            "Arabic": "العربية",
+            "English": "الإنجليزية",
+            "Spanish": "الإسبانية",
+            "French": "الفرنسية",
+        }
+
+    def _en_payload(self):
+        return {
+            "Ready": "Ready",
+            "Analyzing...": "Analyzing...",
+            "Analyze Playlist": "Analyze Playlist",
+            "Download Selected": "Download Selected",
+            "Fetch full playlists, select specific videos, and download in batch": "Fetch full playlists, select specific videos, and download in batch",
+            "Fetching playlist data...": "Fetching playlist data...",
+            "Total Size: --": "Total Size: --",
+            "Playlist is empty or invalid.": "Playlist is empty or invalid.",
+            "Playlist loaded successfully": "Playlist loaded successfully",
+            "Toggle Theme": "Toggle Theme",
+            "Toggle Dark/Light": "Toggle Dark/Light",
+            "Settings": "Settings",
+            "Downloads": "Downloads",
+            "Search": "Search",
+            "Browser": "Browser",
+            "Player": "Player",
+            "Tools": "Tools",
+            "Import Links": "Import Links",
+            "Export CSV": "Export CSV",
+            "Export JSON": "Export JSON",
+            "Theme": "Theme",
+            "Language": "Language",
+            "Arabic": "Arabic",
+            "English": "English",
+            "Spanish": "Spanish",
+            "French": "French",
+        }
+
+    def _es_payload(self):
+        return {
+            "Ready": "Listo",
+            "Analyzing...": "Analizando...",
+            "Analyze Playlist": "Analizar lista",
+            "Download Selected": "Descargar seleccionados",
+            "Fetch full playlists, select specific videos, and download in batch": "Obtén listas completas, selecciona videos específicos y descarga en lote",
+            "Fetching playlist data...": "Obteniendo datos de la lista...",
+            "Total Size: --": "Tamaño total: --",
+            "Playlist is empty or invalid.": "La lista está vacía o no es válida.",
+            "Playlist loaded successfully": "Lista cargada correctamente",
+            "Toggle Theme": "Cambiar tema",
+            "Toggle Dark/Light": "Alternar oscuro/claro",
+            "Settings": "Configuración",
+            "Downloads": "Descargas",
+            "Search": "Buscar",
+            "Browser": "Navegador",
+            "Player": "Reproductor",
+            "Tools": "Herramientas",
+            "Import Links": "Importar enlaces",
+            "Export CSV": "Exportar CSV",
+            "Export JSON": "Exportar JSON",
+            "Theme": "Tema",
+            "Language": "Idioma",
+            "Arabic": "Árabe",
+            "English": "Inglés",
+            "Spanish": "Español",
+            "French": "Francés",
+        }
+
+    def _fr_payload(self):
+        return {
+            "Ready": "Prêt",
+            "Analyzing...": "Analyse en cours...",
+            "Analyze Playlist": "Analyser la playlist",
+            "Download Selected": "Télécharger la sélection",
+            "Fetch full playlists, select specific videos, and download in batch": "Récupérez des playlists complètes, sélectionnez des vidéos et téléchargez en lot",
+            "Fetching playlist data...": "Récupération des données de la playlist...",
+            "Total Size: --": "Taille totale : --",
+            "Playlist is empty or invalid.": "La playlist est vide ou invalide.",
+            "Playlist loaded successfully": "Playlist chargée avec succès",
+            "Toggle Theme": "Basculer le thème",
+            "Toggle Dark/Light": "Mode sombre/clair",
+            "Settings": "Paramètres",
+            "Downloads": "Téléchargements",
+            "Search": "Recherche",
+            "Browser": "Navigateur",
+            "Player": "Lecteur",
+            "Tools": "Outils",
+            "Import Links": "Importer des liens",
+            "Export CSV": "Exporter CSV",
+            "Export JSON": "Exporter JSON",
+            "Theme": "Thème",
+            "Language": "Langue",
+            "Arabic": "Arabe",
+            "English": "Anglais",
+            "Spanish": "Espagnol",
+            "French": "Français",
+        }
+
+# Singleton
+i18n = I18nManager()
+
+def _(text: str) -> str:
+    return i18n.tr(text)
+
+
+
+
+====================================================================================================
+FILE: core\memory_guard.py
+====================================================================================================
+
+
+"""
+core/memory_guard.py — Memory Leak Guard & System Health Monitor
+Monitors RAM usage and automatically cleans up resources if consumption is too high.
+Non-blocking background watcher thread.
+"""
+import os
+import gc
+import sys
+import time
+import logging
+import threading
+from typing import Callable, Optional
+
+logger = logging.getLogger("SnapDownloader.MemGuard")
+
+
+def _get_process_memory_mb() -> float:
+    """Return current process memory usage in MB."""
+    try:
+        import psutil
+        proc = psutil.Process(os.getpid())
+        return proc.memory_info().rss / (1024 * 1024)
+    except ImportError:
+        if sys.platform == "win32":
+            try:
+                import ctypes
+                from ctypes import wintypes
+                class PROCESS_MEMORY_COUNTERS(ctypes.Structure):
+                    _fields_ = [
+                        ("cb", wintypes.DWORD),
+                        ("PageFaultCount", wintypes.DWORD),
+                        ("PeakWorkingSetSize", ctypes.c_size_t),
+                        ("WorkingSetSize", ctypes.c_size_t),
+                        ("QuotaPeakPagedPoolUsage", ctypes.c_size_t),
+                        ("QuotaPagedPoolUsage", ctypes.c_size_t),
+                        ("QuotaPeakNonPagedPoolUsage", ctypes.c_size_t),
+                        ("QuotaNonPagedPoolUsage", ctypes.c_size_t),
+                        ("PagefileUsage", ctypes.c_size_t),
+                        ("PeakPagefileUsage", ctypes.c_size_t)
+                    ]
+                p = PROCESS_MEMORY_COUNTERS()
+                p.cb = ctypes.sizeof(PROCESS_MEMORY_COUNTERS)
+                handle = ctypes.windll.kernel32.GetCurrentProcess()
+                if ctypes.windll.psapi.GetProcessMemoryInfo(handle, ctypes.byref(p), p.cb):
+                    return p.WorkingSetSize / (1024 * 1024)
+            except Exception as exc:
+                logger.debug(f"[MemGuard] Windows memory fallback failed: {exc}")
+        else:
+            # Fallback: read /proc/self/status on Linux
+            try:
+                with open("/proc/self/status") as f:
+                    for line in f:
+                        if line.startswith("VmRSS:"):
+                            return int(line.split()[1]) / 1024
+            except Exception as exc:
+                logger.debug(f"[MemGuard] Fallback memory read failed: {exc}")
+        return 0.0
+
+
+def _get_system_memory_percent() -> float:
+    """Return system-wide memory usage percentage."""
+    try:
+        import psutil
+        return psutil.virtual_memory().percent
+    except ImportError:
+        if sys.platform == "win32":
+            try:
+                import ctypes
+                from ctypes import wintypes
+                class MEMORYSTATUSEX(ctypes.Structure):
+                    _fields_ = [
+                        ("dwLength", wintypes.DWORD),
+                        ("dwMemoryLoad", wintypes.DWORD),
+                        ("ullTotalPhys", ctypes.c_uint64),
+                        ("ullAvailPhys", ctypes.c_uint64),
+                        ("ullTotalPageFile", ctypes.c_uint64),
+                        ("ullAvailPageFile", ctypes.c_uint64),
+                        ("ullTotalVirtual", ctypes.c_uint64),
+                        ("ullAvailVirtual", ctypes.c_uint64),
+                        ("ullAvailExtendedVirtual", ctypes.c_uint64),
+                    ]
+                m = MEMORYSTATUSEX()
+                m.dwLength = ctypes.sizeof(MEMORYSTATUSEX)
+                ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(m))
+                return float(m.dwMemoryLoad)
+            except Exception:
+                pass
+        return 0.0
+
+
+class MemoryGuard:
+    """
+    Background thread that:
+    1. Monitors process RAM usage every N seconds.
+    2. Triggers garbage collection when usage exceeds warn_mb.
+    3. Calls an alert callback when usage exceeds critical_mb.
+    4. Reports memory stats on demand.
+    """
+
+    def __init__(
+        self,
+        warn_mb: float = 400.0,
+        critical_mb: float = 800.0,
+        check_interval_seconds: int = 30,
+        on_warning: Optional[Callable[[float], None]] = None,
+        on_critical: Optional[Callable[[float], None]] = None,
+    ):
+        self.warn_mb = warn_mb
+        self.critical_mb = critical_mb
+        self.check_interval = check_interval_seconds
+        self.on_warning = on_warning
+        self.on_critical = on_critical
+
+        self._running = False
+        self._thread: Optional[threading.Thread] = None
+        self._peak_mb = 0.0
+        self._gc_count = 0
+
+    # ── Public API ────────────────────────────────────────────────────────────
+
+    def start(self):
+        if self._running:
+            return
+        self._running = True
+        self._thread = threading.Thread(
+            target=self._watch_loop, daemon=True, name="MemoryGuard"
+        )
+        self._thread.start()
+        logger.info("[MemGuard] Started.")
+
+    def stop(self):
+        self._running = False
+
+    def get_stats(self) -> dict:
+        current = _get_process_memory_mb()
+        return {
+            "current_mb": round(current, 1),
+            "peak_mb": round(self._peak_mb, 1),
+            "gc_runs": self._gc_count,
+            "system_pct": round(_get_system_memory_percent(), 1),
+            "warn_threshold_mb": self.warn_mb,
+            "critical_threshold_mb": self.critical_mb,
+        }
+
+    def force_gc(self) -> float:
+        """Force garbage collection. Returns freed MB estimate."""
+        before = _get_process_memory_mb()
+        gc.collect()
+        after = _get_process_memory_mb()
+        self._gc_count += 1
+        freed = max(0.0, before - after)
+        logger.info(f"[MemGuard] GC freed ~{freed:.1f} MB")
+        return freed
+
+    def format_status(self) -> str:
+        stats = self.get_stats()
+        return (
+            f"RAM: {stats['current_mb']} MB  "
+            f"(Peak: {stats['peak_mb']} MB  System: {stats['system_pct']}%)"
+        )
+
+    # ── Internal ──────────────────────────────────────────────────────────────
+
+    def _watch_loop(self):
+        while self._running:
+            try:
+                current_mb = _get_process_memory_mb()
+                self._peak_mb = max(self._peak_mb, current_mb)
+
+                if current_mb >= self.critical_mb:
+                    logger.warning(f"[MemGuard] CRITICAL: {current_mb:.1f} MB — forcing GC")
+                    self.force_gc()
+                    if self.on_critical:
+                        self.on_critical(current_mb)
+
+                elif current_mb >= self.warn_mb:
+                    logger.info(f"[MemGuard] High RAM: {current_mb:.1f} MB — collecting garbage")
+                    gc.collect()
+                    self._gc_count += 1
+                    if self.on_warning:
+                        self.on_warning(current_mb)
+
+            except Exception as exc:
+                logger.debug(f"[MemGuard] Check error: {exc}")
+
+            for _ in range(self.check_interval):
+                if not self._running:
+                    return
+                time.sleep(1)
+
+
+# Singleton — can be started from app.py
+memory_guard = MemoryGuard(warn_mb=400, critical_mb=800)
+
+
+
+
+====================================================================================================
+FILE: core\merge_worker.py
+====================================================================================================
+
+
+"""
+core/merge_worker.py - Advanced FFmpeg Merger
+
+This worker takes separate video and audio files and merges them using
+custom FFmpeg parameters for advanced control over the output.
+"""
+import logging
+import os
+import re
+import subprocess
+import sys
+
+try:
+    from PySide6.QtCore import QThread, Signal
+except ImportError:
+    from PyQt6.QtCore import pyqtSignal as Signal, QThread
+
+logger = logging.getLogger("SnapDownloader.MergeWorker")
+
+class MergeWorker(QThread):
+    """
+    A QThread worker for merging video and audio streams with FFmpeg.
+    """
+    progress = Signal(float)  # Emits percentage (0.0 to 100.0)
+    finished = Signal(bool, str)  # Emits success (bool) and final_path (str)
+    log = Signal(str)
+
+    def __init__(self, video_path: str, audio_path: str, output_path: str, ffmpeg_opts: dict, parent=None):
+        super().__init__(parent)
+        self.video_path = video_path
+        self.audio_path = audio_path
+        self.output_path = output_path
+        self.ffmpeg_opts = ffmpeg_opts
+        self.cancel_requested = False
+        self.process = None
+
+    def run(self):
+        """
+        Constructs and runs the FFmpeg command.
+        """
+        if not os.path.exists(self.video_path) or not os.path.exists(self.audio_path):
+            error_msg = "Input video or audio file not found."
+            self.log.emit(f"[ERROR] {error_msg}")
+            self.finished.emit(False, "")
+            return
+
+        total_duration_sec = self._get_duration(self.video_path)
+        if total_duration_sec <= 0:
+            error_msg = "Could not determine video duration."
+            self.log.emit(f"[ERROR] {error_msg}")
+            self.finished.emit(False, "")
+            return
+
+        cmd = self._build_command()
+        if not cmd:
+            self.finished.emit(False, "")
+            return
+
+        self.log.emit(f"Starting FFmpeg merge: {' '.join(cmd)}")
+        
+        try:
+            self.process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT, # Redirect stderr to stdout
+                universal_newlines=True,
+                encoding="utf-8",
+                errors="replace",
+            )
+
+            time_pattern = re.compile(r"time=(\d{2}):(\d{2}):(\d{2})\.(\d{2})")
+
+            for line in iter(self.process.stdout.readline, '\n'):
+                if self.cancel_requested:
+                    self.process.terminate()
+                    self.log.emit("Merge cancelled by user.")
+                    self.finished.emit(False, "")
+                    return
+                
+                if not line:
+                    break
+
+                self.log.emit(line.strip())
+                match = time_pattern.search(line)
+                if match:
+                    hours, minutes, seconds, _ = map(int, match.groups())
+                    current_sec = hours * 3600 + minutes * 60 + seconds
+                    progress_pct = (current_sec / total_duration_sec) * 100.0
+                    self.progress.emit(min(100.0, progress_pct))
+
+            self.process.wait()
+            if self.process.returncode == 0:
+                self.log.emit("Merge finished successfully.")
+                self.finished.emit(True, self.output_path)
+            else:
+                self.log.emit(f"FFmpeg process exited with code {self.process.returncode}")
+                self.finished.emit(False, "")
+
+        except Exception as e:
+            error_msg = f"An unexpected error occurred: {e}"
+            self.log.emit(f"[ERROR] {error_msg}")
+            logger.error(error_msg, exc_info=True)
+            self.finished.emit(False, "")
+
+    def _get_duration(self, file_path: str) -> float:
+        """Get video duration in seconds using ffprobe."""
+        cmd = [
+            "ffprobe",
+            "-v", "error",
+            "-show_entries", "format=duration",
+            "-of", "default=noprint_wrappers=1:nokey=1",
+            file_path
+        ]
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            return float(result.stdout.strip())
+        except (subprocess.CalledProcessError, FileNotFoundError, ValueError) as e:
+            self.log.emit(f"[ERROR] Could not get video duration: {e}")
+            return 0.0
+
+    def _build_command(self) -> list[str]:
+        """
+        Builds the FFmpeg command list from the provided options.
+        """
+        ffmpeg_path = "ffmpeg" # Assuming ffmpeg is in PATH
+        
+        cmd = [
+            ffmpeg_path,
+            "-y",  # Overwrite output file if it exists
+            "-i", self.video_path,
+            "-i", self.audio_path,
+            "-c:v", "copy",  # Copy video stream without re-encoding
+            "-c:a", "aac",   # Re-encode audio to AAC by default
+            "-b:a", "192k",  # Default audio bitrate
+        ]
+
+        # Add custom options from ffmpeg_opts (e.g., -crf, -b:v)
+        # This logic will be expanded later
+        
+        cmd.append(self.output_path)
+        return cmd
+
+    def stop(self):
+        """
+        Requests the merge process to stop.
+        """
+        self.cancel_requested = True
+        if self.process and self.process.poll() is None:
+            self.log.emit("Attempting to terminate FFmpeg process...")
+            self.process.terminate()
+
+
+
+
+====================================================================================================
+FILE: core\proxy_manager.py
+====================================================================================================
+
+
+"""
+core/proxy_manager.py — Smart Proxy / VPN Rotation Manager
+Supports HTTP/HTTPS/SOCKS5 proxies with automatic rotation on failure.
+Integrates directly with yt-dlp's --proxy flag.
+"""
+import base64
+import ctypes
+import json
+import logging
+import os
+import sys
+import time
+from typing import Optional
+from urllib.parse import urlsplit, urlunsplit
+
+try:
+    from ctypes import wintypes
+except ImportError:
+    wintypes = None
+
+try:
+    import keyring
+except ImportError:
+    keyring = None
+
+logger = logging.getLogger("SnapDownloader.Proxy")
+
+
+def _get_app_data_dir() -> str:
+    app_name = "VidDownloader"
+    if sys.platform == "win32":
+        base = os.getenv("APPDATA") or os.path.expanduser("~")
+        return os.path.join(base, app_name)
+    if sys.platform == "darwin":
+        return os.path.join(os.path.expanduser("~"), "Library", "Application Support", app_name)
+    base = os.getenv("XDG_DATA_HOME") or os.path.join(os.path.expanduser("~"), ".local", "share")
+    return os.path.join(base, app_name)
+
+
+CONFIG_PATH = os.path.join(_get_app_data_dir(), "proxy_config.json")
+SERVICE_NAME = "SnapDownloader.Proxy"
+
+DEFAULT_CONFIG = {
+    "enabled": False,
+    "mode": "single",          # "single" | "rotate" | "none"
+    "proxies": [],             # list of proxy strings
+    "current_index": 0,
+    "test_url": "https://httpbin.org/ip",
+    "timeout_seconds": 8,
+    "auto_rotate_on_fail": True,
+    "rotate_interval_minutes": 0,   # 0 = only on failure
+}
+
+
+class WindowsDataProtector:
+    class DATA_BLOB(ctypes.Structure):
+        _fields_ = [
+            ("cbData", wintypes.DWORD),
+            ("pbData", ctypes.POINTER(ctypes.c_ubyte)),
+        ]
+
+    def __init__(self):
+        if os.name != "nt" or wintypes is None or not hasattr(ctypes, "windll"):
+            raise RuntimeError("Windows data protection is unavailable")
+        self._crypt32 = ctypes.windll.crypt32
+        self._kernel32 = ctypes.windll.kernel32
+
+    def _blob_from_bytes(self, raw: bytes):
+        if not raw:
+            return self.DATA_BLOB(0, None), None
+        buffer = ctypes.create_string_buffer(raw, len(raw))
+        blob = self.DATA_BLOB(
+            len(raw),
+            ctypes.cast(buffer, ctypes.POINTER(ctypes.c_ubyte)),
+        )
+        return blob, buffer
+
+    def _bytes_from_blob(self, blob):
+        if not blob.cbData or not blob.pbData:
+            return b""
+        return ctypes.string_at(blob.pbData, blob.cbData)
+
+    def protect(self, raw: bytes) -> bytes:
+        input_blob, input_buffer = self._blob_from_bytes(raw)
+        output_blob = self.DATA_BLOB()
+        try:
+            ok = self._crypt32.CryptProtectData(
+                ctypes.byref(input_blob),
+                None,
+                None,
+                None,
+                None,
+                0,
+                ctypes.byref(output_blob),
+            )
+            if not ok:
+                raise ctypes.WinError()
+            return self._bytes_from_blob(output_blob)
+        finally:
+            input_buffer = None
+            if output_blob.pbData:
+                self._kernel32.LocalFree(output_blob.pbData)
+
+    def unprotect(self, raw: bytes) -> bytes:
+        input_blob, input_buffer = self._blob_from_bytes(raw)
+        output_blob = self.DATA_BLOB()
+        try:
+            ok = self._crypt32.CryptUnprotectData(
+                ctypes.byref(input_blob),
+                None,
+                None,
+                None,
+                None,
+                0,
+                ctypes.byref(output_blob),
+            )
+            if not ok:
+                raise ctypes.WinError()
+            return self._bytes_from_blob(output_blob)
+        finally:
+            input_buffer = None
+            if output_blob.pbData:
+                self._kernel32.LocalFree(output_blob.pbData)
+
+
+class ProxyManager:
+    def __init__(self, config_path: Optional[str] = None, protector=None):
+        self.config_path = config_path or CONFIG_PATH
+        self._protector = protector if protector is not None else self._build_default_protector()
+        self.config = dict(DEFAULT_CONFIG)
+        self._fail_counts: dict[str, int] = {}
+        self._last_rotate_time = 0.0
+        self.load()
+
+    def _build_default_protector(self):
+        if os.name != "nt":
+            return None
+        try:
+            return WindowsDataProtector()
+        except Exception as exc:
+            logger.warning(f"[Proxy] Secure storage fallback unavailable: {exc}")
+            return None
+
+    # ── Persistence ──────────────────────────────────────────────────────────
+
+    def load(self):
+        if os.path.exists(self.config_path):
+            try:
+                with open(self.config_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+
+                self.config = dict(DEFAULT_CONFIG)
+                encrypted_proxies = data.pop("proxies_encrypted", None)
+                raw_proxies = data.pop("proxies", None)
+                self.config.update(data)
+                if self._protector is not None and encrypted_proxies:
+                    self.config["proxies"] = self._decrypt_proxy_list(encrypted_proxies)
+                else:
+                    proxies = self._normalize_proxy_list(raw_proxies)
+                    self.config["proxies"] = self._restore_passwords(proxies)
+                if not self.config["proxies"]:
+                    self.config["current_index"] = 0
+                return
+            except Exception as exc:
+                logger.warning(f"[Proxy] Failed to load config, using defaults: {exc}")
+        self.config = dict(DEFAULT_CONFIG)
+
+    def save(self):
+        try:
+            config_dir = os.path.dirname(self.config_path)
+            if config_dir:
+                os.makedirs(config_dir, exist_ok=True)
+            payload = dict(self.config)
+            proxies = self._normalize_proxy_list(payload.get("proxies", []))
+            if self._protector is not None:
+                payload["proxies"] = []
+                payload["proxies_encrypted"] = self._encrypt_proxy_list(proxies) if proxies else []
+            else:
+                payload["proxies"] = self._store_passwords(proxies)
+                payload.pop("proxies_encrypted", None)
+            with open(self.config_path, "w", encoding="utf-8") as f:
+                json.dump(payload, f, indent=2, ensure_ascii=False)
+        except Exception as exc:
+            logger.warning(f"[Proxy] Failed to save config: {exc}")
+
+    def _store_passwords(self, proxies: list[str]) -> list[str]:
+        if not keyring:
+            # M-05: Fail closed. Do not save passwords in plain text.
+            # The presence of a password without keyring indicates a setup error.
+            for proxy in proxies:
+                if urlsplit(proxy).password:
+                    raise RuntimeError(
+                        "keyring is not installed, cannot save proxy with password securely. "
+                        "Please install with: pip install keyring"
+                    )
+            return proxies  # Return unmodified if no passwords are present
+
+        redacted_proxies = []
+        for i, proxy in enumerate(proxies):
+            try:
+                parts = urlsplit(proxy)
+                if parts.password:
+                    key = f"proxy_{i}_{parts.hostname}"
+                    keyring.set_password(SERVICE_NAME, key, parts.password)
+                    username = parts.username or ""
+                    host = parts.hostname or ""
+                    new_netloc = f"{username}:***@{host}"
+                    if parts.port:
+                        new_netloc += f":{parts.port}"
+                    redacted = urlunsplit((parts.scheme, new_netloc, parts.path, parts.query, parts.fragment))
+                    redacted_proxies.append(redacted)
+                else:
+                    redacted_proxies.append(proxy)
+            except Exception as exc:
+                logger.warning(f"[Proxy] Failed to store password for {proxy}: {exc}")
+                redacted_proxies.append(proxy)
+        return redacted_proxies
+
+    def _restore_passwords(self, redacted_proxies: list[str]) -> list[str]:
+        if not keyring:
+            for proxy in redacted_proxies:
+                if "***" in urlsplit(proxy).netloc:
+                    raise RuntimeError(
+                        "keyring is not installed, cannot restore proxy password securely. "
+                        "Please install with: pip install keyring"
+                    )
+            return redacted_proxies
+        restored_proxies: list[str] = []
+        for i, proxy in enumerate(redacted_proxies):
+            try:
+                parts = urlsplit(proxy)
+                if "***" in parts.netloc:
+                    key = f"proxy_{i}_{parts.hostname}"
+                    password = keyring.get_password(SERVICE_NAME, key)
+                    if password:
+                        username = parts.username or ""
+                        host = parts.hostname or ""
+                        new_netloc = f"{username}:{password}@{host}"
+                        if parts.port:
+                            new_netloc += f":{parts.port}"
+                        restored = urlunsplit((parts.scheme, new_netloc, parts.path, parts.query, parts.fragment))
+                        restored_proxies.append(restored)
+                    else:
+                        restored_proxies.append(proxy)
+                else:
+                    restored_proxies.append(proxy)
+            except Exception as exc:
+                logger.warning(f"[Proxy] Failed to restore password for {proxy}: {exc}")
+                restored_proxies.append(proxy)
+        return restored_proxies
+
+    def _encrypt_proxy_list(self, proxies: list[str]) -> list[str]:
+        encrypted: list[str] = []
+        for proxy in proxies:
+            protected = self._protector.protect(proxy.encode("utf-8"))
+            encrypted.append(base64.b64encode(protected).decode("ascii"))
+        return encrypted
+
+    def _decrypt_proxy_list(self, encrypted_proxies: list[str]) -> list[str]:
+        decrypted: list[str] = []
+        for encoded in encrypted_proxies or []:
+            raw = base64.b64decode(encoded)
+            value = self._protector.unprotect(raw).decode("utf-8")
+            if value:
+                decrypted.append(value)
+        return decrypted
+
+    def _normalize_proxy_list(self, proxies) -> list[str]:
+        return [str(proxy or "").strip() for proxy in proxies or [] if str(proxy or "").strip()]
+
+    # ── Public API ────────────────────────────────────────────────────────────
+
+    def is_enabled(self) -> bool:
+        return bool(self.config.get("enabled")) and bool(self.config.get("proxies"))
+
+    def get_current_proxy(self) -> Optional[str]:
+        if not self.is_enabled():
+            return None
+        proxies = self.config.get("proxies", [])
+        if not proxies:
+            return None
+        idx = int(self.config.get("current_index", 0)) % len(proxies)
+        return proxies[idx]
+
+    def rotate(self) -> Optional[str]:
+        """Move to the next proxy in the list."""
+        proxies = self.config.get("proxies", [])
+        if not proxies:
+            return None
+        idx = (int(self.config.get("current_index", 0)) + 1) % len(proxies)
+        self.config["current_index"] = idx
+        self._last_rotate_time = time.time()
+        self.save()
+        proxy = proxies[idx]
+        logger.info(f"[Proxy] Rotated to: {self._redact_proxy(proxy)}")
+        return proxy
+
+    def on_failure(self, proxy: str):
+        """Called when a download fails — optionally rotate proxy."""
+        self._fail_counts[proxy] = self._fail_counts.get(proxy, 0) + 1
+        logger.warning(f"[Proxy] Failure #{self._fail_counts[proxy]} for {self._redact_proxy(proxy)}")
+        if self.config.get("auto_rotate_on_fail") and len(self.config.get("proxies", [])) > 1:
+            self.rotate()
+
+    def add_proxy(self, proxy_url: str):
+        """Add a proxy (e.g. 'http://1.2.3.4:8080' or 'socks5://user:pass@host:port')."""
+        proxies = self.config.setdefault("proxies", [])
+        proxy_url = proxy_url.strip()
+        if proxy_url and proxy_url not in proxies:
+            proxies.append(proxy_url)
+            self.save()
+
+    def remove_proxy(self, proxy_url: str):
+        proxies = self.config.get("proxies", [])
+        if proxy_url in proxies:
+            proxies.remove(proxy_url)
+            self.config["current_index"] = 0
+            self.save()
+
+    def test_proxy(self, proxy_url: str) -> tuple[bool, str]:
+        """Test if a proxy is reachable. Returns (ok, detected_ip_or_error)."""
+        test_url = self.config.get("test_url", "https://httpbin.org/ip")
+        timeout = int(self.config.get("timeout_seconds", 8))
+        try:
+            proxies_env = {"http": proxy_url, "https": proxy_url}
+            import urllib.request
+            proxy_handler = urllib.request.ProxyHandler(proxies_env)
+            opener = urllib.request.build_opener(proxy_handler)
+            resp = opener.open(test_url, timeout=timeout)
+            body = resp.read().decode("utf-8", errors="replace")
+            return True, body[:200]
+        except Exception as exc:
+            return False, str(exc)
+
+    def set_enabled(self, enabled: bool):
+        self.config["enabled"] = enabled
+        self.save()
+
+    def get_yt_dlp_flag(self) -> list[str]:
+        """Return yt-dlp command-line flags for the current proxy."""
+        proxy = self.get_current_proxy()
+        if proxy:
+            return ["--proxy", proxy]
+        return []
+
+    def format_status(self) -> str:
+        if not self.is_enabled():
+            return "Proxy: Disabled"
+        proxy = self.get_current_proxy() or "None"
+        count = len(self.config.get("proxies", []))
+        idx = self.config.get("current_index", 0) + 1
+        return f"Proxy: [{idx}/{count}] {self._redact_proxy(proxy)[:40]}"
+
+    def _redact_proxy(self, proxy_url: str) -> str:
+        proxy_text = str(proxy_url or "").strip()
+        if not proxy_text:
+            return "None"
+        try:
+            parts = urlsplit(proxy_text)
+            if "@" not in parts.netloc:
+                return proxy_text
+            _, host_part = parts.netloc.rsplit("@", 1)
+            safe_netloc = f"***:***@{host_part}"
+            return urlunsplit((parts.scheme, safe_netloc, parts.path, parts.query, parts.fragment))
+        except Exception:
+            return "***"
+
+
+# Singleton
+proxy_manager = ProxyManager()
+
+
+
+
+====================================================================================================
+FILE: core\qt_compat.py
+====================================================================================================
+
+"""Qt compatibility layer.
+
+Prefers PySide6 and falls back to PyQt6 when needed.
+Exports a unified symbol set used by the application.
+"""
+
+try:
+    # PySide6
+    from PySide6.QtCore import (
+        QEasingCurve,
+        QDateTime,
+        QEvent,
+        QObject,
+        QPoint,
+        QPropertyAnimation,
+        QSize,
+        QStringListModel,
+        QThread,
+        QTime,
+        QTimer,
+        QUrl,
+        Qt,
+        Signal,
+    )
+    from PySide6.QtGui import QAction, QColor, QIcon, QPainter, QPainterPath, QPen, QPixmap
+    from PySide6.QtMultimedia import QAudioOutput, QMediaPlayer
+    from PySide6.QtMultimediaWidgets import QVideoWidget
+    from PySide6.QtNetwork import QNetworkAccessManager, QNetworkReply, QNetworkRequest
+    from PySide6.QtWidgets import (
+        QApplication,
+        QButtonGroup,
+        QCheckBox,
+        QComboBox,
+        QCompleter,
+        QDateTimeEdit,
+        QFileDialog,
+        QFrame,
+        QGraphicsOpacityEffect,
+        QGridLayout,
+        QHBoxLayout,
+        QLabel,
+        QLineEdit,
+        QListView,
+        QListWidget,
+        QMainWindow,
+        QMenu,
+        QMessageBox,
+        QPushButton,
+        QProgressBar,
+        QRadioButton,
+        QScrollArea,
+        QSlider,
+        QSpinBox,
+        QStackedWidget,
+        QStyle,
+        QSystemTrayIcon,
+        QTextEdit,
+        QTimeEdit,
+        QVBoxLayout,
+        QWidget,
+    )
+except ImportError:
+    # PyQt6 fallback
+    from PyQt6.QtCore import (
+        QEasingCurve,
+        QDateTime,
+        QEvent,
+        QObject,
+        QPoint,
+        QPropertyAnimation,
+        QSize,
+        QStringListModel,
+        QThread,
+        QTime,
+        QTimer,
+        QUrl,
+        Qt,
+        pyqtSignal as Signal,
+    )
+    from PyQt6.QtGui import QAction, QColor, QIcon, QPainter, QPainterPath, QPen, QPixmap
+    from PyQt6.QtMultimedia import QAudioOutput, QMediaPlayer
+    from PyQt6.QtMultimediaWidgets import QVideoWidget
+    from PyQt6.QtNetwork import QNetworkAccessManager, QNetworkReply, QNetworkRequest
+    from PyQt6.QtWidgets import (
+        QApplication,
+        QButtonGroup,
+        QCheckBox,
+        QComboBox,
+        QCompleter,
+        QDateTimeEdit,
+        QFileDialog,
+        QFrame,
+        QGraphicsOpacityEffect,
+        QGridLayout,
+        QHBoxLayout,
+        QLabel,
+        QLineEdit,
+        QListView,
+        QListWidget,
+        QMainWindow,
+        QMenu,
+        QMessageBox,
+        QPushButton,
+        QProgressBar,
+        QRadioButton,
+        QScrollArea,
+        QSlider,
+        QSpinBox,
+        QStackedWidget,
+        QStyle,
+        QSystemTrayIcon,
+        QTextEdit,
+        QTimeEdit,
+        QVBoxLayout,
+        QWidget,
+    )
+
+__all__ = [
+    "QThread",
+    "Qt",
+    "Signal",
+    "QUrl",
+    "QTimer",
+    "QPropertyAnimation",
+    "QEasingCurve",
+    "QDateTime",
+    "QStringListModel",
+    "QTime",
+    "QSize",
+    "QPoint",
+    "QObject",
+    "QEvent",
+    "QNetworkAccessManager",
+    "QNetworkRequest",
+    "QNetworkReply",
+    "QMediaPlayer",
+    "QAudioOutput",
+    "QVideoWidget",
+    "QIcon",
+    "QAction",
+    "QPixmap",
+    "QPainter",
+    "QColor",
+    "QPen",
+    "QPainterPath",
+    "QApplication",
+    "QButtonGroup",
+    "QCheckBox",
+    "QComboBox",
+    "QCompleter",
+    "QFileDialog",
+    "QFrame",
+    "QGridLayout",
+    "QHBoxLayout",
+    "QLabel",
+    "QLineEdit",
+    "QListView",
+    "QListWidget",
+    "QMainWindow",
+    "QMessageBox",
+    "QPushButton",
+    "QProgressBar",
+    "QRadioButton",
+    "QScrollArea",
+    "QSlider",
+    "QSpinBox",
+    "QStackedWidget",
+    "QTextEdit",
+    "QTimeEdit",
+    "QVBoxLayout",
+    "QWidget",
+    "QGraphicsOpacityEffect",
+    "QSystemTrayIcon",
+    "QMenu",
+    "QStyle",
+    "QDateTimeEdit",
+]
+
+====================================================================================================
+FILE: core\queue_manager.py
+====================================================================================================
+
+
+"""
+core/queue_manager.py - Manages the download queue state and logic.
+
+This class is responsible for adding, removing, and processing tasks in the download queue.
+It is designed to be decoupled from the UI, communicating state changes via Qt signals.
+
+C-01 FIX: All access to self.items is now protected by threading.Lock to prevent
+race conditions between the UI thread and download worker threads.
+"""
+import logging
+import threading
+import time
+
+try:
+    from PySide6.QtCore import QObject, Signal, QTimer
+except ImportError:
+    from PyQt6.QtCore import QObject, pyqtSignal as Signal, QTimer
+
+logger = logging.getLogger("SnapDownloader.QueueManager")
+
+class QueueManager(QObject):
+    # Signals to notify the UI about changes
+    queue_changed = Signal()  # Emitted when items are added, removed, or reordered
+    queue_started = Signal()
+    queue_stopped = Signal()
+    queue_paused = Signal()
+    queue_resumed = Signal()
+    queue_limit_exceeded = Signal(int)  # H-07: emitted with number of rejected items
+    progress_updated = Signal(int, float, str, str)
+    
+    # Signal to request a new download worker to be started by the main window
+    start_worker_requested = Signal(dict, int) # task, queue_index
+
+    MAX_QUEUE_SIZE = 500  # H-07: max items to prevent excessive memory usage
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.items = []
+        self._lock = threading.Lock()  # C-01: Protect all item access
+        self.is_running = False
+        self.is_paused = False
+        self.current_index = -1
+
+        # Scheduler for time-based downloads
+        self._schedule_timer = QTimer(self)
+        self._schedule_timer.setInterval(30 * 1000)  # Check every 30 seconds
+        self._schedule_timer.timeout.connect(self._check_scheduled_tasks)
+        self._schedule_timer.start()
+
+    def add_task(self, task: dict):
+        """Adds a new task to the end of the queue. Rejects if MAX_QUEUE_SIZE exceeded."""
+        with self._lock:
+            if len(self.items) >= self.MAX_QUEUE_SIZE:
+                logger.warning(f"[H-07] Queue full ({self.MAX_QUEUE_SIZE} items). Task rejected: {task.get('title')}")
+                self.queue_limit_exceeded.emit(1)
+                return -1
+            logger.info(f"Adding task to queue: {task.get('title')}")
+            self.items.append(task)
+            idx = len(self.items) - 1
+        self.queue_changed.emit()
+        return idx
+
+    def add_tasks(self, tasks: list):
+        """Adds a list of tasks to the queue. Enforces MAX_QUEUE_SIZE."""
+        with self._lock:
+            available = self.MAX_QUEUE_SIZE - len(self.items)
+            accepted = tasks[:available]
+            rejected = len(tasks) - len(accepted)
+            if rejected > 0:
+                logger.warning(f"[H-07] Queue capacity: accepted {len(accepted)}, rejected {rejected} tasks.")
+            self.items.extend(accepted)
+        if rejected > 0:
+            self.queue_limit_exceeded.emit(rejected)
+        logger.info(f"Adding {len(accepted)} tasks to queue.")
+        self.queue_changed.emit()
+
+    def start_queue(self):
+        """Starts processing the queue."""
+        with self._lock:
+            if self.is_running or not self.items:
+                return
+            logger.info("Starting queue processing.")
+            self.is_running = True
+            self.is_paused = False
+            self.current_index = -1  # Will be incremented to 0 by _process_next
+            self.queue_started.emit()
+        self._process_next()
+
+    def _process_next(self):
+        """
+        Finds the next available task and requests a worker for it.
+        Skips any tasks that are scheduled for a future time.
+        """
+        with self._lock:
+            if not self.is_running or self.is_paused:
+                return
+
+            # Find the next task that is not scheduled for the future
+            next_index_to_process = -1
+            for i in range(self.current_index + 1, len(self.items)):
+                task = self.items[i]
+                scheduled_at = task.get("scheduled_at", 0)
+                # A task is available if it's not scheduled, or its time has come
+                if not scheduled_at or scheduled_at <= time.time():
+                    next_index_to_process = i
+                    break
+            
+            if next_index_to_process == -1:
+                logger.info("Queue processing finished (only future scheduled tasks may remain).")
+                self.stop_queue()
+                return
+
+            self.current_index = next_index_to_process
+            task = self.items[self.current_index]
+            
+            # Mark as "processed" by the scheduler if it was a scheduled task
+            if task.get("scheduled_at", 0) > 0:
+                task["scheduled_at"] = 0
+                self.queue_changed.emit()
+
+            self.start_worker_requested.emit(task, self.current_index)
+
+    def stop_queue(self):
+        """Stops the queue and resets its state."""
+        with self._lock:
+            if not self.is_running:
+                return
+            logger.info("Stopping queue processing.")
+            self.is_running = False
+            self.is_paused = False
+            self.current_index = -1
+            self.queue_stopped.emit()
+
+    def pause_queue(self):
+        """Pauses the queue."""
+        with self._lock:
+            if not self.is_running or self.is_paused:
+                return
+            logger.info("Pausing queue.")
+            self.is_paused = True
+            self.queue_paused.emit()
+
+    def resume_queue(self):
+        """Resumes a paused queue."""
+        with self._lock:
+            if not self.is_running or not self.is_paused:
+                return
+            logger.info("Resuming queue.")
+            self.is_paused = False
+            self.queue_resumed.emit()
+        self._process_next() # Continue where we left off
+
+    def get_queue_items(self) -> list:
+        with self._lock:
+            return list(self.items)  # Return a copy for thread safety
+
+    def get_item_count(self) -> int:
+        with self._lock:
+            return len(self.items)
+
+    def get_task(self, index: int) -> dict | None:
+        with self._lock:
+            if 0 <= index < len(self.items):
+                return self.items[index]
+        return None
+
+    def set_task_status(self, index: int, status: str):
+        with self._lock:
+            if 0 <= index < len(self.items):
+                self.items[index]["status"] = status
+        self.queue_changed.emit()
+
+    def set_task_progress(self, index: int, progress: float, speed: str, eta: str):
+        with self._lock:
+            if 0 <= index < len(self.items):
+                self.items[index]["progress"] = progress
+                self.items[index]["speed"] = speed
+                self.items[index]["eta"] = eta
+        self.progress_updated.emit(int(index), float(progress or 0.0), str(speed or ""), str(eta or ""))
+
+    def move_task(self, from_index: int, to_index: int) -> bool:
+        if self.is_running and not self.is_paused:
+            return False
+        with self._lock:
+            if not (0 <= from_index < len(self.items)):
+                return False
+            if not (0 <= to_index < len(self.items)):
+                return False
+            if from_index == to_index:
+                return False
+            item = self.items.pop(from_index)
+            self.items.insert(to_index, item)
+            if self.is_running and self.is_paused:
+                self.current_index = max(-1, min(self.current_index, len(self.items) - 1))
+        self.queue_changed.emit()
+        return True
+
+    def clear_queue(self):
+        """Removes all items from the queue."""
+        logger.info("Clearing queue.")
+        with self._lock:
+            self.items.clear()
+        self.stop_queue()
+        self.queue_changed.emit()
+
+    def _check_scheduled_tasks(self):
+        """
+        Periodically checks if any scheduled tasks are due. If so, and the queue
+        is idle, it will start the queue. _process_next will then find the due task.
+        """
+        with self._lock:
+            if self.is_running or self.is_paused:
+                return
+
+            now = time.time()
+            has_due_tasks = False
+            for item in self.items:
+                scheduled_at = item.get("scheduled_at", 0)
+                if scheduled_at > 0 and scheduled_at <= now:
+                    has_due_tasks = True
+                    break
+            
+            if has_due_tasks:
+                logger.info("[Scheduler] Due tasks found. Starting queue to process them.")
+                # Use a QTimer to call start_queue outside the current lock context
+                QTimer.singleShot(50, self.start_queue)
+
+
+
+
+====================================================================================================
+FILE: core\session_service.py
+====================================================================================================
+
+from __future__ import annotations
+
+
+class SessionService:
+    """Small state container used by the UI layer."""
+
+    def __init__(self):
+        self._state = {}
+
+    def set(self, key: str, value):
+        self._state[str(key)] = value
+
+    def get(self, key: str, default=None):
+        return self._state.get(str(key), default)
+
+    def update(self, payload: dict | None):
+        if isinstance(payload, dict):
+            self._state.update(payload)
+
+    def snapshot(self) -> dict:
+        return dict(self._state)
+
+====================================================================================================
+FILE: core\smart_rename.py
+====================================================================================================
+
+
+"""
+core/smart_rename.py — Smart File Renaming Engine
+Organizes downloaded files with clean, structured naming conventions.
+Supports templates: {channel} - {date} - {title} - {quality}.{ext}
+"""
+import os
+import re
+import json
+import ipaddress
+import urllib.request
+import urllib.parse
+from datetime import datetime
+
+
+# ── Naming Templates ──────────────────────────────────────────────────────────
+
+TEMPLATES = {
+    "Default": "{title}.{ext}",
+    "Channel - Title": "{channel} - {title}.{ext}",
+    "Date - Title": "{date} - {title}.{ext}",
+    "Channel - Date - Title": "{channel} - {date} - {title}.{ext}",
+    "Title - Quality": "{title} [{quality}].{ext}",
+    "Channel - Title - Quality": "{channel} - {title} [{quality}].{ext}",
+    "Full (Organized)": "{channel}/{date}/{title} [{quality}].{ext}",
+    "AI Smart": "{title}.{ext}",
+}
+
+DEFAULT_TEMPLATE = "Default"
+
+
+def _is_safe_endpoint_host(host: str, allow_private: bool = False) -> bool:
+    host = str(host or "").strip().lower()
+    if not host:
+        return False
+    if host in {"localhost", "127.0.0.1", "::1"}:
+        return allow_private
+    try:
+        ip = ipaddress.ip_address(host)
+        if ip.is_loopback or ip.is_private or ip.is_link_local or ip.is_multicast or ip.is_reserved:
+            return allow_private
+        return True
+    except ValueError:
+        return True
+
+
+def build_filename(
+    template: str,
+    title: str,
+    ext: str,
+    channel: str = "",
+    quality: str = "",
+    date: str = "",
+    sanitize: bool = True,
+) -> str:
+    """
+    Build a clean filename from a template and metadata.
+
+    Args:
+        template: A key from TEMPLATES dict, or a raw template string.
+        title: Video title.
+        ext: File extension (without dot).
+        channel: Channel/uploader name.
+        quality: Quality label (e.g., 1080p).
+        date: Upload or download date string. Defaults to today.
+        sanitize: Whether to remove invalid filename characters.
+
+    Returns:
+        Relative path string (may include subdirectories from template).
+    """
+    # Resolve template
+    if str(template).strip() == "AI Smart":
+        return _build_ai_filename(
+            title=title,
+            ext=ext,
+            channel=channel,
+            quality=quality,
+            date=date,
+            sanitize=sanitize,
+        )
+    raw = TEMPLATES.get(template, template)
+    if not raw:
+        raw = TEMPLATES[DEFAULT_TEMPLATE]
+
+    date = date or datetime.now().strftime("%Y-%m-%d")
+
+    # Substitute placeholders
+    result = raw.format(
+        title=_clean(title) if sanitize else title,
+        ext=ext.lstrip(".").lower(),
+        channel=_clean(channel) if sanitize else channel,
+        quality=_clean(quality) if sanitize else quality,
+        date=date,
+    )
+
+    # Normalize path separators
+    parts = result.replace("\\", "/").split("/")
+    parts = [_sanitize_path_component(p) for p in parts if p.strip()]
+    return os.path.join(*parts) if len(parts) > 1 else parts[0]
+
+
+def _build_ai_filename(
+    title: str,
+    ext: str,
+    channel: str = "",
+    quality: str = "",
+    date: str = "",
+    sanitize: bool = True,
+) -> str:
+    ai_title = _ask_llm_for_title(title=title, channel=channel, quality=quality) or _heuristic_ai_title(title)
+    return build_filename(
+        "Channel - Date - Title",
+        title=ai_title,
+        ext=ext,
+        channel=channel or "Unknown",
+        quality=quality,
+        date=date or datetime.now().strftime("%Y-%m-%d"),
+        sanitize=sanitize,
+    )
+
+
+def _ask_llm_for_title(title: str, channel: str = "", quality: str = "") -> str:
+    endpoint = str(os.getenv("SMART_RENAME_LLM_ENDPOINT", "")).strip()
+    if not endpoint:
+        return ""
+    allow_private = str(os.getenv("SMART_RENAME_ALLOW_PRIVATE_ENDPOINT", "")).strip().lower() in {"1", "true", "yes", "on"}
+    try:
+        parsed_endpoint = urllib.parse.urlparse(endpoint)
+        if parsed_endpoint.scheme.lower() != "https" or not parsed_endpoint.netloc:
+            return ""
+        if not _is_safe_endpoint_host(parsed_endpoint.hostname or "", allow_private=allow_private):
+            return ""
+    except Exception:
+        return ""
+    payload = {
+        "instruction": "Rewrite this media title into a concise clean filename-friendly phrase. Keep language. Return plain text only.",
+        "title": str(title or ""),
+        "channel": str(channel or ""),
+        "quality": str(quality or ""),
+    }
+    body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+    req = urllib.request.Request(
+        endpoint,
+        data=body,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=2.5) as resp:
+            raw = resp.read().decode("utf-8", errors="replace").strip()
+        if not raw:
+            return ""
+        parsed = json.loads(raw) if raw.startswith("{") else {"title": raw}
+        candidate = str(parsed.get("title", "")).strip()
+        return _clean(candidate) if candidate else ""
+    except Exception:
+        return ""
+
+
+def _heuristic_ai_title(title: str) -> str:
+    txt = str(title or "").strip()
+    if not txt:
+        return "Untitled"
+    txt = re.sub(r"\[[^\]]+\]", " ", txt)
+    txt = re.sub(r"\([^)]+\)", " ", txt)
+    # M-14: Only remove standalone noise words (bounded by word boundaries AND separators)
+    # This prevents removing 'audio' from 'Audio Engineering Tutorial'
+    noise_pattern = r'(?:^|[\s\-_,|])(?:official|lyrics?|video|hd|4k|1080p|720p|full)(?:[\s\-_,|]|$)'
+    txt = re.sub(noise_pattern, ' ', txt, flags=re.IGNORECASE)
+    txt = re.sub(r"\s+", " ", txt).strip(" -_")
+    words = txt.split(" ")
+    if len(words) > 8:
+        txt = " ".join(words[:8])
+    return _clean(txt) or "Untitled"
+
+
+def get_output_path(
+    out_dir: str,
+    template: str,
+    title: str,
+    ext: str,
+    channel: str = "",
+    quality: str = "",
+    date: str = "",
+    avoid_collision: bool = True,
+) -> str:
+    """
+    Build the full output file path. Handles collision avoidance.
+    """
+    relative = build_filename(template, title, ext, channel, quality, date)
+    full_path = os.path.join(out_dir, relative)
+    base_dir = os.path.dirname(full_path)
+    os.makedirs(base_dir, exist_ok=True)
+
+    if avoid_collision and os.path.exists(full_path):
+        base, dot_ext = os.path.splitext(full_path)
+        counter = 1
+        while os.path.exists(f"{base} ({counter}){dot_ext}"):
+            counter += 1
+        full_path = f"{base} ({counter}){dot_ext}"
+
+    return full_path
+
+
+def _clean(text: str, max_len: int = 120) -> str:
+    """Remove characters invalid in filenames and trim length."""
+    text = str(text or "Unknown").strip()
+    # Replace path separators
+    text = text.replace("/", "-").replace("\\", "-")
+    # Remove truly invalid chars on Windows
+    text = re.sub(r'[<>:"|?*\x00-\x1f]', "", text)
+    # Collapse multiple spaces/dashes
+    text = re.sub(r'[ \-]{2,}', " ", text).strip(" -")
+    return text[:max_len] if len(text) > max_len else text
+
+
+def _sanitize_path_component(component: str, max_len: int = 80) -> str:
+    """Sanitize a single path component (dir or filename part)."""
+    component = str(component or "").strip()
+    component = component.replace("..", "")
+    component = re.sub(r'[<>:"|?*\x00-\x1f]', "", component)
+    component = re.sub(r'[ \-]{2,}', " ", component).strip(" -.")
+    return component[:max_len] if len(component) > max_len else component
+
+
+def rename_existing_file(old_path: str, new_path: str) -> bool:
+    """
+    Rename an existing file to new_path. Returns True on success.
+    Creates parent directories if needed.
+    """
+    if not os.path.isfile(old_path):
+        return False
+    os.makedirs(os.path.dirname(new_path), exist_ok=True)
+    try:
+        os.rename(old_path, new_path)
+        return True
+    except OSError:
+        return False
+
+
+
+
+====================================================================================================
+FILE: core\storage_watchdog.py
+====================================================================================================
+
+
+import os
+import shutil
+
+
+def resolve_probe_path(path: str) -> str:
+    candidate = os.path.abspath(str(path or "").strip() or os.getcwd())
+    while not os.path.exists(candidate):
+        parent = os.path.dirname(candidate)
+        if not parent or parent == candidate:
+            return os.getcwd()
+        candidate = parent
+    return candidate
+
+
+def free_bytes(path: str) -> int:
+    target = resolve_probe_path(path)
+    return int(shutil.disk_usage(target).free)
+
+
+def threshold_bytes(min_free_gb: int | float) -> int:
+    return int(max(0, float(min_free_gb or 0)) * 1024 * 1024 * 1024)
+
+
+def has_enough_space(path: str, min_free_gb: int | float) -> tuple[bool, int, int, str]:
+    target = resolve_probe_path(path)
+    free = free_bytes(target)
+    threshold = threshold_bytes(min_free_gb)
+    return free >= threshold, free, threshold, target
+
+
+def format_bytes(value: int) -> str:
+    amount = float(max(0, int(value or 0)))
+    for unit in ("B", "KB", "MB", "GB", "TB"):
+        if amount < 1024 or unit == "TB":
+            return f"{amount:.1f} {unit}" if unit != "B" else f"{int(amount)} B"
+        amount /= 1024
+    return f"{amount:.1f} TB"
+
+
+
+
+====================================================================================================
+FILE: core\sustainability.py
+====================================================================================================
+
+
+"""
+core/sustainability.py — Sustainability & Power Management Mode
+Performs configurable actions when the download queue is fully completed.
+Actions: do nothing | show notification | sleep | hibernate | shutdown.
+
+C-05 FIX: Added confirm_callback — destructive actions (sleep/hibernate/shutdown)
+now require explicit user confirmation before executing.
+"""
+import os
+import sys
+import time
+import subprocess
+import platform
+import logging
+import threading
+from typing import Optional, Callable
+
+logger = logging.getLogger("SnapDownloader.Sustainability")
+
+ACTIONS = {
+    "none":       "Do Nothing",
+    "notify":     "Show Notification Only",
+    "sleep":      "Sleep Computer",
+    "hibernate":  "Hibernate Computer",
+    "shutdown":   "Shutdown Computer",
+}
+
+DESTRUCTIVE_ACTIONS = {"sleep", "hibernate", "shutdown"}
+
+
+class SustainabilityMode:
+    def __init__(self):
+        self.action: str = "none"
+        self.delay_seconds: int = 60   # grace period before executing action
+        self.enabled: bool = False
+        self._countdown_timer = None
+        self._cancel_event = threading.Event()
+        # C-05: Callback that must return True to allow destructive actions.
+        # Signature: confirm_callback(action_label: str) -> bool
+        self.confirm_callback: Optional[Callable[[str], bool]] = None
+
+    # ── Configuration ─────────────────────────────────────────────────────────
+
+    def configure(self, action: str, delay_seconds: int = 60):
+        action = action.strip().lower()
+        if action not in ACTIONS:
+            raise ValueError(f"Unknown action: {action!r}. Must be one of {list(ACTIONS)}")
+        self.action = action
+        self.delay_seconds = max(0, delay_seconds)
+        self.enabled = action != "none"
+        self._cancel_event.clear()
+
+    def set_enabled(self, enabled: bool):
+        self.enabled = enabled
+        if not self.enabled:
+            self._cancel_event.set()
+        else:
+            self._cancel_event.clear()
+
+    def get_action_label(self) -> str:
+        return ACTIONS.get(self.action, "Unknown")
+
+    # ── Trigger ───────────────────────────────────────────────────────────────
+
+    def on_queue_complete(self, notify_callback=None):
+        """
+        Called when the download queue finishes.
+        notify_callback(message) — optional toast/notification function.
+        """
+        if not self.enabled or self.action == "none":
+            return
+
+        label = self.get_action_label()
+        msg = f"Queue complete. Will {label} in {self.delay_seconds}s..."
+        logger.info(f"[Sustainability] {msg}")
+
+        if notify_callback:
+            try:
+                notify_callback(msg)
+            except Exception as exc:
+                logger.debug(f"[Sustainability] Notify callback failed: {exc}")
+
+        # Execute in a background thread to not block any UI
+        t = threading.Thread(
+            target=self._execute_after_delay,
+            args=(notify_callback,),
+            daemon=True,
+            name="SustainabilityAction"
+        )
+        t.start()
+
+    def cancel(self):
+        """Cancel a pending action."""
+        self.enabled = False  # simple flag — thread checks this
+        self._cancel_event.set()
+        logger.info("[Sustainability] Action cancelled.")
+
+    def _execute_after_delay(self, notify_callback=None):
+        """Wait delay_seconds then execute the configured action."""
+        for remaining in range(self.delay_seconds, 0, -1):
+            if not self.enabled:
+                logger.info("[Sustainability] Cancelled during countdown.")
+                return
+            if remaining % 10 == 0 and notify_callback:
+                try:
+                    notify_callback(f"⏱ {self.get_action_label()} in {remaining}s (re-enable downloads to cancel)")
+                except Exception as exc:
+                    logger.debug(f"[Sustainability] Countdown notify failed: {exc}")
+            if self._cancel_event.wait(timeout=1):
+                logger.info("[Sustainability] Cancelled during countdown.")
+                return
+
+        if not self.enabled:
+            return
+
+        # C-05: For destructive actions, require explicit confirmation
+        if self.action in DESTRUCTIVE_ACTIONS:
+            if self.confirm_callback is None:
+                logger.warning(f"[Sustainability] No confirm_callback set — cancelling {self.action} for safety.")
+                if notify_callback:
+                    try:
+                        notify_callback(f"⚠️ {self.get_action_label()} cancelled — no confirmation handler set.")
+                    except Exception:
+                        pass
+                return
+            try:
+                label = self.get_action_label()
+                confirmed = self.confirm_callback(label)
+                if not confirmed:
+                    logger.info(f"[Sustainability] User declined {self.action}.")
+                    if notify_callback:
+                        try:
+                            notify_callback(f"❌ {label} cancelled by user.")
+                        except Exception:
+                            pass
+                    return
+            except Exception as exc:
+                logger.warning(f"[Sustainability] Confirm callback error: {exc} — cancelling action.")
+                return
+
+        self._execute()
+
+    def _execute(self):
+        system = platform.system()
+        action = self.action
+        logger.info(f"[Sustainability] Executing: {action} on {system}")
+
+        try:
+            if action == "sleep":
+                if system == "Windows":
+                    subprocess.run(["rundll32.exe", "powrprof.dll,SetSuspendState", "0,1,0"], check=False)
+                elif system == "Darwin":
+                    subprocess.run(["pmset", "sleepnow"], check=False)
+                else:
+                    subprocess.run(["systemctl", "suspend"], check=False)
+
+            elif action == "hibernate":
+                if system == "Windows":
+                    subprocess.run(["shutdown", "/h"], check=False)
+                elif system == "Darwin":
+                    subprocess.run(["pmset", "hibernatemode", "25"], check=False)
+                    subprocess.run(["pmset", "sleepnow"], check=False)
+                else:
+                    subprocess.run(["systemctl", "hibernate"], check=False)
+
+            elif action == "shutdown":
+                if system == "Windows":
+                    subprocess.run(["shutdown", "/s", "/t", "0"], check=False)
+                elif system == "Darwin":
+                    subprocess.run(["shutdown", "-h", "now"], check=False)
+                else:
+                    subprocess.run(["shutdown", "now"], check=False)
+
+            elif action == "notify":
+                # Already handled via toast — just log
+                logger.info("[Sustainability] Notification action complete.")
+
+        except Exception as exc:
+            logger.error(f"[Sustainability] Execution failed: {exc}")
+
+
+# Singleton
+sustainability = SustainabilityMode()
+
+
+
+
+====================================================================================================
+FILE: core\trial_manager.py
+====================================================================================================
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import datetime
+
+
+@dataclass
+class TrialState:
+    started_at: str
+    total_days: int
+    days_remaining: int
+
+
+class TrialManager:
+    def __init__(self, enabled: bool, total_days: int, load_settings=None):
+        self.enabled = bool(enabled)
+        self.total_days = max(1, int(total_days or 1))
+        self._load_settings = load_settings
+
+    def _now(self) -> datetime:
+        return datetime.now()
+
+    def _parse_dt(self, value: str) -> datetime | None:
+        try:
+            return datetime.fromisoformat(str(value))
+        except Exception:
+            return None
+
+    def load_state(self) -> TrialState:
+        if not self.enabled:
+            return TrialState("", self.total_days, self.total_days)
+        started_at = ""
+        if callable(self._load_settings):
+            try:
+                settings = self._load_settings() or {}
+            except Exception:
+                settings = {}
+            started_at = (
+                str(settings.get("trial_started_at") or "")
+                or str(settings.get("trial_start") or "")
+                or str(settings.get("trial_started") or "")
+            ).strip()
+        return self.recompute(started_at=started_at, total_days=self.total_days)
+
+    def recompute(self, started_at: str, total_days: int) -> TrialState:
+        td = max(1, int(total_days or self.total_days))
+        if not self.enabled:
+            return TrialState("", td, td)
+        start_dt = self._parse_dt(started_at)
+        if start_dt is None:
+            start_dt = self._now()
+            started_at = start_dt.isoformat()
+        elapsed_days = max(0, (self._now().date() - start_dt.date()).days)
+        remaining = max(0, td - elapsed_days)
+        return TrialState(started_at, td, remaining)
+
+    def banner_text(self, days_remaining: int) -> str:
+        if not self.enabled:
+            return ""
+        days = max(0, int(days_remaining))
+        if days == 0:
+            return "Trial expired"
+        if days == 1:
+            return "1 day remaining in trial"
+        return f"{days} days remaining in trial"
+
+====================================================================================================
+FILE: core\ui_controller.py
+====================================================================================================
+
+from __future__ import annotations
+
+from core.qt_compat import QEasingCurve, QGraphicsOpacityEffect, QPropertyAnimation, QTimer
+
+
+class UIController:
+    def __init__(self, window):
+        self.window = window
+
+    def switch_view(self, key: str):
+        w = self.window
+        view = str(key or "").strip()
+        if not view:
+            return
+        stack = getattr(w, "main_stack", None) or getattr(w, "stack", None)
+        target = self._resolve_target_view(view)
+        if stack is not None and target is not None:
+            stack.setCurrentWidget(target)
+        w.active_view = view
+        self._sync_nav_selection(view)
+        self.update_liquid_timer_state()
+
+    def _should_run_liquid_animation(self) -> bool:
+        w = self.window
+        active = str(getattr(w, "active_view", "")).lower()
+        has_bar = hasattr(getattr(w, "search_view", None), "progress_bar")
+        return active in {"search", "downloads"} and has_bar
+
+    def update_liquid_timer_state(self):
+        w = self.window
+        timer = getattr(w, "liquid_timer", None)
+        if timer is None:
+            return
+        if self._should_run_liquid_animation():
+            if not timer.isActive():
+                timer.start()
+        elif timer.isActive():
+            timer.stop()
+
+    def animate_view_change(self):
+        stack = getattr(self.window, "main_stack", None) or getattr(self.window, "stack", None)
+        if stack is None:
+            return
+        current = stack.currentWidget()
+        if current is None:
+            return
+        self.fade_widget(current, delay_ms=0, duration_ms=180)
+
+    def _resolve_target_view(self, view: str):
+        w = self.window
+        aliases = {
+            "playlists": "playlist_view",
+            "playlist": "playlist_view",
+            "errors": "error_dashboard",
+            "error": "error_dashboard",
+            "stats": "stats_view",
+        }
+        attr = aliases.get(view, f"{view}_view")
+        return getattr(w, attr, None)
+
+    def _sync_nav_selection(self, view: str):
+        nav = getattr(self.window, "nav_buttons", None)
+        if not isinstance(nav, dict):
+            return
+        for key, btn in nav.items():
+            try:
+                btn.setChecked(str(key) == view)
+            except Exception:
+                continue
+
+    def fade_widget(self, widget, delay_ms=0, duration_ms=280):
+        if widget is None:
+            return
+
+        def _run():
+            effect = widget.graphicsEffect()
+            if not isinstance(effect, QGraphicsOpacityEffect):
+                effect = QGraphicsOpacityEffect(widget)
+                widget.setGraphicsEffect(effect)
+            anim = QPropertyAnimation(effect, b"opacity", widget)
+            anim.setDuration(max(80, int(duration_ms)))
+            anim.setEasingCurve(QEasingCurve.Type.InOutCubic)
+            anim.setStartValue(0.0)
+            anim.setEndValue(1.0)
+            anim.start()
+            self._keep_anim(anim)
+
+        if delay_ms and int(delay_ms) > 0:
+            QTimer.singleShot(int(delay_ms), _run)
+        else:
+            _run()
+
+    def pulse_widget(self, widget):
+        if widget is None:
+            return
+        anim = QPropertyAnimation(widget, b"windowOpacity", widget)
+        anim.setDuration(380)
+        anim.setEasingCurve(QEasingCurve.Type.InOutSine)
+        anim.setKeyValueAt(0.0, 1.0)
+        anim.setKeyValueAt(0.5, 0.65)
+        anim.setKeyValueAt(1.0, 1.0)
+        anim.start()
+        self._keep_anim(anim)
+
+    def _keep_anim(self, anim):
+        bucket = getattr(self.window, "_ui_animations", None)
+        if bucket is None:
+            bucket = []
+            setattr(self.window, "_ui_animations", bucket)
+        bucket.append(anim)
+        anim.finished.connect(lambda: self._prune_anim(anim))
+
+    def _prune_anim(self, anim):
+        bucket = getattr(self.window, "_ui_animations", None) or []
+        try:
+            bucket.remove(anim)
+        except ValueError:
+            pass
+
+====================================================================================================
+FILE: core\window_controllers.py
+====================================================================================================
+
+
+import json
+import logging
+import os
+import glob
+import re
+import sys
+import threading
+from datetime import datetime
+
+try:
+    import winreg
+except ImportError:
+    winreg = None
+
+try:
+    from PySide6.QtCore import QTimer, QTime
+    from PySide6.QtWidgets import QFileDialog, QLineEdit, QSpinBox, QCheckBox, QComboBox, QSystemTrayIcon
+except ImportError:
+    from PyQt6.QtCore import QTimer, QTime
+    from PyQt6.QtWidgets import QFileDialog, QLineEdit, QSpinBox, QCheckBox, QComboBox, QSystemTrayIcon
+
+from core.audio_normalizer import normalize_folder
+from core.anti_detection import anti_detection_engine
+from core.bandwidth_scheduler import scheduler
+from core.config import DEFAULT_SETTINGS, THEME_MODE_MAP, default_download_dir
+from core.cookie_importer import auto_detect_and_export
+from core.database import (
+    close_thread_connection,
+    fetch_history,
+    get_all_stats,
+    increment_stat,
+    insert_history,
+    load_queue_items,
+    load_session_settings,
+    record_peak_speed,
+    save_queue_items,
+    save_session_settings,
+)
+from core.downloader import DownloadWorker
+from core.duplicate_finder import build_duplicate_report
+from core.proxy_manager import proxy_manager
+from core.storage_watchdog import format_bytes, has_enough_space
+from core.sustainability import sustainability
+from core.i18n import i18n, _
+from core.error_handler import ErrorHandler
+from core.workers import AnalyzeWorker
+from ui.themes import THEMES
+
+logger = logging.getLogger("SnapDownloader")
+
+
+def _get_app_data_dir() -> str:
+    app_name = "VidDownloader"
+    if sys.platform == "win32":
+        base = os.getenv("APPDATA") or os.path.expanduser("~")
+        return os.path.join(base, app_name)
+    if sys.platform == "darwin":
+        return os.path.join(os.path.expanduser("~"), "Library", "Application Support", app_name)
+    base = os.getenv("XDG_DATA_HOME") or os.path.join(os.path.expanduser("~"), ".local", "share")
+    return os.path.join(base, app_name)
+
+
+class SettingsController:
+    def __init__(self, window):
+        self.window = window
+
+    def _ensure_session_sync_state(self):
+        if not hasattr(self.window, "_session_save_lock"):
+            self.window._session_save_lock = threading.Lock()
+        if not hasattr(self.window, "_session_save_write_lock"):
+            self.window._session_save_write_lock = threading.Lock()
+        if not hasattr(self.window, "_session_save_event"):
+            self.window._session_save_event = threading.Event()
+        if not hasattr(self.window, "_session_save_payload"):
+            self.window._session_save_payload = None
+        if not hasattr(self.window, "_session_save_shutdown"):
+            self.window._session_save_shutdown = False
+
+    def detect_system_theme_mode(self):
+        if sys.platform != "win32" or winreg is None:
+            return None
+        try:
+            with winreg.OpenKey(
+                winreg.HKEY_CURRENT_USER,
+                r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize",
+            ) as key:
+                value, _ = winreg.QueryValueEx(key, "AppsUseLightTheme")
+            return "light" if int(value) else "dark"
+        except Exception as exc:
+            logger.debug(f"تعذر قراءة وضع الثيم من النظام: {exc}")
+            return None
+
+    def set_system_theme_sync_enabled(self, enabled: bool):
+        self.window.system_theme_sync_enabled = bool(enabled)
+        sv = getattr(self.window, "settings_view", None)
+        if sv is not None and hasattr(sv, "apply_form_settings"):
+            sv.apply_form_settings({"system_theme_sync_enabled": self.window.system_theme_sync_enabled}, block_signals=True)
+            return
+        if sv is not None and hasattr(sv, "settings_system_theme_sync"):
+            sv.settings_system_theme_sync.blockSignals(True)
+            sv.settings_system_theme_sync.setChecked(self.window.system_theme_sync_enabled)
+            sv.settings_system_theme_sync.blockSignals(False)
+
+    def apply_theme(self, theme_name: str, persist: bool = False):
+        if theme_name not in THEMES:
+            return
+        changed = theme_name != self.window.theme
+        self.window.theme = theme_name
+        if hasattr(self.window, "clip_watcher") and self.window.clip_watcher is not None:
+            try:
+                self.window.clip_watcher.update_theme(theme_name)
+            except Exception as exc:
+                logger.debug(f"تعذر تحديث ثيم Clip Watcher: {exc}")
+        if hasattr(self.window, "mini_window") and self.window.mini_window is not None:
+            try:
+                self.window.mini_window.update_theme(THEMES.get(theme_name, THEMES["Modern Dark"]))
+            except Exception as exc:
+                logger.debug(f"تعذر تحديث ثيم Mini Mode: {exc}")
+        if hasattr(self.window, "main_stack"):
+            self.window.setStyleSheet(self.window._qss())
+            self.window._apply_downloads_inline_theme()
+        if persist and changed:
+            self.save_session()
+
+    def set_ui_language(self, lang_code: str, persist: bool = True, notify: bool = True):
+        code = str(lang_code or "").strip().lower()
+        available = i18n.available_languages()
+        if code not in available:
+            code = "en"
+        i18n.set_language(code)
+        self.window.ui_language = code
+        sv = getattr(self.window, "settings_view", None)
+        if sv is not None and hasattr(sv, "apply_form_settings"):
+            sv.apply_form_settings({"ui_language": code}, block_signals=True)
+        elif sv is not None and hasattr(sv, "settings_language_combo"):
+            sv.settings_language_combo.blockSignals(True)
+            idx = sv.settings_language_combo.findData(code)
+            if idx >= 0:
+                sv.settings_language_combo.setCurrentIndex(idx)
+            sv.settings_language_combo.blockSignals(False)
+        if notify:
+            self.window._info(f"Language switched to {available.get(code, code)}")
+        if persist:
+            self.save_session()
+
+    def refresh_system_theme(self, force: bool = False, persist: bool = False):
+        if not self.window.system_theme_sync_enabled and not force:
+            return
+        mode = self.detect_system_theme_mode()
+        if mode not in THEME_MODE_MAP:
+            return
+        if not force and mode == self.window._last_system_theme_mode:
+            return
+        self.window._last_system_theme_mode = mode
+        self.apply_theme(str(THEME_MODE_MAP.get(mode, self.window.theme)), persist=persist)
+
+    def toggle_theme(self):
+        theme_names = list(THEMES.keys())
+        current_idx = theme_names.index(self.window.theme) if self.window.theme in theme_names else 0
+        next_idx = (current_idx + 1) % len(theme_names)
+        self.set_system_theme_sync_enabled(False)
+        self.apply_theme(theme_names[next_idx], persist=True)
+        logger.info(f"Theme switched to: {self.window.theme}")
+
+    def toggle_dark_light_mode(self):
+        dark_theme = str(THEME_MODE_MAP.get("dark", "Modern Dark"))
+        light_theme = str(THEME_MODE_MAP.get("light", "Elegant Light"))
+        self.set_system_theme_sync_enabled(False)
+        self.apply_theme(light_theme if self.window.theme == dark_theme else dark_theme, persist=True)
+
+    def pick_cookies(self):
+        path, _ = QFileDialog.getOpenFileName(self.window, _("Select Cookies File"), "", _("Text Files (*.txt);;All Files (*)"))
+        if path:
+            sv = getattr(self.window, "settings_view", None)
+            if sv is not None and hasattr(sv, "apply_form_settings"):
+                sv.apply_form_settings({"cookies_path": path}, block_signals=False)
+            elif sv is not None and hasattr(sv, "settings_cookies"):
+                sv.settings_cookies.setText(path)
+
+    def auto_import_cookies(self):
+        app_data_dir = _get_app_data_dir()
+        os.makedirs(app_data_dir, exist_ok=True)
+        out_path = os.path.join(app_data_dir, "auto_cookies.txt")
+        try:
+            browser, count = auto_detect_and_export(out_path)
+            try:
+                os.chmod(out_path, 0o600)
+            except Exception:
+                pass
+            sv = getattr(self.window, "settings_view", None)
+            if sv is not None and hasattr(sv, "apply_form_settings"):
+                sv.apply_form_settings({"cookies_path": out_path}, block_signals=False)
+            elif sv is not None and hasattr(sv, "settings_cookies"):
+                sv.settings_cookies.setText(out_path)
+            self.window.cookies_path = out_path
+            self.window._info(f"✅ Imported {count} cookies from {browser.title()}")
+            logger.info(f"[Cookies] Imported {count} from {browser} -> {out_path}")
+        except Exception as exc:
+            self.window._warn(f"Cookie import failed: {exc}")
+            logger.warning(f"[Cookies] {exc}")
+
+    def format_bandwidth_limit(self, limit_kbps: int) -> str:
+        value = max(0, int(limit_kbps or 0))
+        if value <= 0:
+            return "غير محدود"
+        if value >= 1024:
+            return f"{value / 1024:.1f} MB/s"
+        return f"{value} KB/s"
+
+    def current_bandwidth_limit_kbps(self) -> int:
+        if not self.window.bandwidth_scheduler_enabled:
+            return 0
+        try:
+            return max(0, int(scheduler.get_current_limit() or 0))
+        except Exception as exc:
+            logger.debug(f"تعذر قراءة حد السرعة الحالي من الجدول: {exc}")
+            return 0
+
+    def refresh_bandwidth_schedule(self, notify: bool = False):
+        self.window.bandwidth_scheduler_enabled = bool(scheduler.enabled)
+        summary = scheduler.format_schedule_summary()
+        limit_text = self.format_bandwidth_limit(self.current_bandwidth_limit_kbps())
+        if self.window.bandwidth_scheduler_enabled:
+            summary = f"{summary} — الحد الحالي: {limit_text}"
+        previous = getattr(self.window, "_bandwidth_schedule_summary", "")
+        self.window._bandwidth_schedule_summary = summary
+        sv = getattr(self.window, "settings_view", None)
+        if sv is not None and hasattr(sv, "set_bandwidth_scheduler_checked"):
+            sv.set_bandwidth_scheduler_checked(self.window.bandwidth_scheduler_enabled)
+        elif sv is not None and hasattr(sv, "settings_bandwidth_scheduler"):
+            sv.settings_bandwidth_scheduler.setChecked(self.window.bandwidth_scheduler_enabled)
+        if sv is not None and hasattr(sv, "set_bandwidth_scheduler_summary"):
+            sv.set_bandwidth_scheduler_summary(summary)
+        elif sv is not None and hasattr(sv, "settings_bandwidth_scheduler_summary"):
+            sv.settings_bandwidth_scheduler_summary.setText(summary)
+        if notify and summary != previous:
+            self.window._append_log(f"[Scheduler] {summary}")
+
+    def bandwidth_schedule_editor_text(self) -> str:
+        try:
+            return json.dumps(scheduler.schedule, ensure_ascii=False, indent=2)
+        except Exception:
+            return "[]"
+
+    def reload_bandwidth_schedule_editor(self):
+        sv = getattr(self.window, "settings_view", None)
+        if sv is not None and hasattr(sv, "set_bandwidth_schedule_editor_text"):
+            sv.set_bandwidth_schedule_editor_text(self.bandwidth_schedule_editor_text(), block_signals=False)
+        elif sv is not None and hasattr(sv, "settings_bandwidth_schedule_editor"):
+            sv.settings_bandwidth_schedule_editor.setPlainText(self.bandwidth_schedule_editor_text())
+
+    def get_bandwidth_schedule_editor_rules(self) -> list[dict]:
+        sv = getattr(self.window, "settings_view", None)
+        if sv is None:
+            return []
+        if hasattr(sv, "get_bandwidth_schedule_editor_text"):
+            raw_text = sv.get_bandwidth_schedule_editor_text().strip()
+        elif hasattr(sv, "settings_bandwidth_schedule_editor"):
+            raw_text = sv.settings_bandwidth_schedule_editor.toPlainText().strip()
+        else:
+            return []
+        if not raw_text:
+            return []
+        parsed = json.loads(raw_text)
+        return scheduler.normalize_schedule(parsed)
+
+    def set_bandwidth_schedule_editor_rules(self, rules: list[dict], selected_index: int | None = None):
+        normalized = scheduler.normalize_schedule(rules)
+        sv = getattr(self.window, "settings_view", None)
+        editor_text = json.dumps(normalized, ensure_ascii=False, indent=2)
+        if sv is not None and hasattr(sv, "set_bandwidth_schedule_editor_text"):
+            sv.set_bandwidth_schedule_editor_text(editor_text, block_signals=True)
+        elif sv is not None and hasattr(sv, "settings_bandwidth_schedule_editor"):
+            sv.settings_bandwidth_schedule_editor.blockSignals(True)
+            sv.settings_bandwidth_schedule_editor.setPlainText(editor_text)
+            sv.settings_bandwidth_schedule_editor.blockSignals(False)
+        self.sync_bandwidth_schedule_rule_list(selected_index=selected_index)
+
+    def sync_bandwidth_schedule_rule_list(self, selected_index: int | None = None):
+        sv = getattr(self.window, "settings_view", None)
+        if sv is None:
+            return
+        if not hasattr(sv, "set_bandwidth_rule_list_items") and not hasattr(sv, "settings_bandwidth_rule_list"):
+            return
+        current_row = self.window._editing_bandwidth_rule_index if isinstance(self.window._editing_bandwidth_rule_index, int) else -1
+        target_row = current_row if selected_index is None else selected_index
+        try:
+            rules = self.get_bandwidth_schedule_editor_rules()
+        except Exception as exc:
+            if sv is not None and hasattr(sv, "set_bandwidth_schedule_status"):
+                sv.set_bandwidth_schedule_status(f"خطأ في القواعد الحالية: {exc}")
+            elif sv is not None and hasattr(sv, "settings_bandwidth_schedule_status"):
+                sv.settings_bandwidth_schedule_status.setText(f"خطأ في القواعد الحالية: {exc}")
+            return
+        items = [
+            f"{rule['start']} → {rule['end']} • {self.format_bandwidth_limit(rule.get('limit_kbps', 0))} • {rule.get('label', '')}"
+            for rule in rules
+        ]
+        if hasattr(sv, "set_bandwidth_rule_list_items"):
+            sv.set_bandwidth_rule_list_items(items, selected_index=-1, block_signals=True)
+        else:
+            sv.settings_bandwidth_rule_list.blockSignals(True)
+            sv.settings_bandwidth_rule_list.clear()
+            for item in items:
+                sv.settings_bandwidth_rule_list.addItem(item)
+            sv.settings_bandwidth_rule_list.blockSignals(False)
+        if not rules:
+            self.window._editing_bandwidth_rule_index = None
+            if hasattr(sv, "set_bandwidth_schedule_status"):
+                sv.set_bandwidth_schedule_status("لا توجد قواعد محفوظة في المحرر")
+            elif hasattr(sv, "settings_bandwidth_schedule_status"):
+                sv.settings_bandwidth_schedule_status.setText("لا توجد قواعد محفوظة في المحرر")
+            return
+        if target_row is None or target_row < 0:
+            target_row = 0
+        target_row = max(0, min(target_row, len(rules) - 1))
+        if hasattr(sv, "set_bandwidth_rule_list_items"):
+            sv.set_bandwidth_rule_list_items(items, selected_index=target_row, block_signals=True)
+        else:
+            sv.settings_bandwidth_rule_list.setCurrentRow(target_row)
+        if hasattr(sv, "set_bandwidth_schedule_status"):
+            sv.set_bandwidth_schedule_status(f"عدد القواعد الجاهزة للتطبيق: {len(rules)}")
+        elif hasattr(sv, "settings_bandwidth_schedule_status"):
+            sv.settings_bandwidth_schedule_status.setText(f"عدد القواعد الجاهزة للتطبيق: {len(rules)}")
+
+    def set_bandwidth_rule_form(self, rule: dict | None = None):
+        sv = getattr(self.window, "settings_view", None)
+        if sv is None:
+            return
+        if hasattr(sv, "set_bandwidth_rule_form"):
+            sv.set_bandwidth_rule_form(rule)
+            return
+        if not hasattr(sv, "settings_bandwidth_rule_start"):
+            return
+        value = rule or {"start": "08:00", "end": "12:00", "limit_kbps": 0, "label": ""}
+        start_time = QTime.fromString(str(value.get("start", "08:00")), "HH:mm")
+        end_time = QTime.fromString(str(value.get("end", "12:00")), "HH:mm")
+        if not start_time.isValid():
+            start_time = QTime(8, 0)
+        if not end_time.isValid():
+            end_time = QTime(12, 0)
+        sv.settings_bandwidth_rule_start.setTime(start_time)
+        sv.settings_bandwidth_rule_end.setTime(end_time)

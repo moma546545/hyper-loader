@@ -1,0 +1,1587 @@
+2026-03-31 12:26:12,738 - SnapDownloader - INFO - Theme switched to: light
+2026-03-31 12:26:13,834 - SnapDownloader - INFO - Theme switched to: dark
+2026-03-31 12:26:27,428 - SnapDownloader - INFO - Checking for yt-dlp updates...
+2026-03-31 12:26:37,900 - SnapDownloader - INFO - yt-dlp updated successfully.
+2026-03-31 13:20:05,150 - SnapDownloader - INFO - Theme switched to: Midnight Glow
+2026-03-31 13:21:59,593 - SnapDownloader - INFO - Theme switched to: Midnight Glow
+2026-03-31 13:22:00,381 - SnapDownloader - INFO - Theme switched to: Cyberpunk City
+2026-03-31 13:22:01,115 - SnapDownloader - INFO - Theme switched to: Solar Drift
+2026-03-31 13:22:01,955 - SnapDownloader - INFO - Theme switched to: Aurora Space
+2026-03-31 13:22:03,033 - SnapDownloader - INFO - Theme switched to: Midnight Glow
+2026-03-31 13:22:05,644 - SnapDownloader - INFO - Theme switched to: Cyberpunk City
+2026-03-31 13:22:06,488 - SnapDownloader - INFO - Theme switched to: Solar Drift
+2026-03-31 13:22:07,247 - SnapDownloader - INFO - Theme switched to: Aurora Space
+2026-03-31 13:22:08,243 - SnapDownloader - INFO - Theme switched to: Midnight Glow
+2026-03-31 13:28:20,517 - SnapDownloader - INFO - Started worker single_1774956500.515281 for https://www.youtube.com/watch?v=cnDw2hDc2Ls
+2026-03-31 13:30:07,643 - SnapDownloader - INFO - Theme switched to: Midnight Glow
+2026-03-31 13:30:28,961 - SnapDownloader - INFO - Theme switched to: Cyberpunk City
+2026-03-31 13:30:29,843 - SnapDownloader - INFO - Theme switched to: Solar Drift
+2026-03-31 13:30:34,906 - SnapDownloader - INFO - Theme switched to: Aurora Space
+2026-03-31 15:22:36,839 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-03-31 15:22:36,909 - SnapDownloader - INFO - [DB] Migrated 10 history entries from JSON to SQLite
+2026-03-31 15:22:36,943 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-03-31 15:22:39,034 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-03-31 15:22:56,516 - SnapDownloader - INFO - Theme switched to: Midnight Glow
+2026-03-31 15:22:57,589 - SnapDownloader - INFO - Theme switched to: Cyberpunk City
+2026-03-31 15:22:58,369 - SnapDownloader - INFO - Theme switched to: Solar Drift
+2026-03-31 15:22:59,054 - SnapDownloader - INFO - Theme switched to: Aurora Space
+2026-03-31 15:23:00,585 - SnapDownloader - INFO - Theme switched to: Midnight Glow
+2026-03-31 15:27:59,727 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-03-31 15:28:06,718 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-03-31 15:30:00,865 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-03-31 15:31:44,753 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-03-31 15:31:44,909 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-03-31 15:31:46,940 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-03-31 15:33:31,685 - SnapDownloader - INFO - Theme switched to: Midnight Glow
+2026-03-31 15:55:54,004 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-03-31 15:55:54,052 - SnapDownloader - INFO - [DB] Legacy session migrated to SQLite
+2026-03-31 15:55:54,077 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-03-31 15:55:55,734 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-03-31 16:02:01,115 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-03-31 16:02:01,184 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-03-31 16:02:02,858 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-03-31 16:30:01,234 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-03-31 16:30:01,637 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-03-31 16:33:54,581 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-03-31 16:33:54,645 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-03-31 16:33:57,360 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-03-31 16:33:57,397 - SnapDownloader.QueueManager - INFO - Adding 0 tasks to queue.
+2026-03-31 16:34:33,918 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-03-31 16:34:33,984 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-03-31 16:34:36,181 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-03-31 16:34:36,212 - SnapDownloader.QueueManager - INFO - Adding 0 tasks to queue.
+2026-03-31 16:37:50,714 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-03-31 16:37:50,782 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-03-31 16:37:52,332 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-03-31 16:37:52,364 - SnapDownloader.QueueManager - INFO - Adding 0 tasks to queue.
+2026-03-31 16:38:59,610 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-03-31 16:38:59,674 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-03-31 16:39:01,124 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-03-31 16:39:01,163 - SnapDownloader.QueueManager - INFO - Adding 0 tasks to queue.
+2026-03-31 16:40:21,692 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-03-31 16:40:21,761 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-03-31 16:40:23,098 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-03-31 16:40:23,131 - SnapDownloader.QueueManager - INFO - Adding 0 tasks to queue.
+2026-03-31 16:41:50,916 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-03-31 16:41:50,977 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-03-31 16:42:35,143 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-03-31 16:42:35,206 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-03-31 16:42:36,902 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-03-31 16:42:36,937 - SnapDownloader.QueueManager - INFO - Adding 0 tasks to queue.
+2026-03-31 16:44:07,001 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-03-31 16:44:07,066 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-03-31 16:44:08,227 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-03-31 16:44:08,260 - SnapDownloader.QueueManager - INFO - Adding 0 tasks to queue.
+2026-03-31 16:45:41,870 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-03-31 16:45:41,927 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-03-31 16:46:21,477 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-03-31 16:46:21,547 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-03-31 16:46:40,104 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-03-31 16:46:40,187 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-03-31 16:46:42,149 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-03-31 16:46:42,184 - SnapDownloader.QueueManager - INFO - Adding 0 tasks to queue.
+2026-03-31 16:48:27,884 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-03-31 16:48:27,942 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-03-31 16:48:29,649 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-03-31 16:48:29,683 - SnapDownloader.QueueManager - INFO - Adding 0 tasks to queue.
+2026-04-01 22:41:40,926 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-01 22:41:41,623 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-01 22:41:43,673 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-01 22:41:43,727 - SnapDownloader.QueueManager - INFO - Adding 0 tasks to queue.
+2026-04-01 22:47:28,196 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-01 22:47:28,259 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-01 22:47:30,402 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-01 22:47:30,433 - SnapDownloader.QueueManager - INFO - Adding 0 tasks to queue.
+2026-04-01 22:47:44,525 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 16:51:39,327 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 16:51:39,676 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-02 16:51:42,000 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-02 16:51:42,031 - SnapDownloader.QueueManager - INFO - Adding 0 tasks to queue.
+2026-04-02 16:58:28,693 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 16:58:28,745 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-02 16:58:30,129 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-02 16:58:30,154 - SnapDownloader.QueueManager - INFO - Adding 0 tasks to queue.
+2026-04-02 16:59:58,482 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 16:59:58,526 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-02 16:59:59,708 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-02 16:59:59,727 - SnapDownloader.QueueManager - INFO - Adding 0 tasks to queue.
+2026-04-02 17:02:05,007 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 17:02:05,045 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-02 17:02:06,223 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-02 17:02:06,241 - SnapDownloader.QueueManager - INFO - Adding 0 tasks to queue.
+2026-04-02 17:18:34,361 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 17:19:09,841 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 17:19:09,952 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-02 17:19:11,210 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-02 17:19:11,236 - SnapDownloader.QueueManager - INFO - Adding 0 tasks to queue.
+2026-04-02 17:20:32,680 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 17:20:32,716 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-02 17:20:33,889 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-02 17:20:33,907 - SnapDownloader.QueueManager - INFO - Adding 0 tasks to queue.
+2026-04-02 17:24:39,125 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 17:24:39,268 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-02 17:24:40,591 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-02 17:24:40,626 - SnapDownloader.QueueManager - INFO - Adding 0 tasks to queue.
+2026-04-02 17:24:56,870 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 17:24:56,907 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-02 17:24:58,057 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-02 17:24:58,075 - SnapDownloader.QueueManager - INFO - Adding 0 tasks to queue.
+2026-04-02 17:27:48,274 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 17:27:48,326 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-02 17:27:49,148 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-02 17:27:49,166 - SnapDownloader.QueueManager - INFO - Adding 0 tasks to queue.
+2026-04-02 17:31:22,485 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 17:31:22,597 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-02 17:31:23,592 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-02 17:31:23,615 - SnapDownloader.QueueManager - INFO - Adding 0 tasks to queue.
+2026-04-02 17:36:52,641 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 17:36:52,685 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-02 17:36:59,822 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 17:36:59,864 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-02 17:39:44,662 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 17:39:44,784 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-02 17:40:20,226 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 17:40:20,267 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-02 17:40:21,487 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-02 17:40:21,512 - SnapDownloader.QueueManager - INFO - Adding 0 tasks to queue.
+2026-04-02 17:46:06,548 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 17:46:06,604 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-02 17:46:07,686 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-02 17:46:07,705 - SnapDownloader.QueueManager - INFO - Adding 0 tasks to queue.
+2026-04-02 17:47:15,279 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 17:47:15,319 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-02 17:47:16,225 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-02 17:47:16,244 - SnapDownloader.QueueManager - INFO - Adding 0 tasks to queue.
+2026-04-02 17:48:54,104 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 17:48:54,144 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-02 17:48:55,150 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-02 17:48:55,172 - SnapDownloader.QueueManager - INFO - Adding 0 tasks to queue.
+2026-04-02 17:50:13,748 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 17:50:13,789 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-02 17:50:14,383 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-02 17:50:14,404 - SnapDownloader.QueueManager - INFO - Adding 0 tasks to queue.
+2026-04-02 17:50:37,775 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 17:50:37,815 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-02 17:50:38,251 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-02 17:50:38,269 - SnapDownloader.QueueManager - INFO - Adding 0 tasks to queue.
+2026-04-02 17:58:02,741 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 17:58:02,784 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-02 17:58:03,616 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-02 17:58:03,634 - SnapDownloader.QueueManager - INFO - Adding 0 tasks to queue.
+2026-04-02 18:03:31,006 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 18:03:31,047 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-02 18:03:32,049 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-02 18:03:32,069 - SnapDownloader.QueueManager - INFO - Adding 0 tasks to queue.
+2026-04-02 18:15:07,526 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 18:15:07,569 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-02 18:15:08,399 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-02 18:15:08,419 - SnapDownloader.QueueManager - INFO - Adding 0 tasks to queue.
+2026-04-02 18:21:15,008 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 18:21:15,159 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-02 18:21:16,208 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-02 18:21:16,248 - SnapDownloader.QueueManager - INFO - Adding 0 tasks to queue.
+2026-04-02 18:26:31,252 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 18:26:31,305 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-02 18:26:32,076 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-02 18:26:32,103 - SnapDownloader.QueueManager - INFO - Adding 0 tasks to queue.
+2026-04-02 18:26:43,048 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 18:27:04,283 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 18:27:18,309 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 18:28:31,441 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 18:28:31,478 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-02 18:28:32,540 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-02 18:28:32,558 - SnapDownloader.QueueManager - INFO - Adding 0 tasks to queue.
+2026-04-02 18:36:11,343 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 18:36:11,381 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-02 18:36:12,018 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-02 18:36:12,036 - SnapDownloader.QueueManager - INFO - Adding 0 tasks to queue.
+2026-04-02 18:36:31,194 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 18:36:31,233 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-02 18:36:31,698 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-02 18:36:31,715 - SnapDownloader.QueueManager - INFO - Adding 0 tasks to queue.
+2026-04-02 20:34:25,868 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 20:34:25,978 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-02 20:34:26,611 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-02 20:34:26,631 - SnapDownloader.QueueManager - INFO - Adding 0 tasks to queue.
+2026-04-02 20:41:35,124 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 20:41:35,158 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-02 20:41:35,958 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-02 20:41:35,975 - SnapDownloader.QueueManager - INFO - Adding 0 tasks to queue.
+2026-04-02 21:02:15,749 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 21:02:16,080 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-02 21:02:17,006 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-02 21:02:17,033 - SnapDownloader.QueueManager - INFO - Adding 0 tasks to queue.
+2026-04-02 21:06:18,204 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 21:06:18,251 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-02 21:06:19,317 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-02 21:06:19,337 - SnapDownloader.QueueManager - INFO - Adding 0 tasks to queue.
+2026-04-02 21:08:27,938 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 21:08:27,980 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-02 21:08:28,672 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-02 21:08:28,694 - SnapDownloader.QueueManager - INFO - Adding 0 tasks to queue.
+2026-04-02 21:18:28,821 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 21:18:29,194 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-02 21:18:33,857 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-02 21:18:33,902 - SnapDownloader.QueueManager - INFO - Adding 0 tasks to queue.
+2026-04-02 21:19:01,603 - SnapDownloader.QueueManager - INFO - Adding task to queue: إن شعرت بالضيق... فاستمع لكتاب الله يُنير قلبك ويشرح صدرك | الشيخ محمد صديق المنشاوي | جودة نقية ᴴᴰ
+2026-04-02 21:19:02,239 - SnapDownloader - INFO - Started worker 0 for https://www.youtube.com/watch?v=SP0E1XXXcyw
+2026-04-02 21:19:28,858 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 21:26:14,537 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 21:26:14,587 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-02 21:26:15,704 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-02 21:26:15,736 - SnapDownloader.QueueManager - INFO - Adding 1 tasks to queue.
+2026-04-02 21:26:33,576 - SnapDownloader.QueueManager - INFO - Adding task to queue: إن شعرت بالضيق... فاستمع لكتاب الله يُنير قلبك ويشرح صدرك | الشيخ محمد صديق المنشاوي | جودة نقية ᴴᴰ
+2026-04-02 21:26:34,209 - SnapDownloader - INFO - Started worker 1 for https://www.youtube.com/watch?v=SP0E1XXXcyw
+2026-04-02 21:26:55,960 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-02 21:26:55,960 - SnapDownloader.EventBus - ERROR - Error in event callback for DownloadFinishedEvent: '<=' not supported between instances of 'int' and 'NoneType'
+2026-04-02 21:29:32,345 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 21:29:32,399 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-02 21:29:33,663 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-02 21:29:33,696 - SnapDownloader.QueueManager - INFO - Adding 1 tasks to queue.
+2026-04-02 21:29:52,673 - SnapDownloader.QueueManager - INFO - Adding task to queue: إن شعرت بالضيق... فاستمع لكتاب الله يُنير قلبك ويشرح صدرك | الشيخ محمد صديق المنشاوي | جودة نقية ᴴᴰ
+2026-04-02 21:29:53,249 - SnapDownloader - INFO - Started worker 1 for https://www.youtube.com/watch?v=SP0E1XXXcyw
+2026-04-02 21:30:15,893 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-02 21:34:40,566 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 21:34:40,626 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-02 21:34:41,620 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-02 21:34:41,652 - SnapDownloader.QueueManager - INFO - Adding 1 tasks to queue.
+2026-04-02 21:35:04,964 - SnapDownloader.QueueManager - INFO - Adding task to queue: إن شعرت بالضيق... فاستمع لكتاب الله يُنير قلبك ويشرح صدرك | الشيخ محمد صديق المنشاوي | جودة نقية ᴴᴰ
+2026-04-02 21:35:05,332 - SnapDownloader - INFO - Started worker 1 for https://www.youtube.com/watch?v=SP0E1XXXcyw
+2026-04-02 21:35:26,987 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-02 21:38:57,044 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 21:38:57,388 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-02 21:39:00,247 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-02 21:39:00,323 - SnapDownloader.QueueManager - INFO - Adding 1 tasks to queue.
+2026-04-02 21:39:19,584 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 21:39:19,649 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-02 21:39:20,924 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-02 21:39:20,961 - SnapDownloader.QueueManager - INFO - Adding 1 tasks to queue.
+2026-04-02 21:39:52,799 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 21:39:52,972 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-02 21:39:54,306 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-02 21:39:54,352 - SnapDownloader.QueueManager - INFO - Adding 1 tasks to queue.
+2026-04-02 21:40:04,503 - SnapDownloader.QueueManager - INFO - Adding task to queue: إن شعرت بالضيق... فاستمع لكتاب الله يُنير قلبك ويشرح صدرك | الشيخ محمد صديق المنشاوي | جودة نقية ᴴᴰ
+2026-04-02 21:40:05,715 - SnapDownloader - INFO - Started worker 1 for https://www.youtube.com/watch?v=SP0E1XXXcyw
+2026-04-02 21:40:15,728 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 21:40:15,770 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-02 21:40:16,917 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-02 21:40:16,948 - SnapDownloader.QueueManager - INFO - Adding 1 tasks to queue.
+2026-04-02 21:40:28,778 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-02 21:40:28,835 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 21:40:46,509 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 21:42:56,388 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 21:42:56,471 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-02 21:42:57,364 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-02 21:42:57,398 - SnapDownloader.QueueManager - INFO - Adding 2 tasks to queue.
+2026-04-02 21:43:19,610 - SnapDownloader.QueueManager - INFO - Adding task to queue: إن شعرت بالضيق... فاستمع لكتاب الله يُنير قلبك ويشرح صدرك | الشيخ محمد صديق المنشاوي | جودة نقية ᴴᴰ
+2026-04-02 21:43:19,974 - SnapDownloader - INFO - Started worker 2 for https://www.youtube.com/watch?v=SP0E1XXXcyw
+2026-04-02 21:43:41,810 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-02 21:43:41,824 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 21:46:31,659 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 21:46:31,697 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-02 21:46:32,560 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-02 21:46:32,592 - SnapDownloader.QueueManager - INFO - Adding 3 tasks to queue.
+2026-04-02 21:46:45,858 - SnapDownloader.QueueManager - INFO - Adding task to queue: Cairokee - Marbout Be Astek Studio Session مربوط بأستيك - كايروكي من الاستوديو
+2026-04-02 21:46:46,169 - SnapDownloader - INFO - Started worker 3 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-02 21:47:33,453 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 21:47:33,455 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-02 21:48:10,208 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 21:48:10,261 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-02 21:48:10,777 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-02 21:48:10,802 - SnapDownloader.QueueManager - INFO - Adding 4 tasks to queue.
+2026-04-02 21:50:17,462 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 21:50:26,299 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 21:50:50,529 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 21:51:10,516 - SnapDownloader - INFO - [Scheduler] Applied limit: 0 KB/s
+2026-04-02 21:51:36,960 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 21:52:03,361 - SnapDownloader.QueueManager - INFO - Adding task to queue: Cairokee - Marbout Be Astek Studio Session مربوط بأستيك - كايروكي من الاستوديو
+2026-04-02 21:52:04,055 - SnapDownloader - INFO - Started worker 4 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-02 21:52:19,402 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 21:52:19,407 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-02 21:53:26,103 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 21:53:26,139 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-02 21:53:26,642 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-02 21:53:26,667 - SnapDownloader.QueueManager - INFO - Adding 5 tasks to queue.
+2026-04-02 21:54:06,309 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 21:54:43,402 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 22:01:14,015 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 22:01:14,052 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-02 22:01:15,111 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-02 22:01:15,139 - SnapDownloader.QueueManager - INFO - Adding 5 tasks to queue.
+2026-04-02 22:01:36,482 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 22:01:41,686 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 22:08:51,560 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 22:08:51,604 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-02 22:08:52,501 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-02 22:08:52,526 - SnapDownloader.QueueManager - INFO - Adding 5 tasks to queue.
+2026-04-02 22:13:57,460 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 22:13:57,497 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-02 22:13:58,439 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-02 22:13:58,475 - SnapDownloader.QueueManager - INFO - Adding 5 tasks to queue.
+2026-04-02 22:14:30,612 - SnapDownloader.QueueManager - INFO - Adding 2 tasks to queue.
+2026-04-02 22:14:32,535 - SnapDownloader.QueueManager - INFO - Starting queue processing.
+2026-04-02 22:14:32,540 - SnapDownloader - INFO - Started worker 0 for https://www.youtube.com/watch?v=SP0E1XXXcyw
+2026-04-02 22:18:30,591 - SnapDownloader.QueueManager - INFO - Adding 19 tasks to queue.
+2026-04-02 22:19:15,388 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 22:19:18,949 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 22:19:20,870 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 22:19:24,455 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 22:19:27,664 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 22:19:31,987 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 22:22:41,227 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 22:22:41,306 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-02 22:22:42,198 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-02 22:22:42,225 - SnapDownloader.QueueManager - INFO - Adding 26 tasks to queue.
+2026-04-02 22:22:59,354 - SnapDownloader.QueueManager - INFO - Adding 19 tasks to queue.
+2026-04-02 22:22:59,357 - SnapDownloader.QueueManager - INFO - Starting queue processing.
+2026-04-02 22:22:59,360 - SnapDownloader - INFO - Started worker 0 for https://www.youtube.com/watch?v=SP0E1XXXcyw
+2026-04-02 22:25:47,425 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 22:25:47,464 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-02 22:25:47,975 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-02 22:25:48,002 - SnapDownloader.QueueManager - INFO - Adding 26 tasks to queue.
+2026-04-02 22:26:07,279 - SnapDownloader.QueueManager - INFO - Adding task to queue: إن شعرت بالضيق... فاستمع لكتاب الله يُنير قلبك ويشرح صدرك | الشيخ محمد صديق المنشاوي | جودة نقية ᴴᴰ
+2026-04-02 22:26:07,968 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 22:26:07,977 - SnapDownloader - INFO - Started worker 26 for https://www.youtube.com/watch?v=SP0E1XXXcyw
+2026-04-02 22:26:31,439 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 22:26:31,711 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-02 22:26:38,871 - SnapDownloader - INFO - Started worker 3 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-02 22:26:38,874 - SnapDownloader - INFO - Started worker 4 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-02 22:26:38,878 - SnapDownloader - INFO - Started worker 5 for https://www.youtube.com/watch?v=8T9h62s62WQ
+2026-04-02 22:26:42,759 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 22:26:43,012 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-02 22:26:43,231 - SnapDownloader - INFO - Started worker 4 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-02 22:26:43,930 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 22:26:44,333 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-02 22:26:44,557 - SnapDownloader - INFO - Started worker 3 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-02 22:26:44,941 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-02 22:26:44,948 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 22:26:45,174 - SnapDownloader - INFO - Started worker 3 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-02 22:26:45,933 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-02 22:26:45,943 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 22:26:46,153 - SnapDownloader - INFO - Started worker 3 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-02 22:26:46,683 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-02 22:26:46,691 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 22:26:46,914 - SnapDownloader - INFO - Started worker 3 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-02 22:26:47,466 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-02 22:26:47,476 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 22:26:47,717 - SnapDownloader - INFO - Started worker 3 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-02 22:26:48,204 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-02 22:26:48,212 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 22:26:48,445 - SnapDownloader - INFO - Started worker 3 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-02 22:26:48,854 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-02 22:26:48,863 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 22:26:49,085 - SnapDownloader - INFO - Started worker 3 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-02 22:26:49,768 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-02 22:26:49,776 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 22:26:49,969 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 22:26:49,999 - SnapDownloader - INFO - Started worker 3 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-02 22:26:50,146 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-02 22:26:50,151 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 22:26:50,216 - SnapDownloader - INFO - Started worker 3 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-02 22:26:50,311 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-02 22:26:50,380 - SnapDownloader - INFO - Started worker 4 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-02 22:26:50,486 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-02 22:26:50,494 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 22:26:50,541 - SnapDownloader - INFO - Started worker 3 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-02 22:26:50,655 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-02 22:26:50,664 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 22:26:50,743 - SnapDownloader - INFO - Started worker 3 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-02 22:26:50,996 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-02 22:26:51,007 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 22:26:51,164 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-02 22:26:51,169 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 22:26:51,234 - SnapDownloader - INFO - Started worker 3 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-02 22:26:51,243 - SnapDownloader - INFO - Started worker 4 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-02 22:26:51,513 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-02 22:26:51,521 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 22:26:51,690 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-02 22:26:51,695 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 22:26:51,755 - SnapDownloader - INFO - Started worker 3 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-02 22:26:51,763 - SnapDownloader - INFO - Started worker 4 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-02 22:26:51,864 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-02 22:26:51,873 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 22:26:51,931 - SnapDownloader - INFO - Started worker 3 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-02 22:26:52,036 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-02 22:26:52,045 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 22:26:52,097 - SnapDownloader - INFO - Started worker 3 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-02 22:26:52,210 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-02 22:26:52,220 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 22:26:52,269 - SnapDownloader - INFO - Started worker 3 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-02 22:26:52,383 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-02 22:26:52,391 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 22:26:52,452 - SnapDownloader - INFO - Started worker 3 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-02 22:26:52,728 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-02 22:26:52,735 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 22:26:52,904 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-02 22:26:52,910 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 22:26:52,956 - SnapDownloader - INFO - Started worker 3 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-02 22:26:52,964 - SnapDownloader - INFO - Started worker 4 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-02 22:26:53,083 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-02 22:26:53,092 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 22:26:53,131 - SnapDownloader - INFO - Started worker 3 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-02 22:26:53,272 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-02 22:26:53,281 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 22:26:53,317 - SnapDownloader - INFO - Started worker 3 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-02 22:26:53,493 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-02 22:26:53,501 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 22:26:53,535 - SnapDownloader - INFO - Started worker 3 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-02 22:26:59,077 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 22:26:59,118 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-02 22:26:59,985 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-02 22:27:00,011 - SnapDownloader.QueueManager - INFO - Adding 27 tasks to queue.
+2026-04-02 23:37:17,451 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 23:37:17,563 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-02 23:39:17,225 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 23:39:31,085 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 23:39:33,942 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 23:45:07,656 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 23:45:07,747 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-02 23:45:08,901 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-02 23:45:08,941 - SnapDownloader.QueueManager - INFO - Adding 27 tasks to queue.
+2026-04-02 23:45:22,061 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 23:45:22,100 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-02 23:45:22,917 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-02 23:45:22,951 - SnapDownloader.QueueManager - INFO - Adding 27 tasks to queue.
+2026-04-02 23:45:59,595 - SnapDownloader - INFO - Theme switched to: Ocean Blue
+2026-04-02 23:46:00,518 - SnapDownloader - INFO - Theme switched to: Cyber Purple
+2026-04-02 23:46:01,358 - SnapDownloader - INFO - Theme switched to: Elegant Light
+2026-04-02 23:46:02,374 - SnapDownloader - INFO - Theme switched to: Modern Dark
+2026-04-02 23:46:03,517 - SnapDownloader - INFO - Theme switched to: Ocean Blue
+2026-04-02 23:46:04,706 - SnapDownloader - INFO - Theme switched to: Cyber Purple
+2026-04-02 23:46:05,580 - SnapDownloader - INFO - Theme switched to: Elegant Light
+2026-04-02 23:46:06,665 - SnapDownloader - INFO - Theme switched to: Modern Dark
+2026-04-02 23:46:07,443 - SnapDownloader - INFO - Theme switched to: Ocean Blue
+2026-04-02 23:46:08,202 - SnapDownloader - INFO - Theme switched to: Cyber Purple
+2026-04-02 23:46:08,893 - SnapDownloader - INFO - Theme switched to: Elegant Light
+2026-04-02 23:46:09,735 - SnapDownloader - INFO - Theme switched to: Modern Dark
+2026-04-02 23:46:31,332 - SnapDownloader - INFO - Checking for yt-dlp updates...
+2026-04-02 23:46:54,795 - SnapDownloader - INFO - yt-dlp updated successfully.
+2026-04-02 23:47:21,758 - SnapDownloader.QueueManager - INFO - Adding task to queue: خشوع يُبكي القلوب | تلاوة مؤثرة للشيخ محمد صديق المنشاوي
+2026-04-02 23:47:21,759 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 23:48:25,439 - SnapDownloader.QueueManager - INFO - Adding task to queue: خشوع يُبكي القلوب | تلاوة مؤثرة للشيخ محمد صديق المنشاوي
+2026-04-02 23:48:25,693 - SnapDownloader - INFO - Started worker 28 for https://www.youtube.com/watch?v=yh5W65y1zas
+2026-04-02 23:48:49,308 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 23:48:49,559 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-02 23:48:52,880 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 23:52:42,681 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 23:52:42,762 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-02 23:52:43,828 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-02 23:52:43,860 - SnapDownloader.QueueManager - INFO - Adding 29 tasks to queue.
+2026-04-02 23:53:13,240 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 23:53:13,279 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-02 23:53:14,298 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-02 23:53:14,336 - SnapDownloader.QueueManager - INFO - Adding 29 tasks to queue.
+2026-04-02 23:54:02,709 - SnapDownloader.QueueManager - INFO - Adding 1 tasks to queue.
+2026-04-02 23:54:02,866 - SnapDownloader - INFO - Started worker 3 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-02 23:54:02,867 - SnapDownloader - INFO - Started worker 4 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-02 23:54:02,869 - SnapDownloader - INFO - Started worker 5 for https://www.youtube.com/watch?v=8T9h62s62WQ
+2026-04-02 23:54:05,286 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-02 23:54:05,292 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 23:54:05,509 - SnapDownloader - INFO - Started worker 3 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-02 23:54:06,364 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-02 23:54:06,371 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 23:54:06,595 - SnapDownloader - INFO - Started worker 3 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-02 23:54:07,256 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-02 23:54:07,263 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 23:54:07,479 - SnapDownloader - INFO - Started worker 3 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-02 23:54:09,552 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-02 23:54:09,558 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 23:54:09,722 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 23:54:09,780 - SnapDownloader - INFO - Started worker 3 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-02 23:54:09,906 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-02 23:54:09,910 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 23:54:09,984 - SnapDownloader - INFO - Started worker 3 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-02 23:54:10,272 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-02 23:54:10,277 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 23:54:10,364 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-02 23:54:10,482 - SnapDownloader - INFO - Started worker 3 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-02 23:54:10,487 - SnapDownloader - INFO - Started worker 4 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-02 23:54:10,637 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-02 23:54:10,645 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 23:54:10,812 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-02 23:54:10,817 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 23:54:10,855 - SnapDownloader - INFO - Started worker 3 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-02 23:54:10,861 - SnapDownloader - INFO - Started worker 4 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-02 23:54:10,981 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-02 23:54:10,989 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 23:54:11,030 - SnapDownloader - INFO - Started worker 3 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-02 23:54:11,148 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-02 23:54:11,156 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 23:54:11,206 - SnapDownloader - INFO - Started worker 3 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-02 23:54:11,323 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-02 23:54:11,332 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 23:54:11,380 - SnapDownloader - INFO - Started worker 3 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-02 23:54:11,503 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-02 23:54:11,509 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 23:54:11,543 - SnapDownloader - INFO - Started worker 3 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-02 23:54:11,673 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-02 23:54:11,680 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 23:54:11,738 - SnapDownloader - INFO - Started worker 3 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-02 23:54:11,836 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-02 23:54:11,843 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 23:54:11,911 - SnapDownloader - INFO - Started worker 3 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-02 23:57:49,341 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 23:57:49,376 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-02 23:57:50,126 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-02 23:57:50,154 - SnapDownloader.QueueManager - INFO - Adding 30 tasks to queue.
+2026-04-02 23:58:06,668 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-02 23:58:06,704 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-02 23:58:07,261 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-02 23:58:07,293 - SnapDownloader.QueueManager - INFO - Adding 30 tasks to queue.
+2026-04-02 23:58:26,645 - SnapDownloader.QueueManager - INFO - Adding task to queue: خشوع يُبكي القلوب | تلاوة مؤثرة للشيخ محمد صديق المنشاوي
+2026-04-02 23:58:26,650 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-02 23:58:26,654 - SnapDownloader - INFO - Started worker 30 for https://www.youtube.com/watch?v=yh5W65y1zas
+2026-04-02 23:59:04,805 - SnapDownloader.QueueManager - INFO - Adding task to queue: Amr Diab - El Lilady | عمرو دياب - الليلادي
+2026-04-02 23:59:04,810 - SnapDownloader - INFO - Started worker 31 for https://youtu.be/lt_pQqHYZSY?si=CV2vIR9nW3d2fVJW
+2026-04-03 00:00:28,327 - SnapDownloader - INFO - Theme switched to: Ocean Blue
+2026-04-03 00:00:30,161 - SnapDownloader - INFO - Theme switched to: Cyber Purple
+2026-04-03 00:00:31,003 - SnapDownloader - INFO - Theme switched to: Elegant Light
+2026-04-03 00:00:57,657 - SnapDownloader - INFO - Theme switched to: Modern Dark
+2026-04-03 00:00:58,549 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-03 00:00:58,592 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-03 00:00:59,474 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-03 00:00:59,503 - SnapDownloader.QueueManager - INFO - Adding 30 tasks to queue.
+2026-04-03 00:00:59,654 - SnapDownloader.QueueManager - INFO - Adding 1 tasks to queue.
+2026-04-03 00:02:58,312 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-03 00:02:58,350 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-03 00:02:59,267 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-03 00:02:59,297 - SnapDownloader.QueueManager - INFO - Adding 30 tasks to queue.
+2026-04-03 00:02:59,454 - SnapDownloader.QueueManager - INFO - Adding 1 tasks to queue.
+2026-04-03 00:03:56,685 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-03 00:03:56,730 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-03 00:03:57,642 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-03 00:03:57,669 - SnapDownloader.QueueManager - INFO - Adding 30 tasks to queue.
+2026-04-03 00:03:57,824 - SnapDownloader.QueueManager - INFO - Adding 1 tasks to queue.
+2026-04-03 00:04:39,413 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-03 00:04:39,450 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-03 00:04:40,158 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-03 00:04:40,193 - SnapDownloader.QueueManager - INFO - Adding 30 tasks to queue.
+2026-04-03 00:05:20,417 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-03 00:05:20,466 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-03 00:05:21,544 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-03 00:05:21,578 - SnapDownloader.QueueManager - INFO - Adding 30 tasks to queue.
+2026-04-03 00:05:30,345 - SnapDownloader.QueueManager - INFO - Adding task to queue: Amr Diab - El Lilady | عمرو دياب - الليلادي
+2026-04-03 00:05:30,892 - SnapDownloader - INFO - Started worker 30 for https://youtu.be/lt_pQqHYZSY?si=CV2vIR9nW3d2fVJW
+2026-04-03 00:06:39,704 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 00:06:40,603 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 00:06:46,801 - SnapDownloader - INFO - Started worker 3 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-03 00:06:46,805 - SnapDownloader - INFO - Started worker 4 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-03 00:06:46,807 - SnapDownloader - INFO - Started worker 5 for https://www.youtube.com/watch?v=8T9h62s62WQ
+2026-04-03 00:06:50,104 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 00:06:50,984 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 00:06:51,208 - SnapDownloader - INFO - Started worker 3 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-03 00:06:52,093 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 00:06:52,099 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 00:06:52,331 - SnapDownloader - INFO - Started worker 3 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-03 00:06:52,831 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 00:06:52,839 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 00:06:53,002 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 00:06:53,028 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 00:06:53,064 - SnapDownloader - INFO - Started worker 3 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-03 00:06:53,070 - SnapDownloader - INFO - Started worker 4 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-03 00:06:53,351 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 00:06:53,360 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 00:06:53,531 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 00:06:53,536 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 00:06:53,581 - SnapDownloader - INFO - Started worker 3 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-03 00:06:53,588 - SnapDownloader - INFO - Started worker 4 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-03 00:06:53,718 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 00:06:53,727 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 00:06:53,763 - SnapDownloader - INFO - Started worker 3 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-03 00:06:53,885 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 00:06:53,893 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 00:06:53,959 - SnapDownloader - INFO - Started worker 3 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-03 00:06:54,257 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 00:06:54,265 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 00:06:54,441 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 00:06:54,446 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 00:06:54,491 - SnapDownloader - INFO - Started worker 3 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-03 00:06:54,498 - SnapDownloader - INFO - Started worker 4 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-03 00:06:54,655 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 00:06:54,663 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 00:06:54,704 - SnapDownloader - INFO - Started worker 3 for https://youtu.be/arIbTiJI4bg?si=7Cpm8EkaIt_zSeBz
+2026-04-03 00:09:22,690 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-03 00:09:22,728 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-03 00:09:23,528 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-03 00:09:23,564 - SnapDownloader.QueueManager - INFO - Adding 31 tasks to queue.
+2026-04-03 00:12:38,378 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-03 00:12:38,416 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-03 00:12:39,231 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-03 00:12:39,266 - SnapDownloader.QueueManager - INFO - Adding 31 tasks to queue.
+2026-04-03 00:13:18,471 - SnapDownloader.QueueManager - INFO - Adding task to queue: إن شعرت بالضيق... فاستمع لكتاب الله يُنير قلبك ويشرح صدرك | الشيخ محمد صديق المنشاوي | جودة نقية ᴴᴰ
+2026-04-03 00:13:18,479 - SnapDownloader - INFO - Started worker 31 for https://www.youtube.com/watch?v=SP0E1XXXcyw
+2026-04-03 00:13:57,518 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 00:13:57,716 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 00:17:00,401 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-03 00:17:00,445 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-03 00:17:01,415 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-03 00:17:01,447 - SnapDownloader.QueueManager - INFO - Adding 32 tasks to queue.
+2026-04-03 00:19:35,147 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-03 00:19:35,182 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-03 00:19:35,867 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-03 00:19:35,899 - SnapDownloader.QueueManager - INFO - Adding 32 tasks to queue.
+2026-04-03 00:20:10,763 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-03 00:20:10,799 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-03 00:20:11,381 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-03 00:20:11,414 - SnapDownloader.QueueManager - INFO - Adding 32 tasks to queue.
+2026-04-03 00:23:02,964 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-03 00:23:03,000 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-03 00:23:03,946 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-03 00:23:03,980 - SnapDownloader.QueueManager - INFO - Adding 32 tasks to queue.
+2026-04-03 00:24:50,381 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-03 00:24:50,424 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-03 00:24:51,271 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-03 00:24:51,303 - SnapDownloader.QueueManager - INFO - Adding 32 tasks to queue.
+2026-04-03 00:28:38,778 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-03 00:28:38,829 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-03 00:28:39,781 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-03 00:28:39,820 - SnapDownloader.QueueManager - INFO - Adding 32 tasks to queue.
+2026-04-03 00:31:58,720 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-03 00:31:58,759 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-03 00:31:59,607 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-03 00:31:59,644 - SnapDownloader.QueueManager - INFO - Adding 32 tasks to queue.
+2026-04-03 00:32:13,858 - SnapDownloader - INFO - Theme switched to: Ocean Blue
+2026-04-03 00:32:14,921 - SnapDownloader - INFO - Theme switched to: Cyber Purple
+2026-04-03 00:32:15,687 - SnapDownloader - INFO - Theme switched to: Elegant Light
+2026-04-03 00:32:16,654 - SnapDownloader - INFO - Theme switched to: Modern Dark
+2026-04-03 00:53:50,802 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-03 00:53:50,846 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-03 00:53:51,684 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-03 00:53:51,714 - SnapDownloader.QueueManager - INFO - Adding 32 tasks to queue.
+2026-04-03 00:53:52,623 - SnapDownloader - INFO - Started worker 11 for https://www.youtube.com/watch?v=aWNh8fPQNKE
+2026-04-03 00:53:52,624 - SnapDownloader - INFO - Started worker 12 for https://www.youtube.com/watch?v=MCbM1PwjA5Y
+2026-04-03 00:53:52,626 - SnapDownloader - INFO - Started worker 13 for https://www.youtube.com/watch?v=CPE0Z_pQ26E
+2026-04-03 00:54:10,297 - SnapDownloader.QueueManager - INFO - Adding task to queue: خشوع يُبكي القلوب | تلاوة مؤثرة للشيخ محمد صديق المنشاوي
+2026-04-03 00:54:10,549 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 00:54:10,559 - SnapDownloader - INFO - Started worker 32 for https://www.youtube.com/watch?v=yh5W65y1zas
+2026-04-03 00:54:16,596 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 00:54:16,779 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 00:54:17,305 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 00:54:17,791 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 00:54:18,909 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 00:54:19,097 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 00:55:23,947 - SnapDownloader.QueueManager - INFO - Adding task to queue: Cairokee - Ma A'ad Sagheran (Ft. Sary Hany) / كايروكي - ما عاد صغيراً
+2026-04-03 00:55:24,497 - SnapDownloader - INFO - Started worker 33 for https://youtu.be/SGD0UBuYL2U?si=6Gei3C0Q23o3kx66
+2026-04-03 00:59:23,657 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-03 00:59:23,695 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-03 00:59:24,498 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-03 00:59:24,531 - SnapDownloader.QueueManager - INFO - Adding 33 tasks to queue.
+2026-04-03 00:59:25,438 - SnapDownloader - INFO - Started worker 14 for https://www.youtube.com/watch?v=wfIAhprUwcA
+2026-04-03 00:59:25,440 - SnapDownloader - INFO - Started worker 15 for https://www.youtube.com/watch?v=9g3zfSocTeo
+2026-04-03 00:59:25,441 - SnapDownloader - INFO - Started worker 16 for https://www.youtube.com/watch?v=M5ofvOP1Ybc
+2026-04-03 00:59:42,565 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 00:59:42,601 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 00:59:42,810 - SnapDownloader - INFO - Started worker 17 for https://www.youtube.com/watch?v=hP_YLQONayg
+2026-04-03 00:59:44,347 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 00:59:44,493 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 00:59:44,591 - SnapDownloader - INFO - Started worker 18 for https://www.youtube.com/watch?v=dBkZtew1yOE
+2026-04-03 00:59:48,109 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 00:59:48,140 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 00:59:48,362 - SnapDownloader - INFO - Started worker 19 for https://www.youtube.com/watch?v=e4HJbO3KFeE
+2026-04-03 00:59:50,226 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 00:59:50,300 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 00:59:50,485 - SnapDownloader - INFO - Started worker 20 for https://www.youtube.com/watch?v=1p_FsHznmmg
+2026-04-03 00:59:51,046 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 00:59:51,654 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 00:59:51,662 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 00:59:51,721 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 00:59:51,888 - SnapDownloader - INFO - Started worker 21 for https://www.youtube.com/watch?v=fl-40LVYO3I
+2026-04-03 00:59:51,896 - SnapDownloader - INFO - Started worker 22 for https://www.youtube.com/watch?v=6tXQ2YenQUk
+2026-04-03 00:59:52,254 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 00:59:52,263 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 00:59:52,505 - SnapDownloader - INFO - Started worker 24 for https://www.youtube.com/watch?v=3kcTHWFkYRU
+2026-04-03 00:59:52,871 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 00:59:52,880 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 00:59:53,056 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 00:59:53,062 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 00:59:53,107 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 00:59:53,114 - SnapDownloader - INFO - Started worker 26 for https://www.youtube.com/watch?v=SP0E1XXXcyw
+2026-04-03 00:59:53,121 - SnapDownloader - INFO - Started worker 29 for https://www.youtube.com/watch?v=bcMIr1xhXQI
+2026-04-03 00:59:53,281 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 00:59:53,288 - SnapDownloader - INFO - Started worker 32 for https://www.youtube.com/watch?v=yh5W65y1zas
+2026-04-03 00:59:55,029 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 00:59:55,043 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 00:59:55,737 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 00:59:56,311 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 00:59:56,317 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 00:59:57,896 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 00:59:58,074 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 00:59:58,154 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 01:00:04,035 - SnapDownloader - INFO - Started worker 30 for https://youtu.be/lt_pQqHYZSY?si=CV2vIR9nW3d2fVJW
+2026-04-03 01:00:19,736 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 01:00:19,745 - SnapDownloader - INFO - Started worker 11 for https://www.youtube.com/watch?v=aWNh8fPQNKE
+2026-04-03 01:00:22,931 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 01:00:23,758 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 01:00:27,445 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 01:00:27,839 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 01:00:28,058 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 01:03:12,624 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-03 01:03:12,667 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-03 01:03:13,645 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-03 01:03:13,685 - SnapDownloader.QueueManager - INFO - Adding 33 tasks to queue.
+2026-04-03 01:03:27,885 - SnapDownloader.QueueManager - INFO - Adding task to queue: إن شعرت بالضيق... فاستمع لكتاب الله يُنير قلبك ويشرح صدرك | الشيخ محمد صديق المنشاوي | جودة نقية ᴴᴰ
+2026-04-03 01:03:28,528 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 01:03:28,532 - SnapDownloader - INFO - Started worker 33 for https://www.youtube.com/watch?v=SP0E1XXXcyw
+2026-04-03 01:03:35,355 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 01:03:36,201 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 01:03:46,333 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 01:03:46,337 - SnapDownloader - INFO - Started worker 33 for https://www.youtube.com/watch?v=SP0E1XXXcyw
+2026-04-03 01:04:29,475 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 01:04:29,638 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 01:04:29,732 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 01:05:35,707 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-03 01:05:35,743 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-03 01:05:36,498 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-03 01:05:36,530 - SnapDownloader.QueueManager - INFO - Adding 34 tasks to queue.
+2026-04-03 01:05:55,361 - SnapDownloader.QueueManager - INFO - Adding task to queue: إن شعرت بالضيق... فاستمع لكتاب الله يُنير قلبك ويشرح صدرك | الشيخ محمد صديق المنشاوي | جودة نقية ᴴᴰ
+2026-04-03 01:05:55,995 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 01:05:55,999 - SnapDownloader - INFO - Started worker 34 for https://www.youtube.com/watch?v=SP0E1XXXcyw
+2026-04-03 01:06:31,860 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 01:06:32,739 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 01:06:36,123 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 01:06:36,126 - SnapDownloader - INFO - Started worker 34 for https://www.youtube.com/watch?v=SP0E1XXXcyw
+2026-04-03 01:08:58,152 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-03 01:08:58,192 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-03 01:08:59,021 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-03 01:08:59,050 - SnapDownloader.QueueManager - INFO - Adding 35 tasks to queue.
+2026-04-03 01:08:59,967 - SnapDownloader - INFO - Started worker 23 for https://www.youtube.com/watch?v=S72A3fJMA7o
+2026-04-03 01:08:59,969 - SnapDownloader - INFO - Started worker 25 for https://www.youtube.com/watch?v=PwiSHmtTZd0
+2026-04-03 01:08:59,971 - SnapDownloader - INFO - Started worker 30 for https://youtu.be/lt_pQqHYZSY?si=CV2vIR9nW3d2fVJW
+2026-04-03 01:09:04,038 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 01:09:04,322 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 01:09:04,524 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 01:09:04,531 - SnapDownloader - INFO - Started worker 34 for https://www.youtube.com/watch?v=SP0E1XXXcyw
+2026-04-03 01:09:07,071 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 01:09:07,101 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 01:09:07,176 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 01:09:07,199 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 01:09:12,268 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 01:09:12,280 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 01:09:12,486 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 01:11:00,569 - SnapDownloader.QueueManager - INFO - Adding task to queue: Cairokee - Ma A'ad Sagheran (Ft. Sary Hany) / كايروكي - ما عاد صغيراً
+2026-04-03 01:11:00,986 - SnapDownloader - INFO - Started worker 35 for https://youtu.be/SGD0UBuYL2U?si=6Gei3C0Q23o3kx66
+2026-04-03 01:11:09,979 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 01:11:09,992 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 01:11:45,221 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-03 01:11:45,261 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-03 01:11:46,219 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-03 01:11:46,257 - SnapDownloader.QueueManager - INFO - Adding 36 tasks to queue.
+2026-04-03 01:13:30,692 - SnapDownloader.QueueManager - INFO - Adding 1 tasks to queue.
+2026-04-03 01:14:32,854 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 01:14:35,296 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 01:14:35,299 - SnapDownloader - INFO - Started worker 36 for https://youtu.be/SGD0UBuYL2U?si=6Gei3C0Q23o3kx66
+2026-04-03 01:14:50,246 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 01:14:50,538 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 01:14:50,748 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 01:15:29,029 - SnapDownloader.QueueManager - INFO - Adding 2 tasks to queue.
+2026-04-03 01:15:48,148 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 01:15:48,153 - SnapDownloader - INFO - Started worker 30 for https://youtu.be/lt_pQqHYZSY?si=CV2vIR9nW3d2fVJW
+2026-04-03 01:15:48,157 - SnapDownloader - INFO - Started worker 37 for https://youtu.be/5w_Vdwv0J4o?si=HzrstPd5-1vogGyp
+2026-04-03 01:15:48,158 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 01:15:48,162 - SnapDownloader - INFO - Started worker 38 for https://youtu.be/SGD0UBuYL2U?si=6Gei3C0Q23o3kx66
+2026-04-03 01:15:51,570 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 01:15:51,599 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 01:15:51,862 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 01:15:51,882 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 01:16:12,596 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 01:16:12,634 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 01:16:12,843 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 01:16:59,855 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-03 01:16:59,914 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-03 01:17:00,752 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-03 01:17:00,793 - SnapDownloader.QueueManager - INFO - Adding 39 tasks to queue.
+2026-04-03 01:17:30,695 - SnapDownloader.QueueManager - INFO - Adding 19 tasks to queue.
+2026-04-03 01:17:30,710 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 01:17:30,714 - SnapDownloader - INFO - Started worker 30 for https://youtu.be/lt_pQqHYZSY?si=CV2vIR9nW3d2fVJW
+2026-04-03 01:17:30,716 - SnapDownloader - INFO - Started worker 37 for https://youtu.be/5w_Vdwv0J4o?si=HzrstPd5-1vogGyp
+2026-04-03 01:17:30,718 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 01:17:30,720 - SnapDownloader - INFO - Started worker 38 for https://youtu.be/SGD0UBuYL2U?si=6Gei3C0Q23o3kx66
+2026-04-03 01:17:33,249 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 01:17:33,294 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 01:17:33,501 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 01:17:33,522 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 01:17:33,795 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 01:17:34,257 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 10:31:49,164 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-03 10:31:49,262 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-03 10:31:50,033 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-03 10:31:50,069 - SnapDownloader.QueueManager - INFO - Adding 58 tasks to queue.
+2026-04-03 10:31:50,985 - SnapDownloader - INFO - Started worker 30 for https://youtu.be/lt_pQqHYZSY?si=CV2vIR9nW3d2fVJW
+2026-04-03 10:31:50,987 - SnapDownloader - INFO - Started worker 37 for https://youtu.be/5w_Vdwv0J4o?si=HzrstPd5-1vogGyp
+2026-04-03 10:31:50,987 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 10:31:50,991 - SnapDownloader - INFO - Started worker 38 for https://youtu.be/SGD0UBuYL2U?si=6Gei3C0Q23o3kx66
+2026-04-03 10:31:55,755 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 10:31:55,781 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 10:31:55,980 - SnapDownloader - INFO - Started worker 39 for https://www.youtube.com/watch?v=8T9h62s62WQ
+2026-04-03 10:32:15,676 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 10:32:16,724 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 10:32:18,683 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 10:32:19,063 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 10:32:19,080 - SnapDownloader - INFO - Started worker 40 for https://www.youtube.com/watch?v=bcMIr1xhXQI
+2026-04-03 10:32:19,087 - SnapDownloader - INFO - Started worker 41 for https://www.youtube.com/watch?v=tOL93WWFBc8
+2026-04-03 10:32:19,094 - SnapDownloader - INFO - Started worker 42 for https://www.youtube.com/watch?v=iudo-DAK8hc
+2026-04-03 10:32:19,264 - SnapDownloader - INFO - Started worker 43 for https://www.youtube.com/watch?v=aWNh8fPQNKE
+2026-04-03 10:32:19,270 - SnapDownloader - INFO - Started worker 44 for https://www.youtube.com/watch?v=MCbM1PwjA5Y
+2026-04-03 10:32:19,278 - SnapDownloader - INFO - Started worker 45 for https://www.youtube.com/watch?v=CPE0Z_pQ26E
+2026-04-03 10:32:29,688 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 10:32:29,937 - SnapDownloader - INFO - Started worker 46 for https://www.youtube.com/watch?v=wfIAhprUwcA
+2026-04-03 10:32:29,944 - SnapDownloader - INFO - Started worker 47 for https://www.youtube.com/watch?v=9g3zfSocTeo
+2026-04-03 10:32:29,954 - SnapDownloader - INFO - Started worker 48 for https://www.youtube.com/watch?v=M5ofvOP1Ybc
+2026-04-03 10:32:30,504 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 10:32:30,762 - SnapDownloader - INFO - Started worker 49 for https://www.youtube.com/watch?v=hP_YLQONayg
+2026-04-03 10:32:30,770 - SnapDownloader - INFO - Started worker 50 for https://www.youtube.com/watch?v=dBkZtew1yOE
+2026-04-03 10:32:30,779 - SnapDownloader - INFO - Started worker 51 for https://www.youtube.com/watch?v=e4HJbO3KFeE
+2026-04-03 10:32:31,196 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 10:32:31,497 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 10:32:31,725 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 10:32:32,993 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 10:32:33,191 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 10:32:33,412 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 10:32:33,776 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 10:32:33,960 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 10:32:34,120 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 10:32:34,279 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 10:32:34,440 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 10:32:34,684 - SnapDownloader - INFO - Started worker 52 for https://www.youtube.com/watch?v=1p_FsHznmmg
+2026-04-03 10:32:34,691 - SnapDownloader - INFO - Started worker 53 for https://www.youtube.com/watch?v=fl-40LVYO3I
+2026-04-03 10:32:34,699 - SnapDownloader - INFO - Started worker 54 for https://www.youtube.com/watch?v=6tXQ2YenQUk
+2026-04-03 10:32:35,594 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 10:32:35,760 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 10:32:35,835 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 10:32:35,841 - SnapDownloader - INFO - Started worker 55 for https://www.youtube.com/watch?v=S72A3fJMA7o
+2026-04-03 10:32:35,848 - SnapDownloader - INFO - Started worker 56 for https://www.youtube.com/watch?v=3kcTHWFkYRU
+2026-04-03 10:32:35,849 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 10:32:35,856 - SnapDownloader - INFO - Started worker 57 for https://www.youtube.com/watch?v=PwiSHmtTZd0
+2026-04-03 10:32:36,022 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 10:32:36,433 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 10:32:36,614 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 10:32:36,860 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 10:32:36,976 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 10:43:23,343 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-03 10:43:23,736 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-03 10:43:26,806 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-03 10:43:26,847 - SnapDownloader.QueueManager - INFO - Adding 58 tasks to queue.
+2026-04-03 11:05:13,005 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-03 11:05:13,126 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-03 11:05:13,942 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-03 11:05:13,985 - SnapDownloader.QueueManager - INFO - Adding 58 tasks to queue.
+2026-04-03 11:06:13,371 - SnapDownloader.QueueManager - INFO - Adding task to queue: Allem Albi - Amr Diab | علم قلبى - عمرو دياب
+2026-04-03 11:06:13,373 - SnapDownloader - INFO - Started worker 58 for https://youtu.be/KdWy8eJOWlI?si=rc8nsuqDxMTBzD2M
+2026-04-03 11:06:19,758 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 11:06:19,766 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 11:23:01,073 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-03 11:23:01,163 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-03 11:23:02,123 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-03 11:23:02,161 - SnapDownloader.QueueManager - INFO - Adding 59 tasks to queue.
+2026-04-03 11:24:49,475 - SnapDownloader.QueueManager - INFO - Adding 2 tasks to queue.
+2026-04-03 11:25:18,929 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 11:25:27,807 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 11:25:36,028 - SnapDownloader.QueueManager - INFO - Adding 3 tasks to queue.
+2026-04-03 11:26:08,452 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-03 11:26:08,493 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-03 11:26:09,413 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-03 11:26:09,455 - SnapDownloader.QueueManager - INFO - Adding 61 tasks to queue.
+2026-04-03 11:26:10,358 - SnapDownloader - INFO - Started worker 60 for https://www.youtube.com/watch?v=tOL93WWFBc8
+2026-04-03 11:32:39,902 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-03 11:32:39,945 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-03 11:32:40,804 - SnapDownloader.Subscriptions - INFO - [Subs] Background watcher started
+2026-04-03 11:32:40,845 - SnapDownloader.QueueManager - INFO - Adding 61 tasks to queue.
+2026-04-03 11:32:41,746 - SnapDownloader - INFO - Started worker 60 for https://www.youtube.com/watch?v=tOL93WWFBc8
+2026-04-03 11:32:45,956 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 11:33:14,497 - SnapDownloader.QueueManager - INFO - Adding 19 tasks to queue.
+2026-04-03 11:36:52,591 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-03 11:36:52,628 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-03 11:36:53,510 - SnapDownloader.QueueManager - INFO - Adding 61 tasks to queue.
+2026-04-03 11:37:37,790 - SnapDownloader.QueueManager - INFO - Adding 19 tasks to queue.
+2026-04-03 11:37:37,800 - SnapDownloader - INFO - Started worker 61 for https://www.youtube.com/watch?v=8T9h62s62WQ
+2026-04-03 11:37:37,802 - SnapDownloader - INFO - Started worker 62 for https://www.youtube.com/watch?v=bcMIr1xhXQI
+2026-04-03 11:37:37,803 - SnapDownloader - INFO - Started worker 63 for https://www.youtube.com/watch?v=tOL93WWFBc8
+2026-04-03 11:37:46,073 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 11:37:46,107 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 11:37:46,315 - SnapDownloader - INFO - Started worker 64 for https://www.youtube.com/watch?v=iudo-DAK8hc
+2026-04-03 11:37:46,492 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 11:37:46,515 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 11:37:46,719 - SnapDownloader - INFO - Started worker 65 for https://www.youtube.com/watch?v=aWNh8fPQNKE
+2026-04-03 11:37:46,989 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 11:37:47,017 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 11:37:47,222 - SnapDownloader - INFO - Started worker 66 for https://www.youtube.com/watch?v=MCbM1PwjA5Y
+2026-04-03 11:37:52,730 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 11:37:52,871 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 11:37:53,075 - SnapDownloader - INFO - Started worker 67 for https://www.youtube.com/watch?v=CPE0Z_pQ26E
+2026-04-03 11:37:54,828 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 11:37:54,849 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 11:37:55,064 - SnapDownloader - INFO - Started worker 68 for https://www.youtube.com/watch?v=wfIAhprUwcA
+2026-04-03 11:37:59,584 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 11:37:59,604 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 11:37:59,815 - SnapDownloader - INFO - Started worker 69 for https://www.youtube.com/watch?v=9g3zfSocTeo
+2026-04-03 11:38:01,790 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 11:38:01,809 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 11:38:02,013 - SnapDownloader - INFO - Started worker 70 for https://www.youtube.com/watch?v=M5ofvOP1Ybc
+2026-04-03 11:38:04,912 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 11:38:04,936 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 11:38:05,141 - SnapDownloader - INFO - Started worker 71 for https://www.youtube.com/watch?v=hP_YLQONayg
+2026-04-03 11:38:05,431 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 11:38:05,464 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 11:38:05,680 - SnapDownloader - INFO - Started worker 72 for https://www.youtube.com/watch?v=dBkZtew1yOE
+2026-04-03 11:38:09,280 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 11:38:09,318 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 11:38:09,531 - SnapDownloader - INFO - Started worker 73 for https://www.youtube.com/watch?v=e4HJbO3KFeE
+2026-04-03 11:38:11,075 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 11:38:11,110 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 11:38:11,310 - SnapDownloader - INFO - Started worker 74 for https://www.youtube.com/watch?v=1p_FsHznmmg
+2026-04-03 11:38:12,716 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 11:38:12,753 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 11:38:12,953 - SnapDownloader - INFO - Started worker 75 for https://www.youtube.com/watch?v=fl-40LVYO3I
+2026-04-03 11:38:18,264 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 11:38:18,290 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 11:38:18,499 - SnapDownloader - INFO - Started worker 76 for https://www.youtube.com/watch?v=6tXQ2YenQUk
+2026-04-03 11:38:20,352 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 11:38:20,377 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 11:38:20,570 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 11:38:20,580 - SnapDownloader - INFO - Started worker 77 for https://www.youtube.com/watch?v=S72A3fJMA7o
+2026-04-03 11:38:21,463 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 11:38:21,483 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 11:38:21,699 - SnapDownloader - INFO - Started worker 78 for https://www.youtube.com/watch?v=3kcTHWFkYRU
+2026-04-03 11:38:27,124 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 11:38:27,149 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 11:38:27,352 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 11:38:27,363 - SnapDownloader - INFO - Started worker 79 for https://www.youtube.com/watch?v=PwiSHmtTZd0
+2026-04-03 11:38:27,555 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 11:38:27,575 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 11:38:29,437 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 11:38:29,452 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 11:38:33,761 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 11:38:33,773 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 11:38:33,985 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 11:41:33,546 - SnapDownloader - INFO - Theme switched to: Ocean Blue
+2026-04-03 11:41:35,092 - SnapDownloader - INFO - Theme switched to: Cyber Purple
+2026-04-03 11:41:35,924 - SnapDownloader - INFO - Theme switched to: Elegant Light
+2026-04-03 11:41:39,203 - SnapDownloader - INFO - Theme switched to: Modern Dark
+2026-04-03 11:43:36,680 - SnapDownloader.QueueManager - INFO - Adding task to queue: النادرة الباكية التي أحبها الملايين حول العالم للشيخ المنشاوي رحمه الله
+2026-04-03 11:43:36,691 - SnapDownloader - INFO - Started worker 80 for https://youtu.be/xjgXPh4f2X4?si=6UFveQs0GA5M94w4
+2026-04-03 11:44:15,550 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 11:44:15,567 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 11:44:48,652 - SnapDownloader - INFO - Started worker 80 for https://youtu.be/xjgXPh4f2X4?si=6UFveQs0GA5M94w4
+2026-04-03 11:44:51,190 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 11:44:51,207 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 11:44:51,400 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 11:45:08,427 - SnapDownloader - INFO - Started worker 80 for https://youtu.be/xjgXPh4f2X4?si=6UFveQs0GA5M94w4
+2026-04-03 11:45:10,718 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 11:45:10,735 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 11:45:10,930 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 11:45:38,621 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-03 11:45:38,661 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-03 11:45:39,557 - SnapDownloader.QueueManager - INFO - Adding 81 tasks to queue.
+2026-04-03 11:46:02,645 - SnapDownloader.QueueManager - INFO - Adding task to queue: النادرة الباكية التي أحبها الملايين حول العالم للشيخ المنشاوي رحمه الله
+2026-04-03 11:46:02,648 - SnapDownloader - INFO - Started worker 81 for https://youtu.be/xjgXPh4f2X4?si=6UFveQs0GA5M94w4
+2026-04-03 11:46:05,037 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 11:46:05,049 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 11:57:23,220 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-03 11:57:23,313 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-03 11:57:24,332 - SnapDownloader.QueueManager - INFO - Adding 82 tasks to queue.
+2026-04-03 11:57:38,307 - SnapDownloader.QueueManager - INFO - Adding task to queue: Amr Diab - Ally El Wadaa | عمرو دياب - قالى الوداع
+2026-04-03 11:57:38,309 - SnapDownloader - INFO - Started worker 82 for https://youtu.be/tUBQvGMDFBY?si=lmWsCBDMMfGJNOvh
+2026-04-03 12:05:23,880 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-03 12:05:24,261 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-03 12:05:28,008 - SnapDownloader.QueueManager - INFO - Adding 82 tasks to queue.
+2026-04-03 12:05:49,523 - SnapDownloader.QueueManager - INFO - Adding task to queue: النادرة الباكية التي أحبها الملايين حول العالم للشيخ المنشاوي رحمه الله
+2026-04-03 12:05:49,525 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 12:05:49,530 - SnapDownloader - INFO - Started worker 82 for https://youtu.be/xjgXPh4f2X4?si=6UFveQs0GA5M94w4
+2026-04-03 12:05:52,369 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 12:05:52,380 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 12:06:13,647 - SnapDownloader.QueueManager - INFO - Adding task to queue: ابراهيم الحكمي - اغنية"ماشية شمال"  تتر نهاية مسلسل جبل الحلال لمحمود عبد العزيز
+2026-04-03 12:06:13,649 - SnapDownloader - INFO - Started worker 83 for https://youtu.be/bvycu7Er1DA?si=0LA0yR9qKvzCA72D
+2026-04-03 12:06:37,254 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 12:06:37,262 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 12:08:56,835 - SnapDownloader.QueueManager - INFO - Adding task to queue: إن شعرت بالضيق... فاستمع لكتاب الله يُنير قلبك ويشرح صدرك | الشيخ محمد صديق المنشاوي | جودة نقية ᴴᴰ
+2026-04-03 12:08:56,842 - SnapDownloader - INFO - Started worker 84 for https://www.youtube.com/watch?v=SP0E1XXXcyw
+2026-04-03 12:09:07,429 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 12:09:07,431 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 12:09:14,359 - SnapDownloader.QueueManager - INFO - Adding task to queue: إن شعرت بالضيق... فاستمع لكتاب الله يُنير قلبك ويشرح صدرك | الشيخ محمد صديق المنشاوي | جودة نقية ᴴᴰ
+2026-04-03 12:09:14,360 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 12:09:14,373 - SnapDownloader - INFO - Started worker 85 for https://www.youtube.com/watch?v=SP0E1XXXcyw
+2026-04-03 12:12:35,788 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-03 12:12:35,824 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-03 12:12:36,871 - SnapDownloader.QueueManager - INFO - Adding 85 tasks to queue.
+2026-04-03 12:13:34,859 - SnapDownloader.QueueManager - INFO - Adding task to queue: Allem Albi - Amr Diab | علم قلبى - عمرو دياب
+2026-04-03 12:13:34,861 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 12:13:34,864 - SnapDownloader - INFO - Started worker 85 for https://youtu.be/KdWy8eJOWlI?si=Xt9JX9a2O-ABB0QT
+2026-04-03 12:14:50,197 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 12:14:50,206 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 12:46:30,655 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-03 12:46:30,757 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-03 12:46:31,848 - SnapDownloader.QueueManager - INFO - Adding 86 tasks to queue.
+2026-04-03 13:15:19,652 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-03 13:15:19,776 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-03 13:16:10,609 - SnapDownloader.QueueManager - INFO - Adding task to queue: Amr Diab - Hkaytak Eih | عمرو دياب - وحكايتك أيه
+2026-04-03 13:16:10,614 - SnapDownloader - INFO - Started worker 0 for https://youtu.be/fXj36Ud9CHY?si=vTHIUFABtsLzoFjz
+2026-04-03 13:16:20,617 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 13:16:20,846 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 13:16:29,197 - SnapDownloader.QueueManager - INFO - Adding task to queue: Amr Diab - Hkaytak Eih | عمرو دياب - وحكايتك أيه
+2026-04-03 13:16:29,198 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 13:16:29,207 - SnapDownloader - INFO - Started worker 1 for https://youtu.be/fXj36Ud9CHY?si=vTHIUFABtsLzoFjz
+2026-04-03 13:17:13,021 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 13:17:14,207 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 14:40:50,534 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-03 14:40:50,749 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-03 14:40:58,662 - SnapDownloader - INFO - Theme switched to: Ocean Blue
+2026-04-03 14:40:59,467 - SnapDownloader - INFO - Theme switched to: Cyber Purple
+2026-04-03 14:41:00,205 - SnapDownloader - INFO - Theme switched to: Elegant Light
+2026-04-03 14:41:01,087 - SnapDownloader - INFO - Theme switched to: Modern Dark
+2026-04-03 14:41:39,222 - SnapDownloader.QueueManager - INFO - Adding task to queue: Hamza Namira - Noss Ayesh | Lyrics Video 2026 | حمزة نمرة - نص عايش
+2026-04-03 14:41:39,226 - SnapDownloader - INFO - Started worker 0 for https://youtu.be/iZs8ibjrN4A?si=WoZPbaclDZHFrm0s
+2026-04-03 14:42:02,862 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 14:42:03,093 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 14:49:46,923 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-03 14:49:47,078 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-03 14:51:37,040 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-03 14:51:37,091 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-03 14:54:06,768 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-03 14:54:06,813 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-03 14:54:25,886 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 14:54:37,721 - SnapDownloader.QueueManager - INFO - Adding 2 tasks to queue.
+2026-04-03 14:55:34,746 - SnapDownloader.QueueManager - INFO - Adding task to queue: Amr Diab ... Mesh Kol Wahed - Orang EGY Exclusive | عمرو دياب ... مش كل واحد - حصريا أورانج مصر
+2026-04-03 14:55:34,763 - SnapDownloader - INFO - Started worker 2 for https://youtu.be/2rXu-UTmoiE?si=StWSujL0yC4vt5d2
+2026-04-03 14:56:38,574 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 14:56:38,625 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 14:58:49,768 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-03 14:58:49,821 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-03 14:59:11,254 - SnapDownloader.QueueManager - INFO - Adding task to queue: 8.6K reactions · 258 shares | #comedy | Ali Abdulrahman
+2026-04-03 14:59:11,257 - SnapDownloader - INFO - Started worker 0 for https://www.facebook.com/share/r/1C65KhQ6iF/
+2026-04-03 14:59:15,655 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 14:59:15,701 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 15:00:47,922 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-03 15:00:47,990 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-03 15:01:07,945 - SnapDownloader.QueueManager - INFO - Adding 2 tasks to queue.
+2026-04-03 15:01:07,957 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:07,958 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:07,959 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:07,959 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:07,963 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 15:01:07,966 - SnapDownloader - INFO - Started worker 0 for https://www.facebook.com/share/r/1C65KhQ6iF/
+2026-04-03 15:01:07,969 - SnapDownloader - INFO - Started worker 1 for https://youtu.be/o8TNT5UWmjo?si=dAUdpAv14dU7Q1Q1
+2026-04-03 15:01:07,969 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:07,970 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:08,061 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:08,061 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:08,090 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:08,091 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:12,319 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:12,319 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:12,390 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 15:01:12,397 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:12,441 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 15:01:12,475 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:12,633 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:13,914 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:14,444 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:14,444 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:14,445 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:14,445 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:14,445 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:14,445 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:16,318 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:17,428 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:18,586 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:19,619 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:20,634 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:21,943 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:22,257 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:24,303 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:24,810 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:24,810 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:24,810 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:24,811 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:24,811 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:24,811 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:33,138 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 15:01:33,142 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:33,143 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:33,143 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:33,144 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:33,144 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:33,144 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:33,192 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 15:01:33,225 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:33,225 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:33,225 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:33,226 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:33,226 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:33,226 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:33,381 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:33,381 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:33,381 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:33,382 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:33,382 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:33,382 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:33,382 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 15:01:35,875 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:35,875 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:35,875 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:35,876 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:35,876 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:35,876 - SnapDownloader - WARNING - تعذر رسم عنصر في قائمة التحميلات: name 'background' is not defined
+2026-04-03 15:01:50,794 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 15:02:10,690 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-03 15:02:10,735 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-03 15:02:30,709 - SnapDownloader.QueueManager - INFO - Adding task to queue: 8.6K reactions · 259 shares | #comedy | Ali Abdulrahman
+2026-04-03 15:02:30,711 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 15:02:30,714 - SnapDownloader - INFO - Started worker 0 for https://www.facebook.com/share/r/1C65KhQ6iF/
+2026-04-03 15:02:56,898 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 15:02:56,900 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 15:03:44,256 - SnapDownloader.QueueManager - INFO - Adding task to queue: Amr Diab ... Mesh Kol Wahed - Orang EGY Exclusive | عمرو دياب ... مش كل واحد - حصريا أورانج مصر
+2026-04-03 15:03:44,258 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 15:03:44,260 - SnapDownloader - INFO - Started worker 1 for https://youtu.be/2rXu-UTmoiE?si=StWSujL0yC4vt5d2
+2026-04-03 15:03:47,047 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 15:03:47,093 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 15:04:14,457 - SnapDownloader.QueueManager - INFO - Adding task to queue: El Houb El Awalani (2000 Digital Remaster)
+2026-04-03 15:04:14,458 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 15:04:14,460 - SnapDownloader - INFO - Started worker 2 for https://youtu.be/o8TNT5UWmjo?si=dAUdpAv14dU7Q1Q1
+2026-04-03 15:04:16,868 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 15:04:16,914 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 15:05:15,527 - SnapDownloader.QueueManager - INFO - Adding 1 tasks to queue.
+2026-04-03 15:05:15,542 - SnapDownloader - INFO - Started worker 3 for https://www.youtube.com/watch?v=oMKPO_YBWX4
+2026-04-03 15:05:30,620 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-03 15:05:30,668 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 15:05:30,867 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 23:36:56,929 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-03 23:36:57,358 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-03 23:37:07,502 - SnapDownloader - INFO - Theme switched to: Ocean Blue
+2026-04-03 23:37:08,406 - SnapDownloader - INFO - Theme switched to: Cyber Purple
+2026-04-03 23:37:09,212 - SnapDownloader - INFO - Theme switched to: Elegant Light
+2026-04-03 23:37:10,778 - SnapDownloader - INFO - Theme switched to: Modern Dark
+2026-04-03 23:38:33,487 - SnapDownloader.QueueManager - INFO - Adding task to queue: إن شعرت بالضيق... فاستمع لكتاب الله يُنير قلبك ويشرح صدرك | الشيخ محمد صديق المنشاوي | جودة نقية ᴴᴰ
+2026-04-03 23:38:33,487 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-03 23:38:45,767 - SnapDownloader.QueueManager - INFO - Adding task to queue: إن شعرت بالضيق... فاستمع لكتاب الله يُنير قلبك ويشرح صدرك | الشيخ محمد صديق المنشاوي | جودة نقية ᴴᴰ
+2026-04-03 23:38:45,770 - SnapDownloader - INFO - Started worker 1 for https://www.youtube.com/watch?v=SP0E1XXXcyw
+2026-04-04 18:54:04,792 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-04 18:54:05,175 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-04 18:54:14,533 - SnapDownloader - INFO - Theme switched to: Ocean Blue
+2026-04-04 18:54:15,521 - SnapDownloader - INFO - Theme switched to: Cyber Purple
+2026-04-04 18:54:16,251 - SnapDownloader - INFO - Theme switched to: Elegant Light
+2026-04-04 18:54:17,299 - SnapDownloader - INFO - Theme switched to: Modern Dark
+2026-04-04 19:04:15,796 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-04 19:04:15,913 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-05 17:49:29,861 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-05 17:49:30,217 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-05 17:49:31,911 - SnapDownloader.QueueManager - INFO - Adding 0 tasks to queue.
+2026-04-05 17:50:04,985 - SnapDownloader.QueueManager - INFO - Adding task to queue: خشوع يُبكي القلوب | تلاوة مؤثرة للشيخ محمد صديق المنشاوي
+2026-04-05 17:50:04,988 - SnapDownloader - INFO - Started worker 0 for https://www.youtube.com/watch?v=yh5W65y1zas
+2026-04-05 17:50:23,634 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-05 17:50:23,639 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-05 17:51:35,131 - SnapDownloader - INFO - Theme switched to: Modern Dark
+2026-04-05 17:51:41,119 - SnapDownloader - INFO - Theme switched to: Ocean Blue
+2026-04-05 17:51:42,927 - SnapDownloader - INFO - Theme switched to: Cyber Purple
+2026-04-05 17:51:43,821 - SnapDownloader - INFO - Theme switched to: Elegant Light
+2026-04-05 17:51:45,216 - SnapDownloader - INFO - Theme switched to: Modern Dark
+2026-04-05 19:06:30,180 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-05 19:15:06,266 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-05 19:33:03,759 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-05 19:35:51,816 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-05 22:05:59,408 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-05 22:05:59,813 - SnapDownloader.ExtensionServer - INFO - Extension server started on ws://127.0.0.1:8765
+2026-04-05 22:05:59,813 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-05 22:06:01,284 - SnapDownloader.QueueManager - INFO - Adding 1 tasks to queue.
+2026-04-05 22:06:01,707 - SnapDownloader.ExtensionServer - ERROR - Failed to start extension server: no running event loop
+2026-04-05 22:06:40,936 - SnapDownloader.QueueManager - INFO - Adding 2 tasks to queue.
+2026-04-05 22:06:40,948 - SnapDownloader - INFO - Started worker 1 for https://youtu.be/Go52NaNzYyU?si=TwVV0Yo2lwRgTTjF
+2026-04-05 22:06:40,951 - SnapDownloader - INFO - Started worker 2 for https://youtu.be/YrwRd_27fhw?si=eP8tbiFA8iQjDIUI
+2026-04-05 22:07:29,987 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-05 22:07:30,078 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-05 22:07:41,361 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-05 22:07:41,397 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-05 22:07:41,602 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-05 22:18:50,918 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-05 22:18:50,995 - SnapDownloader.ExtensionServer - INFO - Extension server started on ws://127.0.0.1:8765
+2026-04-05 22:18:50,995 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-05 22:18:51,903 - SnapDownloader.ExtensionServer - ERROR - Failed to start extension server: no running event loop
+2026-04-05 22:19:43,887 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-05 22:19:43,961 - SnapDownloader.ExtensionServer - INFO - Extension server started on ws://127.0.0.1:8765
+2026-04-05 22:19:43,962 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-05 22:19:44,566 - SnapDownloader.ExtensionServer - ERROR - Failed to start extension server: no running event loop
+2026-04-05 22:19:44,960 - SnapDownloader.QueueManager - INFO - Adding 3 tasks to queue.
+2026-04-05 22:20:22,504 - SnapDownloader.QueueManager - INFO - Adding 2 tasks to queue.
+2026-04-05 22:20:22,510 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-05 22:20:22,514 - SnapDownloader - INFO - Started worker 3 for https://youtu.be/YrwRd_27fhw?si=eP8tbiFA8iQjDIUI
+2026-04-05 22:20:22,515 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-05 22:20:22,517 - SnapDownloader - INFO - Started worker 4 for https://youtu.be/Go52NaNzYyU?si=TwVV0Yo2lwRgTTjF
+2026-04-05 22:20:25,164 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-05 22:20:25,221 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-05 22:20:25,513 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-05 22:20:25,551 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-05 22:20:25,750 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-05 22:20:37,288 - SnapDownloader - INFO - Theme switched to: Ocean Blue
+2026-04-05 22:20:38,112 - SnapDownloader - INFO - Theme switched to: Cyber Purple
+2026-04-05 22:20:38,892 - SnapDownloader - INFO - Theme switched to: Elegant Light
+2026-04-05 22:21:05,831 - SnapDownloader.QueueManager - INFO - Adding 2 tasks to queue.
+2026-04-05 22:21:05,836 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-05 22:21:05,838 - SnapDownloader - INFO - Started worker 5 for https://youtu.be/YrwRd_27fhw?si=eP8tbiFA8iQjDIUI
+2026-04-05 22:21:05,839 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-05 22:21:05,840 - SnapDownloader - INFO - Started worker 6 for https://youtu.be/Go52NaNzYyU?si=TwVV0Yo2lwRgTTjF
+2026-04-05 22:21:08,291 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-05 22:21:08,336 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-05 22:21:08,500 - SnapDownloader.EventBus - INFO - Publishing event: DownloadFinishedEvent
+2026-04-05 22:21:08,538 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-05 22:21:08,737 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-05 22:23:45,284 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-05 22:23:45,356 - SnapDownloader.ExtensionServer - INFO - Extension server started on ws://127.0.0.1:8765
+2026-04-05 22:23:45,357 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-05 22:23:46,036 - websockets.server - INFO - server listening on 127.0.0.1:8765
+2026-04-05 22:23:46,277 - SnapDownloader.QueueManager - INFO - Adding 7 tasks to queue.
+2026-04-05 22:31:15,301 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-05 22:31:15,379 - SnapDownloader.ExtensionServer - INFO - Extension server started on ws://127.0.0.1:8765
+2026-04-05 22:31:15,380 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-05 22:31:16,304 - websockets.server - INFO - server listening on 127.0.0.1:8765
+2026-04-05 22:31:16,579 - SnapDownloader.QueueManager - INFO - Adding 7 tasks to queue.
+2026-04-05 22:31:21,000 - SnapDownloader - INFO - Theme switched to: Modern Dark
+2026-04-05 22:32:14,769 - SnapDownloader.QueueManager - INFO - Adding task to queue: Cairokee - Ma A'ad Sagheran (Ft. Sary Hany) / كايروكي - ما عاد صغيرا
+2026-04-05 22:32:14,770 - SnapDownloader.EventBus - INFO - Publishing event: ShowNotificationEvent
+2026-04-09 12:48:16,106 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-09 12:48:16,660 - SnapDownloader.ExtensionServer - INFO - Extension server started on ws://127.0.0.1:8765
+2026-04-09 12:48:16,661 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-09 12:48:18,183 - websockets.server - INFO - server listening on 127.0.0.1:8765
+2026-04-09 12:48:18,185 - SnapDownloader.QueueManager - INFO - Adding 7 tasks to queue.
+2026-04-09 14:59:17,183 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-09 14:59:17,591 - SnapDownloader.ExtensionServer - INFO - Extension server started on ws://127.0.0.1:8765
+2026-04-09 14:59:17,592 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-09 14:59:18,727 - websockets.server - INFO - server listening on 127.0.0.1:8765
+2026-04-09 14:59:18,728 - SnapDownloader.ExtensionServer - INFO - Extension WebSocket server listening on ws://127.0.0.1:8765
+2026-04-09 14:59:19,532 - SnapDownloader.QueueManager - INFO - Adding 7 tasks to queue.
+2026-04-09 15:22:12,027 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-09 15:22:21,359 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-09 15:39:57,470 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-09 15:41:03,041 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-09 15:53:51,773 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-09 15:53:51,856 - SnapDownloader.ExtensionServer - INFO - Extension server started on ws://127.0.0.1:8765
+2026-04-09 15:53:51,856 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-09 15:56:21,289 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-09 15:56:21,340 - SnapDownloader.ExtensionServer - INFO - Extension server started on ws://127.0.0.1:8765
+2026-04-09 15:56:21,341 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-09 16:01:48,043 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-09 16:01:48,096 - SnapDownloader.ExtensionServer - INFO - Extension server started on ws://127.0.0.1:8765
+2026-04-09 16:01:48,096 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-09 17:19:06,827 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-09 17:19:06,880 - SnapDownloader.ExtensionServer - INFO - Extension server started on ws://127.0.0.1:8765
+2026-04-09 17:19:06,880 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-09 17:20:00,115 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-09 17:20:00,161 - SnapDownloader.ExtensionServer - INFO - Extension server started on ws://127.0.0.1:8765
+2026-04-09 17:20:00,162 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-09 17:21:53,125 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-09 17:21:53,177 - SnapDownloader.ExtensionServer - INFO - Extension server started on ws://127.0.0.1:8765
+2026-04-09 17:21:53,178 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-09 18:43:03,392 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-09 18:43:03,577 - SnapDownloader.ExtensionServer - INFO - Extension server started on ws://127.0.0.1:8765
+2026-04-09 18:43:03,577 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-09 18:43:12,069 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-09 18:43:12,117 - SnapDownloader.ExtensionServer - INFO - Extension server started on ws://127.0.0.1:8765
+2026-04-09 18:43:12,117 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-09 18:45:31,961 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-09 18:45:32,004 - SnapDownloader.ExtensionServer - INFO - Extension server started on ws://127.0.0.1:8765
+2026-04-09 18:45:32,004 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-09 18:47:54,684 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-09 18:47:54,729 - SnapDownloader.ExtensionServer - INFO - Extension server started on ws://127.0.0.1:8765
+2026-04-09 18:47:54,730 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-09 18:48:09,028 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-09 18:48:09,073 - SnapDownloader.ExtensionServer - INFO - Extension server started on ws://127.0.0.1:8765
+2026-04-09 18:48:09,074 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-09 18:49:23,620 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-09 18:49:23,664 - SnapDownloader.ExtensionServer - INFO - Extension server started on ws://127.0.0.1:8765
+2026-04-09 18:49:23,665 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-09 18:49:27,683 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-09 18:49:27,729 - SnapDownloader.ExtensionServer - INFO - Extension server started on ws://127.0.0.1:8765
+2026-04-09 18:49:27,730 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-09 18:50:03,222 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-09 18:50:03,269 - SnapDownloader.ExtensionServer - INFO - Extension server started on ws://127.0.0.1:8765
+2026-04-09 18:50:03,269 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-09 18:50:04,074 - websockets.server - INFO - server listening on 127.0.0.1:8765
+2026-04-09 18:50:04,074 - SnapDownloader.ExtensionServer - INFO - Extension WebSocket server listening on ws://127.0.0.1:8765
+2026-04-09 18:52:14,744 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-09 18:52:14,792 - SnapDownloader.ExtensionServer - INFO - Extension server started on ws://127.0.0.1:8765
+2026-04-09 18:52:14,793 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-09 18:52:15,704 - websockets.server - INFO - server listening on 127.0.0.1:8765
+2026-04-09 18:52:15,704 - SnapDownloader.ExtensionServer - INFO - Extension WebSocket server listening on ws://127.0.0.1:8765
+2026-04-09 18:52:16,267 - SnapDownloader.QueueManager - INFO - Adding 7 tasks to queue.
+2026-04-09 18:52:26,048 - SnapDownloader - INFO - Theme switched to: Ocean Blue
+2026-04-09 18:52:27,029 - SnapDownloader - INFO - Theme switched to: Cyber Purple
+2026-04-09 18:52:27,745 - SnapDownloader - INFO - Theme switched to: Elegant Light
+2026-04-09 18:52:30,254 - SnapDownloader - INFO - Theme switched to: Modern Dark
+2026-04-09 18:53:55,823 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-09 18:53:55,865 - SnapDownloader.ExtensionServer - INFO - Extension server started on ws://127.0.0.1:8765
+2026-04-09 18:53:55,866 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-09 18:53:56,692 - websockets.server - INFO - server listening on 127.0.0.1:8765
+2026-04-09 18:53:56,692 - SnapDownloader.ExtensionServer - INFO - Extension WebSocket server listening on ws://127.0.0.1:8765
+2026-04-09 18:53:57,010 - SnapDownloader.QueueManager - INFO - Adding 7 tasks to queue.
+2026-04-09 18:54:21,604 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-09 18:54:21,649 - SnapDownloader.ExtensionServer - INFO - Extension server started on ws://127.0.0.1:8765
+2026-04-09 18:54:21,649 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-09 18:54:22,179 - websockets.server - INFO - server listening on 127.0.0.1:8765
+2026-04-09 18:54:22,179 - SnapDownloader.ExtensionServer - INFO - Extension WebSocket server listening on ws://127.0.0.1:8765
+2026-04-09 18:54:22,459 - SnapDownloader.QueueManager - INFO - Adding 7 tasks to queue.
+2026-04-09 18:54:35,943 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-09 18:54:35,990 - SnapDownloader.ExtensionServer - INFO - Extension server started on ws://127.0.0.1:8765
+2026-04-09 18:54:35,991 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-09 18:54:36,541 - SnapDownloader.ExtensionServer - ERROR - Failed to start extension server: [Errno 10048] error while attempting to bind on address ('127.0.0.1', 8765): [winerror 10048] only one usage of each socket address (protocol/network address/port) is normally permitted
+2026-04-09 18:54:36,790 - SnapDownloader.QueueManager - INFO - Adding 7 tasks to queue.
+2026-04-09 19:01:19,995 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-09 19:01:20,060 - SnapDownloader.ExtensionServer - INFO - Extension server started on ws://127.0.0.1:8765
+2026-04-09 19:01:20,060 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-09 19:01:21,016 - websockets.server - INFO - server listening on 127.0.0.1:8765
+2026-04-09 19:01:21,017 - SnapDownloader.ExtensionServer - INFO - Extension WebSocket server listening on ws://127.0.0.1:8765
+2026-04-09 19:01:21,631 - SnapDownloader.QueueManager - INFO - Adding 7 tasks to queue.
+2026-04-09 19:01:34,741 - SnapDownloader.QueueManager - INFO - Adding task to queue: Tamer Ashour - Qasr B3eed | تامر عاشور - قصر بعيد
+2026-04-09 19:01:34,744 - SnapDownloader - INFO - Started worker 7 for https://youtu.be/fp3DqbNVOxo
+2026-04-09 19:39:35,807 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-09 19:46:18,486 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-10 01:44:01,393 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-10 01:44:01,835 - SnapDownloader.ExtensionServer - INFO - Extension server started on ws://127.0.0.1:8765
+2026-04-10 01:44:01,835 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-10 01:44:03,613 - SnapDownloader.QueueManager - INFO - Adding 7 tasks to queue.
+2026-04-10 01:44:04,103 - websockets.server - INFO - server listening on 127.0.0.1:8765
+2026-04-10 01:44:04,104 - SnapDownloader.ExtensionServer - INFO - Extension WebSocket server listening on ws://127.0.0.1:8765
+2026-04-10 01:45:26,610 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-10 01:45:26,657 - SnapDownloader.ExtensionServer - INFO - Extension server started on ws://127.0.0.1:8765
+2026-04-10 01:45:26,658 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-10 01:45:27,316 - websockets.server - INFO - server listening on 127.0.0.1:8765
+2026-04-10 01:45:27,316 - SnapDownloader.ExtensionServer - INFO - Extension WebSocket server listening on ws://127.0.0.1:8765
+2026-04-10 01:45:27,656 - SnapDownloader.QueueManager - INFO - Adding 7 tasks to queue.
+2026-04-10 09:58:41,370 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-10 09:58:41,510 - SnapDownloader.ExtensionServer - INFO - Extension server started on ws://127.0.0.1:8765
+2026-04-10 09:58:41,511 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-10 09:58:42,784 - SnapDownloader.QueueManager - INFO - Adding 7 tasks to queue.
+2026-04-10 09:58:42,786 - websockets.server - INFO - server listening on 127.0.0.1:8765
+2026-04-10 09:58:42,786 - SnapDownloader.ExtensionServer - INFO - Extension WebSocket server listening on ws://127.0.0.1:8765
+2026-04-10 09:59:29,414 - SnapDownloader - INFO - Theme switched to: Ocean Blue
+2026-04-10 09:59:31,482 - SnapDownloader - INFO - Theme switched to: Cyber Purple
+2026-04-10 09:59:32,376 - SnapDownloader - INFO - Theme switched to: Elegant Light
+2026-04-10 09:59:33,514 - SnapDownloader - INFO - Theme switched to: Modern Dark
+2026-04-10 10:36:28,040 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-10 10:36:28,149 - SnapDownloader.ExtensionServer - INFO - Extension server started on ws://127.0.0.1:8765
+2026-04-10 10:36:28,150 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-10 10:36:28,388 - websockets.server - INFO - server listening on 127.0.0.1:8765
+2026-04-10 10:36:28,963 - SnapDownloader.ExtensionServer - INFO - Extension WebSocket server listening on ws://127.0.0.1:8765
+2026-04-10 10:36:29,522 - SnapDownloader.QueueManager - INFO - Adding 7 tasks to queue.
+2026-04-11 13:59:36,193 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-11 13:59:36,592 - SnapDownloader.ExtensionServer - INFO - Extension server started on ws://127.0.0.1:8765
+2026-04-11 13:59:36,594 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-11 13:59:39,030 - websockets.server - INFO - server listening on 127.0.0.1:8765
+2026-04-11 13:59:39,045 - SnapDownloader.ExtensionServer - INFO - Extension WebSocket server listening on ws://127.0.0.1:8765
+2026-04-11 14:25:51,313 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-11 14:25:51,385 - SnapDownloader.ExtensionServer - INFO - Extension server started on ws://127.0.0.1:8765
+2026-04-11 14:25:51,385 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-11 14:25:51,441 - websockets.server - INFO - server listening on 127.0.0.1:8765
+2026-04-11 14:25:51,441 - SnapDownloader.ExtensionServer - INFO - Extension WebSocket server listening on ws://127.0.0.1:8765
+2026-04-11 14:34:34,689 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-11 14:34:34,739 - SnapDownloader.ExtensionServer - INFO - Extension server started on ws://127.0.0.1:8765
+2026-04-11 14:34:34,739 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-11 14:34:35,068 - websockets.server - INFO - server listening on 127.0.0.1:8765
+2026-04-11 14:34:35,524 - SnapDownloader.ExtensionServer - INFO - Extension WebSocket server listening on ws://127.0.0.1:8765
+2026-04-11 14:36:16,270 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-11 14:36:16,331 - SnapDownloader.ExtensionServer - INFO - Extension server started on ws://127.0.0.1:8765
+2026-04-11 14:36:16,332 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-11 14:37:08,613 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-11 14:37:08,685 - SnapDownloader.ExtensionServer - INFO - Extension server started on ws://127.0.0.1:8765
+2026-04-11 14:37:08,686 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-11 14:37:08,768 - websockets.server - INFO - server listening on 127.0.0.1:8765
+2026-04-11 14:37:08,768 - SnapDownloader.ExtensionServer - INFO - Extension WebSocket server listening on ws://127.0.0.1:8765
+2026-04-11 14:37:10,965 - SnapDownloader.QueueManager - INFO - Adding 7 tasks to queue.
+2026-04-11 14:37:56,241 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-11 14:37:56,299 - SnapDownloader.ExtensionServer - INFO - Extension server started on ws://127.0.0.1:8765
+2026-04-11 14:37:56,300 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-11 14:37:57,159 - websockets.server - INFO - server listening on 127.0.0.1:8765
+2026-04-11 14:37:57,159 - SnapDownloader.ExtensionServer - INFO - Extension WebSocket server listening on ws://127.0.0.1:8765
+2026-04-11 14:37:57,548 - SnapDownloader.QueueManager - INFO - Adding 7 tasks to queue.
+2026-04-11 14:38:50,142 - SnapDownloader.QueueManager - INFO - Adding task to queue: Amir Eid - Nasy Kol Haga (Lyric Video) | أمير عيد - ناسي كل حاجة (فيديو مع الكلمات)
+2026-04-11 14:38:50,145 - SnapDownloader - INFO - Started worker 7 for https://youtu.be/X5JlhUfYdG0?si=Q83aSPenBSMfdDTp
+2026-04-11 14:40:35,471 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-11 14:40:35,539 - SnapDownloader.ExtensionServer - INFO - Extension server started on ws://127.0.0.1:8765
+2026-04-11 14:40:35,540 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-11 14:40:36,443 - websockets.server - INFO - server listening on 127.0.0.1:8765
+2026-04-11 14:40:36,445 - SnapDownloader.ExtensionServer - INFO - Extension WebSocket server listening on ws://127.0.0.1:8765
+2026-04-11 14:40:49,410 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-11 14:40:49,459 - SnapDownloader.ExtensionServer - INFO - Extension server started on ws://127.0.0.1:8765
+2026-04-11 14:40:49,459 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-11 14:40:50,766 - websockets.server - INFO - server listening on 127.0.0.1:8765
+2026-04-11 14:40:50,768 - SnapDownloader.ExtensionServer - INFO - Extension WebSocket server listening on ws://127.0.0.1:8765
+2026-04-11 14:40:51,404 - SnapDownloader.QueueManager - INFO - Adding 0 tasks to queue.
+2026-04-11 14:43:38,320 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-11 14:43:38,368 - SnapDownloader.ExtensionServer - INFO - Extension server started on ws://127.0.0.1:8765
+2026-04-11 14:43:38,369 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-11 14:43:39,237 - websockets.server - INFO - server listening on 127.0.0.1:8765
+2026-04-11 14:43:39,238 - SnapDownloader.ExtensionServer - INFO - Extension WebSocket server listening on ws://127.0.0.1:8765
+2026-04-11 14:43:39,615 - SnapDownloader.QueueManager - INFO - Adding 0 tasks to queue.
+2026-04-11 14:44:56,798 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-11 14:44:56,858 - SnapDownloader.ExtensionServer - INFO - Extension server started on ws://127.0.0.1:8765
+2026-04-11 14:44:56,858 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-11 14:44:57,660 - websockets.server - INFO - server listening on 127.0.0.1:8765
+2026-04-11 14:44:57,664 - SnapDownloader.ExtensionServer - INFO - Extension WebSocket server listening on ws://127.0.0.1:8765
+2026-04-11 14:44:58,068 - SnapDownloader.QueueManager - INFO - Adding 0 tasks to queue.
+2026-04-11 14:45:10,799 - SnapDownloader.QueueManager - INFO - Adding task to queue: Amir Eid - Nasy Kol Haga (Lyric Video) | أمير عيد - ناسي كل حاجة (فيديو مع الكلمات)
+2026-04-11 14:45:10,806 - SnapDownloader - INFO - Started worker 0 for https://youtu.be/X5JlhUfYdG0?si=Q83aSPenBSMfdDTp
+2026-04-11 14:46:01,259 - SnapDownloader.QueueManager - INFO - Adding task to queue: Amir Eid - Nasy Kol Haga (Lyric Video) | أمير عيد - ناسي كل حاجة (فيديو مع الكلمات)
+2026-04-11 14:46:01,262 - SnapDownloader - INFO - Started worker 1 for https://youtu.be/X5JlhUfYdG0?si=Q83aSPenBSMfdDTp
+2026-04-11 15:13:26,677 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-11 15:13:26,811 - SnapDownloader.ExtensionServer - INFO - Extension server started on ws://127.0.0.1:8765
+2026-04-11 15:13:26,812 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-11 15:13:27,707 - websockets.server - INFO - server listening on 127.0.0.1:8765
+2026-04-11 15:13:27,708 - SnapDownloader.ExtensionServer - INFO - Extension WebSocket server listening on ws://127.0.0.1:8765
+2026-04-11 15:13:28,265 - SnapDownloader.QueueManager - INFO - Adding 0 tasks to queue.
+2026-04-11 16:43:04,970 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-11 16:43:05,117 - SnapDownloader.ExtensionServer - INFO - Extension server started on ws://127.0.0.1:8765
+2026-04-11 16:43:05,118 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-11 16:43:06,604 - websockets.server - INFO - server listening on 127.0.0.1:8765
+2026-04-11 16:43:06,604 - SnapDownloader.ExtensionServer - INFO - Extension WebSocket server listening on ws://127.0.0.1:8765
+2026-04-11 17:46:24,990 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-11 17:46:25,141 - SnapDownloader.ExtensionServer - INFO - Extension server started on ws://127.0.0.1:8765
+2026-04-11 17:46:25,142 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-11 17:46:25,248 - websockets.server - INFO - server listening on 127.0.0.1:8765
+2026-04-11 17:46:25,248 - SnapDownloader.ExtensionServer - INFO - Extension WebSocket server listening on ws://127.0.0.1:8765
+2026-04-11 20:11:32,166 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-11 20:11:32,345 - SnapDownloader.ExtensionServer - INFO - Extension server started on ws://127.0.0.1:8765
+2026-04-11 20:11:32,345 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-11 20:11:33,413 - websockets.server - INFO - server listening on 127.0.0.1:8765
+2026-04-11 20:11:33,413 - SnapDownloader.ExtensionServer - INFO - Extension WebSocket server listening on ws://127.0.0.1:8765
+2026-04-11 20:11:34,228 - SnapDownloader.QueueManager - INFO - Adding 0 tasks to queue.
+2026-04-11 20:11:39,537 - SnapDownloader - INFO - Theme switched to: Modern Dark
+2026-04-11 20:11:47,127 - SnapDownloader - INFO - Theme switched to: Ocean Blue
+2026-04-11 20:15:19,242 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-11 20:15:19,353 - SnapDownloader.ExtensionServer - INFO - Extension server started on ws://127.0.0.1:8765
+2026-04-11 20:15:19,354 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-11 20:15:20,176 - websockets.server - INFO - server listening on 127.0.0.1:8765
+2026-04-11 20:15:20,176 - SnapDownloader.ExtensionServer - INFO - Extension WebSocket server listening on ws://127.0.0.1:8765
+2026-04-11 20:15:20,780 - SnapDownloader.QueueManager - INFO - Adding 0 tasks to queue.
+2026-04-11 20:15:24,289 - SnapDownloader - INFO - Theme switched to: Cyber Purple
+2026-04-11 20:15:25,083 - SnapDownloader - INFO - Theme switched to: Elegant Light
+2026-04-11 20:15:26,051 - SnapDownloader - INFO - Theme switched to: Modern Dark
+2026-04-11 22:41:23,119 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-11 22:41:23,296 - SnapDownloader.ExtensionServer - INFO - Extension server started on ws://127.0.0.1:8765
+2026-04-11 22:41:23,297 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-11 22:41:23,412 - websockets.server - INFO - server listening on 127.0.0.1:8765
+2026-04-11 22:41:23,414 - SnapDownloader.ExtensionServer - INFO - Extension WebSocket server listening on ws://127.0.0.1:8765
+2026-04-11 22:41:25,287 - SnapDownloader.QueueManager - INFO - Adding 0 tasks to queue.
+2026-04-12 23:20:06,268 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-12 23:20:06,614 - SnapDownloader.ExtensionServer - INFO - Extension server started on ws://127.0.0.1:8765
+2026-04-12 23:20:06,615 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-12 23:20:07,539 - websockets.server - INFO - server listening on 127.0.0.1:8765
+2026-04-12 23:20:07,545 - SnapDownloader.ExtensionServer - INFO - Extension WebSocket server listening on ws://127.0.0.1:8765
+2026-04-12 23:20:08,387 - SnapDownloader.QueueManager - INFO - Adding 0 tasks to queue.
+2026-04-12 23:21:31,403 - SnapDownloader.QueueManager - INFO - Adding task to queue: يا ريتني كنت أنا ما رأيته ١٩٢٨ (طقطوقة) - محمد عبد الوهاب
+2026-04-12 23:21:31,407 - SnapDownloader - INFO - Started worker 0 for https://www.youtube.com/watch?v=e3-5x973POI
+2026-04-12 23:21:31,538 - SnapDownloader.Downloader - WARNING - تم تجاهل وسيطة غير مسموح بها: --sleep-interval
+2026-04-12 23:21:31,539 - SnapDownloader.Downloader - WARNING - تم تجاهل وسيطة غير مسموح بها: 0.78
+2026-04-12 23:21:31,539 - SnapDownloader.Downloader - WARNING - تم تجاهل وسيطة غير مسموح بها: --max-sleep-interval
+2026-04-12 23:21:31,539 - SnapDownloader.Downloader - WARNING - تم تجاهل وسيطة غير مسموح بها: 1.33
+2026-04-13 11:34:00,710 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-13 11:34:01,021 - SnapDownloader.ExtensionServer - INFO - Extension server started on ws://127.0.0.1:8765
+2026-04-13 11:34:01,022 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-13 11:34:03,745 - websockets.server - INFO - server listening on 127.0.0.1:8765
+2026-04-13 11:34:03,746 - SnapDownloader.ExtensionServer - INFO - Extension WebSocket server listening on ws://127.0.0.1:8765
+2026-04-13 11:34:04,673 - SnapDownloader.QueueManager - INFO - Adding 1 tasks to queue.
+2026-04-13 11:34:05,783 - SnapDownloader - INFO - Started worker 0 for https://www.youtube.com/watch?v=e3-5x973POI
+2026-04-13 11:34:05,805 - SnapDownloader.Downloader - WARNING - تم تجاهل وسيطة غير مسموح بها: --sleep-interval
+2026-04-13 11:34:05,806 - SnapDownloader.Downloader - WARNING - تم تجاهل وسيطة غير مسموح بها: 0.46
+2026-04-13 11:34:05,806 - SnapDownloader.Downloader - WARNING - تم تجاهل وسيطة غير مسموح بها: --max-sleep-interval
+2026-04-13 11:34:05,806 - SnapDownloader.Downloader - WARNING - تم تجاهل وسيطة غير مسموح بها: 1.54
+2026-04-13 11:34:30,996 - SnapDownloader.QueueManager - INFO - [Scheduler] Due tasks found. Starting queue to process them.
+2026-04-13 11:34:31,054 - SnapDownloader.QueueManager - INFO - Starting queue processing.
+2026-04-13 11:34:31,056 - SnapDownloader - INFO - Started worker 0 for https://www.youtube.com/watch?v=e3-5x973POI
+2026-04-13 11:34:31,066 - SnapDownloader.Downloader - WARNING - تم تجاهل وسيطة غير مسموح بها: --sleep-interval
+2026-04-13 11:34:31,067 - SnapDownloader.Downloader - WARNING - تم تجاهل وسيطة غير مسموح بها: 0.37
+2026-04-13 11:34:31,067 - SnapDownloader.Downloader - WARNING - تم تجاهل وسيطة غير مسموح بها: --max-sleep-interval
+2026-04-13 11:34:31,067 - SnapDownloader.Downloader - WARNING - تم تجاهل وسيطة غير مسموح بها: 1.70
+2026-04-13 13:25:02,694 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-13 13:25:03,027 - SnapDownloader.ExtensionServer - INFO - Extension server auth is enabled.
+2026-04-13 13:25:03,028 - SnapDownloader.ExtensionServer - INFO - Extension server started on ws://127.0.0.1:8765
+2026-04-13 13:25:03,028 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-13 13:25:03,456 - websockets.server - INFO - server listening on 127.0.0.1:8765
+2026-04-13 13:25:04,244 - SnapDownloader.ExtensionServer - INFO - Extension WebSocket server listening on ws://127.0.0.1:8765
+2026-04-13 13:25:05,154 - SnapDownloader.QueueManager - INFO - Adding 1 tasks to queue.
+2026-04-13 13:47:04,834 - SnapDownloader.QueueManager - INFO - Adding task to queue: Billie Eilish, Khalid - lovely
+2026-04-13 13:47:04,838 - SnapDownloader - INFO - Started worker 1 for https://youtu.be/V1Pl8CzNzCw?si=8M-biCI5Sgf2mpgq
+2026-04-13 13:47:04,858 - SnapDownloader.Downloader - WARNING - تم تجاهل وسيطة غير مسموح بها: --sleep-interval
+2026-04-13 13:47:04,859 - SnapDownloader.Downloader - WARNING - تم تجاهل وسيطة غير مسموح بها: 0.68
+2026-04-13 13:47:04,859 - SnapDownloader.Downloader - WARNING - تم تجاهل وسيطة غير مسموح بها: --max-sleep-interval
+2026-04-13 13:47:04,859 - SnapDownloader.Downloader - WARNING - تم تجاهل وسيطة غير مسموح بها: 1.11
+2026-04-13 13:47:53,689 - SnapDownloader.QueueManager - INFO - Adding task to queue: سلطنة العندليب عبد الحليم - بحياتك يا ولدي امرأةٌ عيناها سبحان المعبود - قارئة الفنجان
+2026-04-13 13:47:53,691 - SnapDownloader - INFO - Started worker 2 for https://youtu.be/rzRhJp1eOeQ?si=325LHByxOHe3WRnp
+2026-04-13 13:47:53,705 - SnapDownloader.Downloader - WARNING - تم تجاهل وسيطة غير مسموح بها: --sleep-interval
+2026-04-13 13:47:53,706 - SnapDownloader.Downloader - WARNING - تم تجاهل وسيطة غير مسموح بها: 0.56
+2026-04-13 13:47:53,706 - SnapDownloader.Downloader - WARNING - تم تجاهل وسيطة غير مسموح بها: --max-sleep-interval
+2026-04-13 13:47:53,706 - SnapDownloader.Downloader - WARNING - تم تجاهل وسيطة غير مسموح بها: 1.61
+2026-04-13 13:49:20,602 - SnapDownloader.QueueManager - INFO - Adding task to queue: يا ريتني كنت أنا ما رأيته ١٩٢٨ (طقطوقة) - محمد عبد الوهاب
+2026-04-13 13:49:20,648 - SnapDownloader - INFO - Started worker 3 for https://youtu.be/e3-5x973POI?si=Bx5toGkMMdAGfFeX
+2026-04-13 13:49:20,689 - SnapDownloader.Downloader - WARNING - تم تجاهل وسيطة غير مسموح بها: --sleep-interval
+2026-04-13 13:49:20,690 - SnapDownloader.Downloader - WARNING - تم تجاهل وسيطة غير مسموح بها: 0.41
+2026-04-13 13:49:20,690 - SnapDownloader.Downloader - WARNING - تم تجاهل وسيطة غير مسموح بها: --max-sleep-interval
+2026-04-13 13:49:20,690 - SnapDownloader.Downloader - WARNING - تم تجاهل وسيطة غير مسموح بها: 1.85
+2026-04-13 13:56:35,743 - SnapDownloader.Hotkeys - INFO - [Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+2026-04-13 13:56:35,861 - SnapDownloader.ExtensionServer - INFO - Extension server auth is enabled.
+2026-04-13 13:56:35,862 - SnapDownloader.ExtensionServer - INFO - Extension server started on ws://127.0.0.1:8765
+2026-04-13 13:56:35,862 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-13 13:56:36,891 - websockets.server - INFO - server listening on 127.0.0.1:8765
+2026-04-13 13:56:36,892 - SnapDownloader.ExtensionServer - INFO - Extension WebSocket server listening on ws://127.0.0.1:8765
+2026-04-13 13:56:37,581 - SnapDownloader.QueueManager - INFO - Adding 4 tasks to queue.
+2026-04-13 13:56:47,595 - SnapDownloader.QueueManager - INFO - Adding task to queue: يا ريتني كنت أنا ما رأيته ١٩٢٨ (طقطوقة) - محمد عبد الوهاب
+2026-04-13 13:56:47,600 - SnapDownloader - INFO - Started worker 4 for https://youtu.be/e3-5x973POI?si=Bx5toGkMMdAGfFeX
+2026-04-13 13:56:47,614 - SnapDownloader.Downloader - WARNING - تم تجاهل وسيطة غير مسموح بها: --sleep-interval
+2026-04-13 13:56:47,614 - SnapDownloader.Downloader - WARNING - تم تجاهل وسيطة غير مسموح بها: 0.22
+2026-04-13 13:56:47,615 - SnapDownloader.Downloader - WARNING - تم تجاهل وسيطة غير مسموح بها: --max-sleep-interval
+2026-04-13 13:56:47,615 - SnapDownloader.Downloader - WARNING - تم تجاهل وسيطة غير مسموح بها: 1.91
+2026-04-13 13:57:37,521 - SnapDownloader.QueueManager - INFO - Adding task to queue: يا لاللي
+2026-04-13 13:57:37,523 - SnapDownloader - INFO - Started worker 5 for https://youtu.be/XkuiyJOh0lU?si=90fNvc2pfOhgPD_s
+2026-04-13 13:57:37,538 - SnapDownloader.Downloader - WARNING - تم تجاهل وسيطة غير مسموح بها: --sleep-interval
+2026-04-13 13:57:37,538 - SnapDownloader.Downloader - WARNING - تم تجاهل وسيطة غير مسموح بها: 0.35
+2026-04-13 13:57:37,538 - SnapDownloader.Downloader - WARNING - تم تجاهل وسيطة غير مسموح بها: --max-sleep-interval
+2026-04-13 13:57:37,539 - SnapDownloader.Downloader - WARNING - تم تجاهل وسيطة غير مسموح بها: 1.42
+2026-04-13 13:58:18,858 - SnapDownloader.QueueManager - INFO - Adding task to queue: سلطنة العندليب عبد الحليم - بحياتك يا ولدي امرأةٌ عيناها سبحان المعبود - قارئة الفنجان
+2026-04-13 13:58:18,861 - SnapDownloader - INFO - Started worker 6 for https://youtu.be/rzRhJp1eOeQ?si=325LHByxOHe3WRnp
+2026-04-13 13:58:18,876 - SnapDownloader.Downloader - WARNING - تم تجاهل وسيطة غير مسموح بها: --sleep-interval
+2026-04-13 13:58:18,876 - SnapDownloader.Downloader - WARNING - تم تجاهل وسيطة غير مسموح بها: 0.59
+2026-04-13 13:58:18,877 - SnapDownloader.Downloader - WARNING - تم تجاهل وسيطة غير مسموح بها: --max-sleep-interval
+2026-04-13 13:58:18,877 - SnapDownloader.Downloader - WARNING - تم تجاهل وسيطة غير مسموح بها: 1.08
+2026-04-13 13:58:35,894 - SnapDownloader.QueueManager - INFO - Adding task to queue: Billie Eilish, Khalid - lovely
+2026-04-13 13:58:35,896 - SnapDownloader - INFO - Started worker 7 for https://youtu.be/V1Pl8CzNzCw?si=8M-biCI5Sgf2mpgq
+2026-04-13 13:58:35,910 - SnapDownloader.Downloader - WARNING - تم تجاهل وسيطة غير مسموح بها: --sleep-interval
+2026-04-13 13:58:35,910 - SnapDownloader.Downloader - WARNING - تم تجاهل وسيطة غير مسموح بها: 0.54
+2026-04-13 13:58:35,910 - SnapDownloader.Downloader - WARNING - تم تجاهل وسيطة غير مسموح بها: --max-sleep-interval
+2026-04-13 13:58:35,910 - SnapDownloader.Downloader - WARNING - تم تجاهل وسيطة غير مسموح بها: 1.04
+2026-04-13 20:18:52,187 - SnapDownloader - INFO - Starting SnapDownloader...
+2026-04-13 20:18:52,195 - SnapDownloader.DB - INFO - Database initialized successfully.
+2026-04-13 20:18:52,261 - SnapDownloader.ExtensionServer - INFO - Extension server auth is enabled.
+2026-04-13 20:18:52,261 - SnapDownloader.ExtensionServer - INFO - Extension server started on ws://127.0.0.1:8765
+2026-04-13 20:18:52,262 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-13 20:18:52,361 - websockets.server - INFO - server listening on 127.0.0.1:8765
+2026-04-13 20:18:52,362 - SnapDownloader.ExtensionServer - INFO - Extension WebSocket server listening on ws://127.0.0.1:8765
+2026-04-13 20:18:55,489 - SnapDownloader.DB - INFO - Database initialized successfully.
+2026-04-13 20:19:30,431 - SnapDownloader.QueueManager - INFO - Adding task to queue: خشوع يُبكي القلوب | تلاوة مؤثرة للشيخ محمد صديق المنشاوي
+2026-04-13 20:19:30,433 - SnapDownloader - INFO - Started worker 0 for https://www.youtube.com/watch?v=yh5W65y1zas
+2026-04-13 20:19:30,448 - SnapDownloader.Downloader - WARNING - تم تجاهل وسيطة غير مسموح بها: --sleep-interval
+2026-04-13 20:19:30,448 - SnapDownloader.Downloader - WARNING - تم تجاهل وسيطة غير مسموح بها: 0.79
+2026-04-13 20:19:30,448 - SnapDownloader.Downloader - WARNING - تم تجاهل وسيطة غير مسموح بها: --max-sleep-interval
+2026-04-13 20:19:30,448 - SnapDownloader.Downloader - WARNING - تم تجاهل وسيطة غير مسموح بها: 1.53
+2026-04-13 20:24:15,671 - SnapDownloader - INFO - Starting SnapDownloader...
+2026-04-13 20:24:15,696 - SnapDownloader.DB - INFO - Database initialized successfully.
+2026-04-13 20:24:15,735 - SnapDownloader.ExtensionServer - INFO - Extension server auth is enabled.
+2026-04-13 20:24:15,735 - SnapDownloader.ExtensionServer - INFO - Extension server started on ws://127.0.0.1:8765
+2026-04-13 20:24:15,735 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-13 20:24:15,998 - websockets.server - INFO - server listening on 127.0.0.1:8765
+2026-04-13 20:24:16,004 - SnapDownloader.ExtensionServer - INFO - Extension WebSocket server listening on ws://127.0.0.1:8765
+2026-04-13 20:24:17,262 - SnapDownloader.DB - INFO - Database initialized successfully.
+2026-04-13 20:24:45,114 - ErrorHandler - WARNING - Error: File not found!
+2026-04-13 20:24:48,098 - ErrorHandler - WARNING - Error: File not found!
+2026-04-13 20:25:43,345 - ErrorHandler - WARNING - Error: File not found!
+2026-04-13 20:30:21,539 - SnapDownloader - INFO - Starting SnapDownloader...
+2026-04-13 20:30:21,553 - SnapDownloader.DB - INFO - Database initialized successfully.
+2026-04-13 20:30:21,677 - SnapDownloader.ExtensionServer - INFO - Extension server auth is enabled.
+2026-04-13 20:30:21,678 - SnapDownloader.ExtensionServer - INFO - Extension server started on ws://127.0.0.1:8765
+2026-04-13 20:30:21,679 - SnapDownloader.MemGuard - INFO - [MemGuard] Started.
+2026-04-13 20:30:21,907 - websockets.server - INFO - server listening on 127.0.0.1:8765
+2026-04-13 20:30:21,910 - SnapDownloader.ExtensionServer - INFO - Extension WebSocket server listening on ws://127.0.0.1:8765
+2026-04-13 20:30:23,072 - SnapDownloader.DB - INFO - Database initialized successfully.
+2026-04-13 20:33:57,075 - SnapDownloader - INFO - Starting SnapDownloader...
+2026-04-13 20:33:57,088 - SnapDownloader.DB - INFO - Database initialized successfully.
+2026-04-13 20:35:02,645 - SnapDownloader - INFO - Starting SnapDownloader...
+2026-04-13 20:35:02,658 - SnapDownloader.DB - INFO - Database initialized successfully.
+2026-04-13 20:41:01,953 - SnapDownloader - INFO - Starting SnapDownloader...
+2026-04-13 20:41:01,963 - SnapDownloader.DB - INFO - Database initialized successfully.
+2026-04-13 20:42:42,023 - SnapDownloader - INFO - Starting SnapDownloader...
+2026-04-13 20:42:42,031 - SnapDownloader.DB - INFO - Database initialized successfully.

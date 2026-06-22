@@ -1,0 +1,2561 @@
+﻿        x1 = self._handle_radius + int((self._low - self._min) / (self._max - self._min) * range_w)
+        x2 = self._handle_radius + int((self._high - self._min) / (self._max - self._min) * range_w)
+        
+        if abs(pos.x() - x1) < self._handle_radius * 2:
+            self._active_handle = 'low'
+        elif abs(pos.x() - x2) < self._handle_radius * 2:
+            self._active_handle = 'high'
+        else:
+            self._active_handle = None
+
+    def mouseMoveEvent(self, event):
+        if not self._active_handle:
+            return
+            
+        w = self.width()
+        range_w = w - 2*self._handle_radius
+        x = max(self._handle_radius, min(event.pos().x(), w - self._handle_radius))
+        val = self._min + (x - self._handle_radius) / range_w * (self._max - self._min)
+        
+        if self._active_handle == 'low':
+            self._low = min(int(val), self._high - 1)
+        else:
+            self._high = max(int(val), self._low + 1)
+            
+        self.update()
+        self.rangeChanged.emit(self._low, self._high)
+
+    def mouseReleaseEvent(self, event):
+        self._active_handle = None
+
+
+class ToggleSwitch(QWidget):
+    toggled = Signal(bool)
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setFixedSize(44, 24)
+        self._checked = False
+
+    def isChecked(self):
+        return self._checked
+
+    def setChecked(self, checked):
+        self._checked = checked
+        self.update()
+        self.toggled.emit(self._checked)
+
+    def mouseReleaseEvent(self, event):
+        self.setChecked(not self._checked)
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        
+        from ui.themes import get_theme
+        t = get_theme(None)
+
+        if self._checked:
+            bg_color = QColor(t['success'])
+            handle_x = self.width() - 22
+        else:
+            bg_color = QColor(t['muted'])
+            handle_x = 2
+            
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(bg_color)
+        painter.drawRoundedRect(0, 0, self.width(), self.height(), 12, 12)
+        
+        painter.setBrush(QColor(t['text']))
+        painter.drawEllipse(handle_x, 2, 20, 20)
+
+
+class CustomTitleBar(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.parent_dialog = parent
+        self.setFixedHeight(30)
+        self.setObjectName("title_bar")
+        
+        self.layout = QHBoxLayout(self)
+        self.layout.setContentsMargins(5, 0, 0, 0)
+        self.layout.setSpacing(0)
+        
+        self.title = QLabel("Trim Video")
+        self.title.setObjectName("title_label")
+        self.layout.addWidget(self.title)
+        
+        self.layout.addStretch(1)
+        
+        self.btn_minimize = self._create_button("—")
+        self.btn_maximize = self._create_button("⬜")
+        self.btn_close = self._create_button("✕")
+        self.btn_close.setObjectName("title_btn_close")
+        
+        self.layout.addWidget(self.btn_minimize)
+        self.layout.addWidget(self.btn_maximize)
+        self.layout.addWidget(self.btn_close)
+        
+        self.btn_minimize.clicked.connect(self.parent_dialog.showMinimized)
+        self.btn_maximize.clicked.connect(self._toggle_maximize_restore)
+        self.btn_close.clicked.connect(self.parent_dialog.close)
+
+    def _create_button(self, text):
+        btn = QPushButton(text)
+        btn.setFixedSize(30, 30)
+        btn.setObjectName("title_btn")
+        return btn
+        
+    def _toggle_maximize_restore(self):
+        if self.parent_dialog.isMaximized():
+            self.parent_dialog.showNormal()
+            self.btn_maximize.setText("⬜")
+        else:
+            self.parent_dialog.showMaximized()
+            self.btn_maximize.setText("🗗")
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.drag_position = event.globalPos() - self.parent_dialog.frameGeometry().topLeft()
+            event.accept()
+
+    def mouseMoveEvent(self, event):
+        if event.buttons() == Qt.MouseButton.LeftButton:
+            self.parent_dialog.move(event.globalPos() - self.drag_position)
+            event.accept()
+
+class TrimDialog(QDialog):
+    def __init__(self, task_data, parent=None):
+        super().__init__(parent)
+        self.task_data = task_data
+        self.video_url = self._extract_video_url()
+        self.thumb_url = self.task_data.get("thumbnail") or ""
+        self.net_manager = getattr(parent, "net_manager", None) or QNetworkAccessManager(self)
+        self.duration = int(task_data.get("duration_seconds", 0))
+        if self.duration == 0:
+            self.duration = 60 * 60 # Fallback 1 hour
+            
+        self.setWindowTitle("Trim Video")
+        self.setFixedSize(700, 480)
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
+        self.setObjectName("trim_dialog")
+        
+        # Use the global theme if possible, or modern dark colors
+        from ui.themes import get_style_sheet
+        self.setStyleSheet(get_style_sheet(getattr(parent, "theme", "Modern Dark")))
+        self._build_ui()
+        self._init_preview()
+        
+    def _extract_video_url(self) -> str:
+        for key in ("webpage_url", "url", "original_url", "source_url", "video_url"):
+            val = self.task_data.get(key)
+            if isinstance(val, str) and val.strip():
+                return val.strip()
+        return ""
+
+    def _open_video_url(self):
+        if not self.video_url:
+            return
+        QDesktopServices.openUrl(QUrl(self.video_url))
+
+    def _init_preview(self):
+        if hasattr(self, "youtube_btn"):
+            self.youtube_btn.setVisible(bool(self.video_url))
+        if self.thumb_url:
+            request = QNetworkRequest(QUrl(self.thumb_url))
+            reply = self.net_manager.get(request)
+            reply.finished.connect(lambda r=reply: self._on_thumb_loaded(r))
+        else:
+            self.thumb_label.setText("No Thumbnail")
+
+    def _on_thumb_loaded(self, reply):
+        data = reply.readAll()
+        pixmap = QPixmap()
+        if pixmap.loadFromData(data):
+            scaled = pixmap.scaled(
+                self.thumb_label.size(),
+                Qt.AspectRatioMode.KeepAspectRatioByExpanding,
+                Qt.TransformationMode.SmoothTransformation,
+            )
+            self.thumb_label.setPixmap(scaled)
+            self.thumb_label.setText("")
+        else:
+            self.thumb_label.setText("No Thumbnail")
+        reply.deleteLater()
+
+    def _fmt(self, secs):
+        m, s = divmod(int(secs), 60)
+        h, m = divmod(m, 60)
+        return f"{h:02d}:{m:02d}:{s:02d}" if h > 0 else f"{m:02d}:{s:02d}"
+        
+    def _build_ui(self):
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+        
+        self.title_bar = CustomTitleBar(self)
+        main_layout.addWidget(self.title_bar)
+        
+        content_layout = QHBoxLayout()
+        content_layout.setContentsMargins(15, 15, 15, 15)
+        content_layout.setSpacing(20)
+        
+        # ── Left Column (Video & Toggle) ──
+        left_col = QVBoxLayout()
+        left_col.setSpacing(15)
+        
+        video_card = QFrame()
+        video_card.setFixedSize(300, 200)
+        video_card.setObjectName("video_preview_card")
+        vg = QGridLayout(video_card)
+        vg.setContentsMargins(0, 0, 0, 0)
+        vg.setSpacing(0)
+
+        self.thumb_label = QLabel()
+        self.thumb_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.thumb_label.setFixedSize(300, 200)
+        self.thumb_label.setObjectName("thumb_preview")
+        self.thumb_label.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.thumb_label.mousePressEvent = lambda _e: self._open_video_url()
+        vg.addWidget(self.thumb_label, 0, 0)
+
+        self.youtube_btn = QPushButton("▶")
+        self.youtube_btn.setFixedSize(28, 28)
+        self.youtube_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.youtube_btn.setObjectName("youtube_play_btn")
+        self.youtube_btn.clicked.connect(self._open_video_url)
+
+        btn_wrap = QWidget()
+        btn_wrap.setObjectName("transparent_widget")
+        bw = QHBoxLayout(btn_wrap)
+        bw.setContentsMargins(0, 0, 8, 8)
+        bw.addStretch(1)
+        bw.addWidget(self.youtube_btn, 0, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignBottom)
+        vg.addWidget(btn_wrap, 0, 0, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignBottom)
+        
+        # Time Indicator under video
+        time_lbl = QLabel(f"00:00 / {self._fmt(self.duration)}")
+        time_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        time_lbl.setObjectName("time_indicator")
+        
+        left_col.addWidget(video_card)
+        left_col.addWidget(time_lbl)
+        
+        # Toggle switch
+        toggle_row = QHBoxLayout()
+        toggle_lbl = QLabel("Enter start & end time manually")
+        toggle_lbl.setObjectName("section_title")
+        self.toggle_switch = ToggleSwitch()
+        self.toggle_switch.toggled.connect(self._on_toggle)
+        toggle_row.addWidget(toggle_lbl)
+        toggle_row.addWidget(self.toggle_switch)
+        
+        left_col.addLayout(toggle_row)
+        left_col.addStretch(1)
+        
+        # ── Right Column (Trim Controls) ──
+        right_col = QVBoxLayout()
+        right_col.setSpacing(15)
+        
+        header = QLabel("Trim #1")
+        header.setObjectName("section_title")
+        right_col.addWidget(header)
+        
+        line = QFrame()
+        line.setFrameShape(QFrame.Shape.HLine)
+        line.setObjectName("h_separator")
+        right_col.addWidget(line)
+        
+        # Stacked Widget for Slider vs Manual
+        self.stack = QStackedWidget()
+        self.stack.setFixedHeight(120)
+        
+        # Page 0: Slider
+        slider_page = QWidget()
+        sl_layout = QVBoxLayout(slider_page)
+        sl_layout.setContentsMargins(10, 20, 10, 0)
+        
+        self.slider = RangeSlider()
+        self.slider.setRange(0, self.duration)
+        self.slider.rangeChanged.connect(self._on_slider_changed)
+        sl_layout.addWidget(self.slider)
+        
+        sl_labels = QHBoxLayout()
+        self.lbl_start = QLabel("00:00")
+        self.lbl_start.setObjectName("single_sub")
+        self.lbl_end = QLabel(self._fmt(self.duration))
+        self.lbl_end.setObjectName("single_sub")
+        sl_labels.addWidget(self.lbl_start)
+        sl_labels.addStretch(1)
+        sl_labels.addWidget(self.lbl_end)
+        sl_layout.addLayout(sl_labels)
+        
+        self.stack.addWidget(slider_page)
+        
+        # Page 1: Manual Input
+        manual_page = QWidget()
+        man_layout = QVBoxLayout(manual_page)
+        man_layout.setContentsMargins(0, 10, 0, 0)
+        
+        man_row = QHBoxLayout()
+        man_row.setSpacing(20)
+        
+        start_col = QVBoxLayout()
+        start_lbl = QLabel("Start:")
+        start_lbl.setObjectName("single_sub")
+        self.input_start = QLineEdit("00:00:00")
+        self.input_start.setObjectName("trim_input")
+        self.input_start.setFixedWidth(120)
+        start_col.addWidget(start_lbl)
+        start_col.addWidget(self.input_start)
+        
+        end_col = QVBoxLayout()
+        end_lbl = QLabel("End:")
+        end_lbl.setObjectName("single_sub")
+        self.input_end = QLineEdit(self._fmt(self.duration))
+        self.input_end.setObjectName("trim_input")
+        self.input_end.setFixedWidth(120)
+        end_col.addWidget(end_lbl)
+        end_col.addWidget(self.input_end)
+        
+        man_row.addLayout(start_col)
+        man_row.addLayout(end_col)
+        man_row.addStretch(1)
+        
+        man_layout.addLayout(man_row)
+        man_layout.addStretch(1)
+        self.stack.addWidget(manual_page)
+        
+        right_col.addWidget(self.stack)
+        
+        # Title / Filename
+        right_col.addSpacing(10)
+        title_lbl = QLabel("Title / Filename:")
+        title_lbl.setObjectName("single_sub")
+        right_col.addWidget(title_lbl)
+        
+        self.input_title = QLineEdit(f"{self.task_data.get('title', 'Video')} (Trim)")
+        self.input_title.setObjectName("trim_input")
+        right_col.addWidget(self.input_title)
+        
+        right_col.addStretch(1)
+        
+        content_layout.addLayout(left_col, 2)
+        content_layout.addLayout(right_col, 3)
+        
+        main_layout.addLayout(content_layout)
+        
+        # ── Bottom Buttons ──
+        btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(10)
+        
+        btn_cancel = QPushButton("Cancel/Reset")
+        btn_cancel.setFixedHeight(40)
+        btn_cancel.setObjectName("trim_btn_danger")
+        btn_cancel.clicked.connect(self.reject)
+        
+        btn_add = QPushButton("+ Add new trim")
+        btn_add.setFixedHeight(40)
+        btn_add.setObjectName("trim_btn_accent")
+        
+        btn_save = QPushButton("Save")
+        btn_save.setFixedHeight(40)
+        btn_save.setObjectName("trim_btn_success")
+        btn_save.clicked.connect(self.accept)
+        
+        btn_layout.addWidget(btn_cancel, 1)
+        btn_layout.addWidget(btn_add, 1)
+        btn_layout.addWidget(btn_save, 1)
+        
+        main_layout.addLayout(btn_layout)
+
+    def _on_toggle(self, checked):
+        self.stack.setCurrentIndex(1 if checked else 0)
+
+    def _on_slider_changed(self, low, high):
+        self.lbl_start.setText(self._fmt(low))
+        self.lbl_end.setText(self._fmt(high))
+        self.input_start.setText(self._fmt(low))
+        self.input_end.setText(self._fmt(high))
+
+    def get_trim_data(self):
+        return {
+            "start": self.input_start.text(),
+            "end": self.input_end.text(),
+            "title": self.input_title.text()
+        }
+
+
+class TrimBlock(QWidget):
+    deleteRequested = Signal(int)
+
+    def __init__(self, index: int, duration: int, title: str, parent=None):
+        super().__init__(parent)
+        self.index = int(index)
+        self.duration = int(duration)
+        self._build_ui()
+        self.set_duration(self.duration)
+        self.set_title(title)
+        self.set_manual_mode(False)
+        self.set_range_seconds(0, self.duration)
+        self._sync_header()
+
+    def _build_ui(self):
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(10)
+
+        head = QHBoxLayout()
+        head.setSpacing(10)
+        self.header_lbl = QLabel("")
+        self.header_lbl.setObjectName("section_title")
+        self.delete_btn = QPushButton("Delete")
+        self.delete_btn.setFixedWidth(70)
+        self.delete_btn.setObjectName("trim_btn_danger")
+        self.delete_btn.clicked.connect(lambda: self.deleteRequested.emit(self.index))
+        head.addWidget(self.header_lbl)
+        head.addStretch(1)
+        head.addWidget(self.delete_btn)
+        outer.addLayout(head)
+
+        line = QFrame()
+        line.setFrameShape(QFrame.Shape.HLine)
+        line.setObjectName("h_separator")
+        outer.addWidget(line)
+
+        self.stack = QStackedWidget()
+        self.stack.setFixedHeight(120)
+
+        slider_page = QWidget()
+        sl = QVBoxLayout(slider_page)
+        sl.setContentsMargins(10, 20, 10, 0)
+        self.slider = RangeSlider()
+        self.slider.rangeChanged.connect(self._on_slider_changed)
+        sl.addWidget(self.slider)
+        sl_labels = QHBoxLayout()
+        self.lbl_start = QLabel("00:00")
+        self.lbl_start.setObjectName("single_sub")
+        self.lbl_end = QLabel("00:00")
+        self.lbl_end.setObjectName("single_sub")
+        sl_labels.addWidget(self.lbl_start)
+        sl_labels.addStretch(1)
+        sl_labels.addWidget(self.lbl_end)
+        sl.addLayout(sl_labels)
+        self.stack.addWidget(slider_page)
+
+        manual_page = QWidget()
+        ml = QVBoxLayout(manual_page)
+        ml.setContentsMargins(0, 10, 0, 0)
+        row = QHBoxLayout()
+        row.setSpacing(20)
+        sc = QVBoxLayout()
+        slbl = QLabel("Start:")
+        slbl.setObjectName("single_sub")
+        self.input_start = QLineEdit("00:00:00")
+        self.input_start.setObjectName("trim_input")
+        self.input_start.setFixedWidth(120)
+        sc.addWidget(slbl)
+        sc.addWidget(self.input_start)
+
+        ec = QVBoxLayout()
+        elbl = QLabel("End:")
+        elbl.setObjectName("single_sub")
+        self.input_end = QLineEdit("00:00:00")
+        self.input_end.setObjectName("trim_input")
+        self.input_end.setFixedWidth(120)
+        ec.addWidget(elbl)
+        ec.addWidget(self.input_end)
+
+        row.addLayout(sc)
+        row.addLayout(ec)
+        row.addStretch(1)
+        ml.addLayout(row)
+        ml.addStretch(1)
+        self.stack.addWidget(manual_page)
+
+        outer.addWidget(self.stack)
+
+        title_lbl = QLabel("Title / Filename:")
+        title_lbl.setObjectName("single_sub")
+        outer.addWidget(title_lbl)
+        self.input_title = QLineEdit("")
+        self.input_title.setObjectName("trim_input")
+        outer.addWidget(self.input_title)
+
+    def set_index(self, index: int):
+        self.index = int(index)
+        self._sync_header()
+
+    def set_duration(self, duration: int):
+        self.duration = max(1, int(duration))
+        self.slider.setRange(0, self.duration)
+
+    def set_title(self, title: str):
+        self.input_title.setText(str(title or ""))
+
+    def set_manual_mode(self, manual: bool):
+        self.stack.setCurrentIndex(1 if manual else 0)
+
+    def show_delete(self, visible: bool):
+        self.delete_btn.setVisible(bool(visible))
+
+    def _sync_header(self):
+        self.header_lbl.setText(f"Trim #{self.index + 1}")
+
+    def _fmt(self, secs: int) -> str:
+        m, s = divmod(int(secs), 60)
+        h, m = divmod(m, 60)
+        return f"{h:02d}:{m:02d}:{s:02d}" if h > 0 else f"{m:02d}:{s:02d}"
+
+    def _parse_time(self, value: str) -> int:
+        text = str(value or "").strip()
+        if not text:
+            return 0
+        parts = [p for p in text.split(":") if p != ""]
+        try:
+            nums = [int(p) for p in parts]
+        except Exception:
+            return 0
+        if len(nums) == 2:
+            mm, ss = nums
+            return max(0, mm * 60 + ss)
+        if len(nums) == 3:
+            hh, mm, ss = nums
+            return max(0, hh * 3600 + mm * 60 + ss)
+        return 0
+
+    def set_range_seconds(self, start_s: int, end_s: int):
+        start_s = max(0, min(int(start_s), self.duration - 1))
+        end_s = max(start_s + 1, min(int(end_s), self.duration))
+        self.slider.setValues(start_s, end_s)
+        self.lbl_start.setText(self._fmt(start_s))
+        self.lbl_end.setText(self._fmt(end_s))
+        self.input_start.setText(self._fmt(start_s))
+        self.input_end.setText(self._fmt(end_s))
+
+    def get_trim_seconds(self, manual_mode: bool) -> dict:
+        if manual_mode:
+            start_s = self._parse_time(self.input_start.text())
+            end_s = self._parse_time(self.input_end.text())
+        else:
+            start_s = int(self.slider.low())
+            end_s = int(self.slider.high())
+        start_s = max(0, min(int(start_s), self.duration - 1))
+        end_s = max(start_s + 1, min(int(end_s), self.duration))
+        title = str(self.input_title.text() or "").strip()
+        return {"start": start_s, "end": end_s, "title": title}
+
+    def _on_slider_changed(self, low, high):
+        self.lbl_start.setText(self._fmt(low))
+        self.lbl_end.setText(self._fmt(high))
+        self.input_start.setText(self._fmt(low))
+        self.input_end.setText(self._fmt(high))
+
+
+class TrimView(QWidget):
+    saved = Signal(dict)
+    backRequested = Signal()
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.task_data = {}
+        self.video_url = ""
+        self.stream_url = ""
+        self.thumb_url = ""
+        self.net_manager = QNetworkAccessManager(self)
+        self.duration = 0
+        self.manual_mode = False
+        self._player = None
+        self._audio = None
+        self._build_ui()
+
+    def set_task(self, task_data: dict, net_manager=None):
+        self.task_data = task_data or {}
+        self.video_url = self._extract_video_url()
+        self.stream_url = self._extract_stream_url()
+        self.thumb_url = self.task_data.get("thumbnail") or ""
+        self.duration = int(self.task_data.get("duration_seconds", 0) or 0)
+        if self.duration <= 0:
+            self.duration = 60 * 60
+        if net_manager is not None:
+            self.net_manager = net_manager
+
+        self.manual_mode = False
+        self.toggle_switch.setChecked(False)
+        self._reset_trims()
+        self._init_preview()
+
+    def _extract_video_url(self) -> str:
+        for key in ("webpage_url", "url", "original_url", "source_url", "video_url"):
+            val = self.task_data.get(key)
+            if isinstance(val, str) and val.strip():
+                return val.strip()
+        return ""
+
+    def _extract_stream_url(self) -> str:
+        for key in ("stream_url", "source_url", "video_url"):
+            val = self.task_data.get(key)
+            if isinstance(val, str) and self._is_direct_media_url(val.strip()):
+                return val.strip()
+        return ""
+
+    def _is_direct_media_url(self, value: str) -> bool:
+        url = str(value or "").strip().lower()
+        if not url.startswith(("http://", "https://")):
+            return False
+        blocked = ("youtube.com/watch", "youtu.be/", "youtube.com/shorts")
+        if any(x in url for x in blocked):
+            return False
+        if any(x in url for x in (".m3u8", ".mp4", ".webm", ".mkv", ".mov", ".avi", ".mpd", ".m4a", ".mp3", ".aac", ".wav", ".ogg", ".flac")):
+            return True
+        return "mime=video" in url or "mime=audio" in url
+
+    def _open_video_url(self):
+        if not self.video_url:
+            return
+        QDesktopServices.openUrl(QUrl(self.video_url))
+
+    def _fmt(self, secs):
+        m, s = divmod(int(secs), 60)
+        h, m = divmod(m, 60)
+        return f"{h:02d}:{m:02d}:{s:02d}" if h > 0 else f"{m:02d}:{s:02d}"
+
+    def _clear_trims_ui(self):
+        while self.trims_layout.count() > 0:
+            item = self.trims_layout.takeAt(0)
+            w = item.widget()
+            if w is not None:
+                w.deleteLater()
+
+    def _trim_blocks(self):
+        blocks = []
+        for i in range(self.trims_layout.count()):
+            w = self.trims_layout.itemAt(i).widget()
+            if isinstance(w, TrimBlock):
+                blocks.append(w)
+        return blocks
+
+    def _reset_trims(self):
+        self._clear_trims_ui()
+        base_title = str(self.task_data.get("title", "Video")).strip() or "Video"
+        block = TrimBlock(0, self.duration, f"{base_title} (Trim #1)", self)
+        block.deleteRequested.connect(self._delete_trim)
+        self.trims_layout.addWidget(block)
+        self._sync_delete_buttons()
+
+    def _add_new_trim(self):
+        blocks = self._trim_blocks()
+        base_title = str(self.task_data.get("title", "Video")).strip() or "Video"
+        idx = len(blocks)
+        block = TrimBlock(idx, self.duration, f"{base_title} (Trim #{idx+1})", self)
+        block.set_manual_mode(self.manual_mode)
+        block.deleteRequested.connect(self._delete_trim)
+        self.trims_layout.addWidget(block)
+        self._sync_delete_buttons()
+
+    def _delete_trim(self, index: int):
+        blocks = self._trim_blocks()
+        if len(blocks) <= 1:
+            return
+        for b in blocks:
+            if b.index == index:
+                b.setParent(None)
+                b.deleteLater()
+                break
+        blocks = self._trim_blocks()
+        for i, b in enumerate(blocks):
+            b.set_index(i)
+            b.set_duration(self.duration)
+            b.set_manual_mode(self.manual_mode)
+        self._sync_delete_buttons()
+
+    def _sync_delete_buttons(self):
+        blocks = self._trim_blocks()
+        for b in blocks:
+            b.show_delete(len(blocks) > 1 and b.index > 0)
+
+    def _on_toggle_manual(self, checked: bool):
+        self.manual_mode = bool(checked)
+        for b in self._trim_blocks():
+            b.set_manual_mode(self.manual_mode)
+
+    def _collect_trims(self):
+        blocks = self._trim_blocks()
+        result = []
+        for b in blocks:
+            b.set_duration(self.duration)
+            result.append(b.get_trim_seconds(self.manual_mode))
+        return result
+
+    def _save(self):
+        trims = self._collect_trims()
+        first = trims[0] if trims else {"start": 0, "end": self.duration, "title": ""}
+        payload = {
+            "start": self._fmt(first.get("start", 0)),
+            "end": self._fmt(first.get("end", self.duration)),
+            "title": str(first.get("title", "") or "").strip(),
+            "trims": trims,
+        }
+        self.saved.emit(payload)
+
+    def _ensure_player(self):
+        if self._player is not None:
+            return True
+        try:
+            from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
+            from PySide6.QtMultimediaWidgets import QVideoWidget
+        except Exception:
+            return False
+        self.video_widget = QVideoWidget()
+        self.video_widget.setMinimumSize(320, 180)
+        self.video_widget.setObjectName("video_preview_card")
+        self._player = QMediaPlayer(self)
+        self._audio = QAudioOutput(self)
+        self._player.setAudioOutput(self._audio)
+        self._player.setVideoOutput(self.video_widget)
+        self._player.playbackStateChanged.connect(self._on_player_state_changed)
+        self._player.positionChanged.connect(self._on_player_position_changed)
+        self._player.durationChanged.connect(self._on_player_duration_changed)
+        if hasattr(self._player, "errorOccurred"):
+            self._player.errorOccurred.connect(self._on_player_error)
+        self.video_stack.addWidget(self.video_widget)
+        return True
+
+    def _init_preview(self):
+        self.loading_label.setText("Loading video preview...")
+        self.thumb_label.setPixmap(QPixmap())
+        self.thumb_label.setText("Loading video preview...")
+        self.youtube_btn.setVisible(bool(self.video_url))
+        self.preview_play_btn.setText("▶")
+        self.preview_play_btn.setEnabled(False)
+        self.preview_time_lbl.setText("00:00 / 00:00")
+        if self._player is not None:
+            self._player.stop()
+
+        file_path = str(self.task_data.get("file_path") or "").strip()
+        if file_path and os.path.exists(file_path) and self._ensure_player():
+            self.video_stack.setCurrentIndex(1)
+            self._player.setSource(QUrl.fromLocalFile(file_path))
+            self.preview_play_btn.setEnabled(True)
+            return
+
+        if self.stream_url and self._ensure_player():
+            self.video_stack.setCurrentIndex(1)
+            self._player.setSource(QUrl(self.stream_url))
+            self.preview_play_btn.setEnabled(True)
+            return
+
+        self.video_stack.setCurrentIndex(0)
+        self.preview_play_btn.setEnabled(bool(self.video_url))
+        if self.thumb_url:
+            request = QNetworkRequest(QUrl(self.thumb_url))
+            reply = self.net_manager.get(request)
+            reply.finished.connect(lambda r=reply: self._on_thumb_loaded(r))
+        else:
+            self.thumb_label.setText("Loading video preview...")
+
+    def _on_thumb_loaded(self, reply):
+        data = reply.readAll()
+        pixmap = QPixmap()
+        if pixmap.loadFromData(data):
+            scaled = pixmap.scaled(
+                self.thumb_label.size(),
+                Qt.AspectRatioMode.KeepAspectRatioByExpanding,
+                Qt.TransformationMode.SmoothTransformation,
+            )
+            self.thumb_label.setPixmap(scaled)
+            self.thumb_label.setText("")
+        else:
+            self.thumb_label.setText("Loading video preview...")
+        reply.deleteLater()
+
+    def _toggle_preview_play(self):
+        if self._player is None or self.video_stack.currentIndex() != 1:
+            self._open_video_url()
+            return
+        try:
+            from PySide6.QtMultimedia import QMediaPlayer
+        except Exception:
+            return
+        if self._player.playbackState() == QMediaPlayer.PlaybackState.PlayingState:
+            self._player.pause()
+            self.preview_play_btn.setText("▶")
+        else:
+            self._player.play()
+            self.preview_play_btn.setText("⏸")
+
+    def _on_player_state_changed(self, state):
+        try:
+            from PySide6.QtMultimedia import QMediaPlayer
+        except Exception:
+            return
+        if state == QMediaPlayer.PlaybackState.PlayingState:
+            self.preview_play_btn.setText("⏸")
+        else:
+            self.preview_play_btn.setText("▶")
+
+    def _on_player_duration_changed(self, duration_ms):
+        total = max(0, int(duration_ms or 0) // 1000)
+        self.preview_time_lbl.setText(f"{self._fmt(0)} / {self._fmt(total)}")
+
+    def _on_player_position_changed(self, position_ms):
+        if self._player is None:
+            return
+        pos = max(0, int(position_ms or 0) // 1000)
+        dur = max(0, int(self._player.duration() or 0) // 1000)
+        self.preview_time_lbl.setText(f"{self._fmt(pos)} / {self._fmt(dur)}")
+
+    def _on_player_error(self, *args):
+        if self._player is None:
+            return
+        self._player.stop()
+        self.video_stack.setCurrentIndex(0)
+        self.preview_play_btn.setText("▶")
+        self.preview_play_btn.setEnabled(bool(self.video_url))
+        if self.thumb_url and self.thumb_label.pixmap() is None:
+            request = QNetworkRequest(QUrl(self.thumb_url))
+            reply = self.net_manager.get(request)
+            reply.finished.connect(lambda r=reply: self._on_thumb_loaded(r))
+        elif not self.thumb_url:
+            self.thumb_label.setText("Preview unavailable")
+
+    def _build_ui(self):
+        root = QVBoxLayout(self)
+        root.setContentsMargins(15, 15, 15, 15)
+        root.setSpacing(12)
+
+        top_row = QHBoxLayout()
+        self.back_btn = QPushButton("← رجوع")
+        self.back_btn.setFixedHeight(34)
+        self.back_btn.setFixedWidth(90)
+        self.back_btn.setObjectName("action_button")
+        self.back_btn.clicked.connect(self.backRequested.emit)
+        top_row.addWidget(self.back_btn, 0, Qt.AlignmentFlag.AlignLeft)
+        top_row.addStretch(1)
+        root.addLayout(top_row)
+
+        content = QHBoxLayout()
+        content.setSpacing(20)
+
+        left_col = QVBoxLayout()
+        left_col.setSpacing(12)
+
+        self.video_stack = QStackedWidget()
+        self.video_stack.setFixedSize(320, 200)
+
+        thumb_frame = QFrame()
+        thumb_frame.setFixedSize(320, 200)
+        thumb_frame.setObjectName("video_preview_card")
+        tg = QGridLayout(thumb_frame)
+        tg.setContentsMargins(0, 0, 0, 0)
+        tg.setSpacing(0)
+
+        self.thumb_label = QLabel("Loading video preview...")
+        self.thumb_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.thumb_label.setFixedSize(320, 200)
+        self.thumb_label.setObjectName("thumb_preview")
+        self.thumb_label.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.thumb_label.mousePressEvent = lambda _e: self._open_video_url()
+        tg.addWidget(self.thumb_label, 0, 0)
+
+        self.youtube_btn = QPushButton("▶")
+        self.youtube_btn.setFixedSize(28, 28)
+        self.youtube_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.youtube_btn.setObjectName("youtube_play_btn")
+        self.youtube_btn.clicked.connect(self._open_video_url)
+
+        btn_wrap = QWidget()
+        btn_wrap.setObjectName("transparent_widget")
+        bw = QHBoxLayout(btn_wrap)
+        bw.setContentsMargins(0, 0, 8, 8)
+        bw.addStretch(1)
+        bw.addWidget(self.youtube_btn, 0, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignBottom)
+        tg.addWidget(btn_wrap, 0, 0, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignBottom)
+        
+        self.video_stack.addWidget(thumb_frame)
+        
+        # Loading Overlay
+        self.loading_label = QLabel("Loading video preview...")
+        self.loading_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.loading_label.setObjectName("thumb_preview")
+        self.video_stack.addWidget(self.loading_label)
+
+        left_col.addWidget(self.video_stack)
+        
+        preview_controls = QHBoxLayout()
+        self.preview_play_btn = QPushButton("▶")
+        self.preview_play_btn.setFixedSize(40, 40)
+        self.preview_play_btn.setObjectName("trim_btn_accent")
+        self.preview_play_btn.clicked.connect(self._toggle_preview_play)
+        
+        self.preview_time_lbl = QLabel("00:00 / 00:00")
+        self.preview_time_lbl.setObjectName("time_indicator")
+        
+        preview_controls.addWidget(self.preview_play_btn)
+        preview_controls.addWidget(self.preview_time_lbl)
+        preview_controls.addStretch(1)
+        left_col.addLayout(preview_controls)
+        
+        toggle_row = QHBoxLayout()
+        toggle_lbl = QLabel("Enter start & end time manually")
+        toggle_lbl.setObjectName("section_title")
+        self.toggle_switch = ToggleSwitch()
+        self.toggle_switch.toggled.connect(self._on_toggle_manual)
+        toggle_row.addWidget(toggle_lbl)
+        toggle_row.addWidget(self.toggle_switch)
+        left_col.addLayout(toggle_row)
+        left_col.addStretch(1)
+        
+        # ── Right Column (Trims List) ──
+        right_col = QVBoxLayout()
+        right_col.setSpacing(10)
+        
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setObjectName("transparent_widget")
+        
+        self.trims_container = QWidget()
+        self.trims_layout = QVBoxLayout(self.trims_container)
+        self.trims_layout.setContentsMargins(0, 0, 10, 0)
+        self.trims_layout.setSpacing(20)
+        self.trims_layout.addStretch(1)
+        
+        scroll.setWidget(self.trims_container)
+        right_col.addWidget(scroll)
+        
+        # ── Bottom Action Buttons ──
+        actions = QHBoxLayout()
+        actions.setSpacing(10)
+        
+        btn_cancel = QPushButton("Cancel")
+        btn_cancel.setFixedHeight(40)
+        btn_cancel.setObjectName("trim_btn_danger")
+        btn_cancel.clicked.connect(self.backRequested.emit)
+        
+        btn_add = QPushButton("+ Add new trim")
+        btn_add.setFixedHeight(40)
+        btn_add.setObjectName("trim_btn_accent")
+        btn_add.clicked.connect(self._add_new_trim)
+        
+        btn_save = QPushButton("Save All Trims")
+        btn_save.setFixedHeight(40)
+        btn_save.setObjectName("trim_btn_success")
+        btn_save.clicked.connect(self._save)
+        
+        actions.addWidget(btn_cancel, 1)
+        actions.addWidget(btn_add, 1)
+        actions.addWidget(btn_save, 1)
+        
+        right_col.addLayout(actions)
+        
+        content.addLayout(left_col, 2)
+        content.addLayout(right_col, 3)
+        root.addLayout(content)
+
+
+
+
+====================================================================================================
+FILE: ui\views\__init__.py
+====================================================================================================
+
+
+"""
+ui/views/__init__.py - View components package
+"""
+
+
+
+
+====================================================================================================
+FILE: ui\views\base_view.py
+====================================================================================================
+
+
+"""
+ui/views/base_view.py - Base class for all independent UI Views.
+"""
+from PySide6.QtWidgets import QWidget
+from PySide6.QtCore import Signal
+
+class BaseView(QWidget):
+    """
+    Base class for application views.
+    Provides common functionality and enforces a uniform interface.
+    """
+    
+    # Generic signal to request navigating to another view
+    navigate_requested = Signal(str)
+    
+    # Generic signal to show a notification/toast
+    notify_requested = Signal(str, str) # title, message
+
+    def __init__(self, main_window=None, parent=None):
+        super().__init__(parent)
+        self.main_window = main_window # Reference to PremiumWindow or a UI Mediator
+        
+    def setup_ui(self):
+        """Build the UI layout for this view. Should be overridden."""
+        pass
+        
+    def refresh_state(self):
+        """Called when the view becomes active."""
+        pass
+        
+    def apply_theme(self, theme_data: dict):
+        """Called when the app theme changes."""
+        pass
+
+
+
+
+====================================================================================================
+FILE: ui\views\browser_view.py
+====================================================================================================
+
+
+from PySide6.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QFrame, QPushButton, 
+    QLabel, QComboBox, QTextEdit, QRadioButton, QButtonGroup
+)
+from PySide6.QtCore import Qt, Signal
+from core.constants import VIDEO_FORMATS, AUDIO_FORMATS, VIDEO_QUALITIES, AUDIO_QUALITIES, SUBTITLE_OPTIONS
+from core.i18n import _
+from ui.views.base_view import BaseView
+
+class BrowserView(BaseView):
+    # Signals
+    analyze_bulk_requested = Signal(list, dict) # links, settings
+    start_queue_requested = Signal()
+    pause_queue_requested = Signal()
+    resume_queue_requested = Signal()
+
+    def __init__(self, main_window=None, parent=None):
+        super().__init__(main_window, parent)
+        self.setup_ui()
+
+    def setup_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(15, 15, 15, 15)
+        layout.setSpacing(15)
+
+        # Header
+        hdr = QHBoxLayout()
+        title_col = QVBoxLayout()
+        title = QLabel("Bulk Download")
+        title.setObjectName("single_title")
+        desc = QLabel(_("إدارة الروابط المتعددة وقوائم التشغيل بكفاءة عالية"))
+        desc.setObjectName("single_sub")
+        title_col.addWidget(title)
+        title_col.addWidget(desc)
+        hdr.addLayout(title_col)
+        hdr.addStretch(1)
+        layout.addLayout(hdr)
+
+        # Settings Card
+        settings_card = QFrame()
+        settings_card.setObjectName("search_bar_container")
+        sl = QHBoxLayout(settings_card)
+        sl.setContentsMargins(15, 10, 15, 10)
+        sl.setSpacing(15)
+
+        self.bulk_mode_group = QButtonGroup(self)
+        self.bulk_video_radio = QRadioButton("Video")
+        self.bulk_audio_radio = QRadioButton("Audio")
+        self.bulk_video_radio.setChecked(True)
+        self.bulk_mode_group.addButton(self.bulk_video_radio)
+        self.bulk_mode_group.addButton(self.bulk_audio_radio)
+
+        self.bulk_format_combo = QComboBox()
+        self.bulk_format_combo.addItems(VIDEO_FORMATS)
+        self.bulk_format_combo.setFixedWidth(120)
+
+        self.bulk_quality_combo = QComboBox()
+        self.bulk_quality_combo.addItems(VIDEO_QUALITIES)
+        self.bulk_quality_combo.setFixedWidth(120)
+
+        self.bulk_subtitle_combo = QComboBox()
+        self.bulk_subtitle_combo.addItems(SUBTITLE_OPTIONS)
+        self.bulk_subtitle_combo.setCurrentText("None")
+        self.bulk_subtitle_combo.setFixedWidth(120)
+
+        self.bulk_video_radio.toggled.connect(self._on_bulk_mode_changed)
+        self.bulk_audio_radio.toggled.connect(self._on_bulk_mode_changed)
+
+        sl.addWidget(QLabel("Mode:"))
+        sl.addWidget(self.bulk_video_radio)
+        sl.addWidget(self.bulk_audio_radio)
+        sl.addSpacing(10)
+        sl.addWidget(QLabel("Format:"))
+        sl.addWidget(self.bulk_format_combo)
+        sl.addWidget(QLabel("Quality:"))
+        sl.addWidget(self.bulk_quality_combo)
+        sl.addWidget(QLabel("Subtitles:"))
+        sl.addWidget(self.bulk_subtitle_combo)
+        sl.addStretch(1)
+
+        layout.addWidget(settings_card)
+
+        # Input Area
+        self.bulk_text = QTextEdit()
+        self.bulk_text.setObjectName("playlist_list") # Reuse style
+        self.bulk_text.setPlaceholderText("Paste multiple links here, one per line...")
+        layout.addWidget(self.bulk_text, 1)
+
+        # Actions
+        row = QHBoxLayout()
+        row.setSpacing(12)
+        
+        self.bulk_analyze_btn = QPushButton("تحليل وإضافة للطابور")
+        self.bulk_analyze_btn.setObjectName("action_trim")
+        self.bulk_analyze_btn.setMinimumHeight(44)
+        self.bulk_analyze_btn.clicked.connect(self._on_analyze)
+        
+        self.run_queue_btn = QPushButton("تشغيل الطابور")
+        self.run_queue_btn.setObjectName("action_download")
+        self.run_queue_btn.setMinimumHeight(44)
+        self.run_queue_btn.clicked.connect(self.start_queue_requested.emit)
+        
+        self.pause_queue_btn = QPushButton("إيقاف مؤقت")
+        self.pause_queue_btn.setObjectName("action_schedule")
+        self.pause_queue_btn.setMinimumHeight(44)
+        self.pause_queue_btn.clicked.connect(self.pause_queue_requested.emit)
+        
+        self.resume_queue_btn = QPushButton("استكمال")
+        self.resume_queue_btn.setObjectName("action_trim")
+        self.resume_queue_btn.setMinimumHeight(44)
+        self.resume_queue_btn.clicked.connect(self.resume_queue_requested.emit)
+        
+        row.addWidget(self.bulk_analyze_btn, 1)
+        row.addWidget(self.run_queue_btn, 1)
+        row.addWidget(self.pause_queue_btn, 1)
+        row.addWidget(self.resume_queue_btn, 1)
+        layout.addLayout(row)
+
+    def _on_bulk_mode_changed(self):
+        self.bulk_format_combo.blockSignals(True)
+        self.bulk_quality_combo.blockSignals(True)
+        self.bulk_format_combo.clear()
+        self.bulk_quality_combo.clear()
+        
+        if self.bulk_video_radio.isChecked():
+            self.bulk_format_combo.addItems(VIDEO_FORMATS)
+            self.bulk_quality_combo.addItems(VIDEO_QUALITIES)
+        else:
+            self.bulk_format_combo.addItems(AUDIO_FORMATS)
+            self.bulk_quality_combo.addItems(AUDIO_QUALITIES)
+            
+        self.bulk_format_combo.blockSignals(False)
+        self.bulk_quality_combo.blockSignals(False)
+
+    def _on_analyze(self):
+        links = self.get_bulk_urls()
+        settings = self.get_bulk_settings()
+        self.analyze_bulk_requested.emit(links, settings)
+
+    def get_bulk_text(self) -> str:
+        if not hasattr(self, "bulk_text"):
+            return ""
+        return str(self.bulk_text.toPlainText() or "")
+
+    def clear_bulk_text(self):
+        if hasattr(self, "bulk_text"):
+            self.bulk_text.clear()
+
+    def get_bulk_urls(self) -> list[str]:
+        text = self.get_bulk_text()
+        urls = [line.strip() for line in text.replace("\r", "\n").split("\n") if line.strip()]
+        seen = set()
+        unique = []
+        for url in urls:
+            if url in seen:
+                continue
+            seen.add(url)
+            unique.append(url)
+        return unique
+
+    def get_bulk_settings(self) -> dict:
+        mode = "video" if bool(getattr(self, "bulk_video_radio", None) and self.bulk_video_radio.isChecked()) else "audio"
+        fmt = str(self.bulk_format_combo.currentText() if hasattr(self, "bulk_format_combo") else "MP4")
+        quality = str(self.bulk_quality_combo.currentText() if hasattr(self, "bulk_quality_combo") else "1080p").replace(" kbps", "kbps")
+        subtitle = str(self.bulk_subtitle_combo.currentText() if hasattr(self, "bulk_subtitle_combo") else "None")
+        return {
+            "mode": mode,
+            "format": fmt,
+            "quality": quality,
+            "subtitle": subtitle,
+        }
+
+    def set_bulk_analyze_state(self, enabled: bool, text: str | None = None):
+        if not hasattr(self, "bulk_analyze_btn"):
+            return
+        self.bulk_analyze_btn.setEnabled(bool(enabled))
+        if text is not None:
+            self.bulk_analyze_btn.setText(str(text))
+
+    def set_bulk_controls_enabled(self, enabled: bool):
+        for name in ("bulk_analyze_btn", "run_queue_btn", "pause_queue_btn", "resume_queue_btn"):
+            if hasattr(self, name):
+                getattr(self, name).setEnabled(bool(enabled))
+
+
+
+
+====================================================================================================
+FILE: ui\views\downloads_view.py
+====================================================================================================
+
+
+import os
+from PySide6.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QFrame, QLineEdit, QPushButton,
+    QLabel, QComboBox, QListView, QAbstractItemView
+)
+from PySide6.QtCore import Qt, Signal
+from ui.views.base_view import BaseView
+from ui.models import DownloadListModel
+from core.i18n import _
+
+class _ReorderListView(QListView):
+    reorder_requested = Signal(int, int)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._drag_row = -1
+
+    def startDrag(self, supportedActions):
+        indexes = self.selectedIndexes()
+        self._drag_row = indexes[0].row() if indexes else -1
+        super().startDrag(supportedActions)
+
+    def dropEvent(self, event):
+        from_row = int(self._drag_row)
+        to_row = -1
+        try:
+            pos = event.position().toPoint() if hasattr(event, "position") else event.pos()
+            idx = self.indexAt(pos)
+            to_row = idx.row() if idx.isValid() else -1
+        except Exception:
+            to_row = -1
+        if from_row >= 0:
+            self.reorder_requested.emit(from_row, to_row)
+        event.acceptProposedAction()
+
+class DownloadsView(BaseView):
+    filter_changed = Signal(str)
+    search_changed = Signal(str)
+    queue_state_changed = Signal(str)
+    page_changed = Signal(str)
+    export_json_requested = Signal()
+    export_csv_requested = Signal()
+    list_scrolled = Signal(int)
+    list_range_changed = Signal(int, int)
+    queue_reorder_requested = Signal(int, int)
+    history_filters_changed = Signal()
+
+    def __init__(self, main_window=None, parent=None):
+        super().__init__(main_window, parent)
+        self.downloads_dash_specs = []
+        self.filter_buttons = {}
+        self.setup_ui()
+
+    def setup_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(15, 15, 15, 15)
+        layout.setSpacing(15)
+
+        # ── Header & Dashboard ──
+        header_layout = QHBoxLayout()
+        title_col = QVBoxLayout()
+        title_col.setSpacing(4)
+        self.downloads_header_title = QLabel(_("التحميلات (Downloads)"))
+        self.downloads_header_title.setObjectName("single_title")
+        self.downloads_header_desc = QLabel(_("إدارة التحميلات النشطة، المنتظرة، والمكتملة"))
+        self.downloads_header_desc.setObjectName("single_sub")
+        title_col.addWidget(self.downloads_header_title)
+        title_col.addWidget(self.downloads_header_desc)
+        header_layout.addLayout(title_col)
+        header_layout.addStretch(1)
+
+        # Quick stats dashboard
+        self.dash_active = QLabel(_("نشط\n0"))
+        self.dash_queued = QLabel(_("في الطابور\n0"))
+        self.dash_completed = QLabel(_("مكتمل\n0"))
+        self.dash_failed = QLabel(_("فشل\n0"))
+
+        dash_layout = QHBoxLayout()
+        dash_layout.setSpacing(12)
+        self.downloads_dash_specs = [
+            (self.dash_active, "accent"),
+            (self.dash_queued, "accent_2"),
+            (self.dash_completed, "gold"),
+            (self.dash_failed, "danger"),
+        ]
+        for lbl, dash_key in self.downloads_dash_specs:
+            lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            lbl.setFixedSize(70, 50)
+            dash_layout.addWidget(lbl)
+
+        header_layout.addLayout(dash_layout)
+        layout.addLayout(header_layout)
+
+        # ── Tabs & Filters ──
+        self.downloads_tabs_frame = QFrame()
+        self.downloads_tabs_frame.setObjectName("search_bar_container")
+        self.downloads_tabs_frame.setMinimumHeight(118)
+        tabs_col = QVBoxLayout(self.downloads_tabs_frame)
+        tabs_col.setContentsMargins(12, 8, 12, 8)
+        tabs_col.setSpacing(8)
+        
+        tabs_filters_row = QHBoxLayout()
+        tabs_filters_row.setSpacing(12)
+        tabs_actions_row = QHBoxLayout()
+        tabs_actions_row.setSpacing(10)
+
+        filters = [
+            ("active", _("نشط")),
+            ("queued", _("الطابور")),
+            ("scheduled", _("مجدول")),
+            ("completed", _("مكتمل")),
+        ]
+
+        for key, label in filters:
+            btn = QPushButton(label)
+            btn.setObjectName("nav_btn")
+            btn.setCheckable(True)
+            btn.setMinimumWidth(120)
+            btn.setFixedHeight(40)
+            btn.clicked.connect(lambda checked=False, k=key: self._on_filter_clicked(k))
+            self.filter_buttons[key] = btn
+            tabs_filters_row.addWidget(btn)
+
+        tabs_filters_row.addStretch(1)
+
+        # Search & Global Actions
+        self.downloads_search_input = QLineEdit()
+        self.downloads_search_input.setObjectName("search_input")
+        self.downloads_search_input.setPlaceholderText(_("ابحث في التحميلات..."))
+        self.downloads_search_input.setFixedWidth(240)
+        self.downloads_search_input.setFixedHeight(40)
+        self.downloads_search_input.textChanged.connect(self.search_changed.emit)
+        tabs_actions_row.addWidget(self.downloads_search_input)
+
+        self.queue_state_combo = QComboBox()
+        self.queue_state_combo.setFixedHeight(40)
+        self.queue_state_combo.setFixedWidth(180)
+        self.queue_state_combo.addItems(
+            [
+                _("الكل"),
+                _("في الانتظار"),
+                _("قيد التشغيل"),
+                _("متوقف مؤقتاً"),
+                _("فشل"),
+                _("ملغى"),
+            ]
+        )
+        self.queue_state_combo.currentTextChanged.connect(self.queue_state_changed.emit)
+        tabs_actions_row.addWidget(self.queue_state_combo)
+
+        self.page_combo = QComboBox()
+        self.page_combo.setObjectName("search_input")
+        self.page_combo.setFixedHeight(40)
+        self.page_combo.setFixedWidth(90)
+        self.page_combo.currentTextChanged.connect(self.page_changed.emit)
+        self.page_combo.hide()
+        tabs_actions_row.addWidget(self.page_combo)
+
+        self.history_mode_combo = QComboBox()
+        self.history_mode_combo.setFixedHeight(40)
+        self.history_mode_combo.setFixedWidth(130)
+        self.history_mode_combo.addItem(_("All Types"), "all")
+        self.history_mode_combo.addItem(_("Video Only"), "video")
+        self.history_mode_combo.addItem(_("Audio Only"), "audio")
+        self.history_mode_combo.currentIndexChanged.connect(self.history_filters_changed.emit)
+        tabs_actions_row.addWidget(self.history_mode_combo)
+
+        self.history_format_combo = QComboBox()
+        self.history_format_combo.setFixedHeight(40)
+        self.history_format_combo.setFixedWidth(140)
+        self.history_format_combo.addItem(_("All Formats"), "all")
+        self.history_format_combo.addItem("MP4", "MP4")
+        self.history_format_combo.addItem("MKV", "MKV")
+        self.history_format_combo.addItem("MP3", "MP3")
+        self.history_format_combo.addItem("M4A", "M4A")
+        self.history_format_combo.currentIndexChanged.connect(self.history_filters_changed.emit)
+        tabs_actions_row.addWidget(self.history_format_combo)
+
+        self.history_date_combo = QComboBox()
+        self.history_date_combo.setFixedHeight(40)
+        self.history_date_combo.setFixedWidth(150)
+        self.history_date_combo.addItem(_("All Time"), "all")
+        self.history_date_combo.addItem(_("Last 24 hours"), "24h")
+        self.history_date_combo.addItem(_("Last 7 days"), "7d")
+        self.history_date_combo.addItem(_("Last 30 days"), "30d")
+        self.history_date_combo.currentIndexChanged.connect(self.history_filters_changed.emit)
+        tabs_actions_row.addWidget(self.history_date_combo)
+        tabs_actions_row.addStretch(1)
+
+        export_csv_btn = QPushButton(_("Export CSV"))
+        export_csv_btn.setObjectName("action_trim")
+        export_csv_btn.setFixedWidth(118)
+        export_csv_btn.setFixedHeight(40)
+        export_csv_btn.clicked.connect(self.export_csv_requested.emit)
+        tabs_actions_row.addWidget(export_csv_btn)
+
+        export_json_btn = QPushButton(_("Export JSON"))
+        export_json_btn.setObjectName("action_trim")
+        export_json_btn.setFixedWidth(118)
+        export_json_btn.setFixedHeight(40)
+        export_json_btn.clicked.connect(self.export_json_requested.emit)
+        tabs_actions_row.addWidget(export_json_btn)
+
+        tabs_col.addLayout(tabs_filters_row)
+        tabs_col.addLayout(tabs_actions_row)
+        layout.addWidget(self.downloads_tabs_frame)
+
+        # ── List Area ──
+        self.downloads_list = _ReorderListView()
+        self.downloads_model = DownloadListModel([])
+        self.downloads_list.setModel(self.downloads_model)
+        self.downloads_list.setObjectName("playlist_list")
+        self.downloads_list.setSpacing(10)
+        self.downloads_list.setFrameShape(QFrame.Shape.NoFrame)
+        self.downloads_list.setVerticalScrollMode(QListView.ScrollMode.ScrollPerPixel)
+        self.downloads_list.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.downloads_list.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self.downloads_list.setDragEnabled(True)
+        self.downloads_list.setAcceptDrops(True)
+        self.downloads_list.setDropIndicatorShown(True)
+        self.downloads_list.setDefaultDropAction(Qt.DropAction.MoveAction)
+        self.downloads_list.setDragDropMode(QAbstractItemView.DragDropMode.DragDrop)
+        self.downloads_list.reorder_requested.connect(self.queue_reorder_requested.emit)
+        
+        scroll_bar = self.downloads_list.verticalScrollBar()
+        scroll_bar.valueChanged.connect(self.list_scrolled.emit)
+        scroll_bar.rangeChanged.connect(self.list_range_changed.emit)
+        
+        layout.addWidget(self.downloads_list, 1)
+
+    def _on_filter_clicked(self, key):
+        self.filter_changed.emit(key)
+
+    def set_active_filter(self, key: str):
+        target = str(key or "")
+        for name, btn in (self.filter_buttons or {}).items():
+            if btn is None:
+                continue
+            btn.setChecked(str(name) == target)
+
+    def get_search_query(self) -> str:
+        if not hasattr(self, "downloads_search_input"):
+            return ""
+        return str(self.downloads_search_input.text() or "").strip()
+
+    def get_history_filters(self) -> dict:
+        mode = "all"
+        fmt = "all"
+        date = "all"
+        if hasattr(self, "history_mode_combo"):
+            mode = str(self.history_mode_combo.currentData() or "all")
+        if hasattr(self, "history_format_combo"):
+            fmt = str(self.history_format_combo.currentData() or "all")
+        if hasattr(self, "history_date_combo"):
+            date = str(self.history_date_combo.currentData() or "all")
+        return {"mode": mode, "format": fmt, "date": date}
+
+    def set_queue_state_visible(self, visible: bool):
+        if hasattr(self, "queue_state_combo"):
+            self.queue_state_combo.setVisible(bool(visible))
+
+    def set_page_options(self, total_pages: int, current_page: int):
+        if not hasattr(self, "page_combo"):
+            return
+        pages = max(1, int(total_pages or 1))
+        current = max(1, min(int(current_page or 1), pages))
+        if pages <= 1:
+            self.page_combo.hide()
+            return
+        self.page_combo.blockSignals(True)
+        self.page_combo.clear()
+        for p in range(1, pages + 1):
+            self.page_combo.addItem(str(p))
+        self.page_combo.setCurrentText(str(current))
+        self.page_combo.blockSignals(False)
+        self.page_combo.setVisible(True)
+
+    def set_dashboard_counts(self, active: int, queued: int, completed: int, failed: int):
+        if hasattr(self, "dash_active"):
+            self.dash_active.setText(f"نشط\n{int(active or 0)}")
+        if hasattr(self, "dash_queued"):
+            self.dash_queued.setText(f"في الطابور\n{int(queued or 0)}")
+        if hasattr(self, "dash_completed"):
+            self.dash_completed.setText(f"مكتمل\n{int(completed or 0)}")
+        if hasattr(self, "dash_failed"):
+            self.dash_failed.setText(f"فشل\n{int(failed or 0)}")
+
+    def apply_theme(self, theme_data: dict, get_theme_func):
+        t = get_theme_func(theme_data["theme"])
+        if hasattr(self, "downloads_header_title"):
+            self.downloads_header_title.setStyleSheet(f"font-size: 24px; font-weight: 800; color: {t['text']};")
+        if hasattr(self, "downloads_header_desc"):
+            self.downloads_header_desc.setStyleSheet(f"font-size: 13px; color: {t['muted']};")
+        if hasattr(self, "downloads_tabs_frame"):
+            self.downloads_tabs_frame.setStyleSheet(
+                f"""
+                QFrame#search_bar_container {{
+                    background: {t['panel']};
+                    border-radius: 12px;
+                    border: 1px solid {t['border']};
+                }}
+                """
+            )
+        if hasattr(self, "downloads_dash_specs"):
+            palette = {
+                "accent": t["accent"],
+                "accent_2": t["accent_2"],
+                "gold": t["gold"],
+                "danger": t["danger"],
+            }
+            for lbl, key in self.downloads_dash_specs:
+                color = palette.get(key, t["text"])
+                lbl.setStyleSheet(
+                    f"""
+                    background: {t['bg']};
+                    color: {color};
+                    border: 1px solid {t['border']};
+                    border-radius: 10px;
+                    font-size: 12px;
+                    font-weight: bold;
+                    """
+                )
+        if hasattr(self, "filter_buttons"):
+            for btn in self.filter_buttons.values():
+                btn.setStyleSheet(
+                    f"""
+                    QPushButton {{
+                        background: transparent;
+                        color: {t['muted']};
+                        border: none;
+                        border-radius: 8px;
+                        font-size: 14px;
+                        font-weight: bold;
+                    }}
+                    QPushButton:checked {{
+                        background: {t['accent']};
+                        color: white;
+                    }}
+                    QPushButton:hover:!checked {{
+                        background: {t['panel_soft']};
+                        color: {t['text']};
+                    }}
+                    """
+                )
+
+
+
+
+====================================================================================================
+FILE: ui\views\player_view.py
+====================================================================================================
+
+
+from PySide6.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QFrame, QPushButton, 
+    QLabel, QSlider
+)
+from PySide6.QtCore import Qt, Signal, QTimer, QUrl
+from PySide6.QtMultimediaWidgets import QVideoWidget
+from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
+from ui.views.base_view import BaseView
+from core.i18n import _
+
+class PlayerView(BaseView):
+    # Signals
+    back_requested = Signal()
+    fullscreen_requested = Signal()
+    playback_toggled = Signal()
+    stop_requested = Signal()
+    next_requested = Signal()
+    prev_requested = Signal()
+    seek_requested = Signal(int)
+    volume_changed = Signal(int)
+
+    def __init__(self, main_window=None, parent=None):
+        super().__init__(main_window, parent)
+        self._player_is_seeking = False
+        self.setup_ui()
+
+    def setup_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        # Video Widget
+        self.video_widget = QVideoWidget()
+        self.video_widget.setStyleSheet("background-color: black;")
+        self.media_player = QMediaPlayer()
+        self.audio_output = QAudioOutput()
+        self.media_player.setVideoOutput(self.video_widget)
+        self.media_player.setAudioOutput(self.audio_output)
+        self.audio_output.setVolume(0.8)
+
+        # Overlay for Title (Optional)
+        self.player_title_overlay = QLabel("")
+        self.player_title_overlay.setObjectName("single_title")
+        self.player_title_overlay.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+        self.player_title_overlay.setStyleSheet("background-color: rgba(0,0,0,150); color: white; padding: 10px; font-size: 16px;")
+        self.player_title_overlay.hide()
+
+        # Controls Container
+        controls_wrap = QWidget()
+        controls_wrap.setFixedHeight(100)
+        cw_layout = QVBoxLayout(controls_wrap)
+        cw_layout.setContentsMargins(20, 10, 20, 10)
+        cw_layout.setSpacing(5)
+        
+        # Seek Slider
+        self.player_seek_slider = QSlider(Qt.Orientation.Horizontal)
+        self.player_seek_slider.setObjectName("player_slider")
+        self.player_seek_slider.setRange(0, 0)
+        self.player_seek_slider.sliderPressed.connect(self._on_seek_pressed)
+        self.player_seek_slider.sliderReleased.connect(self._on_seek_released)
+        self.player_seek_slider.sliderMoved.connect(lambda value: self.media_player.setPosition(int(value)))
+        cw_layout.addWidget(self.player_seek_slider)
+
+        # Buttons Row
+        btns_row = QHBoxLayout()
+        btns_row.setSpacing(15)
+        
+        self.play_btn = QPushButton(_("Play"))
+        self.play_btn.setFixedSize(44, 44)
+        self.play_btn.setObjectName("action_download") # Circular/Accent style
+        self.play_btn.clicked.connect(self.playback_toggled.emit)
+        
+        stop_btn = QPushButton(_("Stop"))
+        stop_btn.setFixedSize(36, 36)
+        stop_btn.setObjectName("action_trim")
+        stop_btn.clicked.connect(self.media_player.stop)
+        stop_btn.clicked.connect(self.stop_requested.emit)
+
+        self.prev_btn = QPushButton(_("Prev"))
+        self.prev_btn.setFixedSize(36, 36)
+        self.prev_btn.setObjectName("action_trim")
+        self.prev_btn.clicked.connect(self.prev_requested.emit)
+
+        self.next_btn = QPushButton(_("Next"))
+        self.next_btn.setFixedSize(36, 36)
+        self.next_btn.setObjectName("action_trim")
+        self.next_btn.clicked.connect(self.next_requested.emit)
+
+        self.player_time_label = QLabel("00:00 / 00:00")
+        self.player_time_label.setObjectName("single_sub")
+        self.player_time_label.setFixedWidth(120)
+
+        # Volume
+        vol_row = QHBoxLayout()
+        vol_row.setSpacing(8)
+        self.vol_label = QLabel(_("Vol"))
+        self.vol_label.setObjectName("single_sub")
+        self.player_volume_slider = QSlider(Qt.Orientation.Horizontal)
+        self.player_volume_slider.setFixedWidth(100)
+        self.player_volume_slider.setRange(0, 100)
+        self.player_volume_slider.setValue(80)
+        self.player_volume_slider.valueChanged.connect(self._on_volume_changed)
+        vol_row.addWidget(self.vol_label)
+        vol_row.addWidget(self.player_volume_slider)
+
+        fullscreen_btn = QPushButton(_("Full"))
+        fullscreen_btn.setFixedSize(36, 36)
+        fullscreen_btn.setObjectName("action_trim")
+        fullscreen_btn.clicked.connect(self.fullscreen_requested.emit)
+        
+        back_btn = QPushButton(_("Back"))
+        back_btn.setObjectName("search_btn")
+        back_btn.setFixedWidth(80)
+        back_btn.clicked.connect(self.back_requested.emit)
+
+        btns_row.addWidget(self.prev_btn)
+        btns_row.addWidget(self.play_btn)
+        btns_row.addWidget(stop_btn)
+        btns_row.addWidget(self.next_btn)
+        btns_row.addSpacing(20)
+        btns_row.addWidget(self.player_time_label)
+        btns_row.addStretch(1)
+        btns_row.addLayout(vol_row)
+        btns_row.addSpacing(10)
+        btns_row.addWidget(fullscreen_btn)
+        btns_row.addWidget(back_btn)
+
+        cw_layout.addLayout(btns_row)
+        
+        layout.addWidget(self.video_widget, 1)
+        layout.addWidget(controls_wrap)
+        
+        # Connect player signals internally if necessary, or let controller do it
+        self.media_player.positionChanged.connect(self._on_position_changed)
+        self.media_player.durationChanged.connect(self._on_duration_changed)
+
+    def _on_seek_pressed(self):
+        self._player_is_seeking = True
+
+    def _on_seek_released(self):
+        self._player_is_seeking = False
+        val = self.player_seek_slider.value()
+        self.media_player.setPosition(val)
+        self.seek_requested.emit(val)
+
+    def _on_volume_changed(self, value):
+        self.audio_output.setVolume(value / 100.0)
+        self.volume_changed.emit(value)
+
+    def _on_position_changed(self, position):
+        if not self._player_is_seeking:
+            self.player_seek_slider.setValue(position)
+            # Time update usually done by controller, but we can do it here
+
+    def _on_duration_changed(self, duration):
+        self.player_seek_slider.setRange(0, duration)
+        
+    def showEvent(self, event):
+        super().showEvent(event)
+        # Ensure we sync layout issues when shown
+        pass
+        
+    def hideEvent(self, event):
+        super().hideEvent(event)
+        self.media_player.stop()
+
+    def stop(self):
+        if hasattr(self, "media_player"):
+            self.media_player.stop()
+
+    def playback_state(self):
+        if hasattr(self, "media_player"):
+            return self.media_player.playbackState()
+        return None
+
+    def play(self):
+        if hasattr(self, "media_player"):
+            self.media_player.play()
+
+    def pause(self):
+        if hasattr(self, "media_player"):
+            self.media_player.pause()
+
+    def toggle_playback(self):
+        state = self.playback_state()
+        if state == QMediaPlayer.PlaybackState.PlayingState:
+            self.pause()
+        else:
+            self.play()
+
+    def set_position(self, value: int):
+        if hasattr(self, "media_player"):
+            self.media_player.setPosition(int(value or 0))
+
+    def get_position(self) -> int:
+        if hasattr(self, "media_player"):
+            return int(self.media_player.position() or 0)
+        return 0
+
+    def set_source_file(self, file_path: str):
+        if hasattr(self, "media_player"):
+            self.media_player.setSource(QUrl.fromLocalFile(str(file_path or "")))
+
+    def set_seek_value(self, value: int):
+        if hasattr(self, "player_seek_slider"):
+            self.player_seek_slider.setValue(int(value or 0))
+
+    def set_seek_range(self, minimum: int, maximum: int):
+        if hasattr(self, "player_seek_slider"):
+            self.player_seek_slider.setRange(int(minimum or 0), int(maximum or 0))
+
+    def get_seek_value(self) -> int:
+        if hasattr(self, "player_seek_slider"):
+            return int(self.player_seek_slider.value() or 0)
+        return 0
+
+    def set_time_label(self, text: str):
+        if hasattr(self, "player_time_label"):
+            self.player_time_label.setText(str(text or ""))
+
+    def show_title_overlay(self, text: str, auto_hide_ms: int = 3000):
+        if not hasattr(self, "player_title_overlay"):
+            return
+        self.player_title_overlay.setText(str(text or ""))
+        self.player_title_overlay.show()
+        QTimer.singleShot(max(0, int(auto_hide_ms or 0)), self.player_title_overlay.hide)
+
+
+
+
+====================================================================================================
+FILE: ui\views\search_view.py
+====================================================================================================
+
+
+import os
+from PySide6.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QFrame, QLineEdit, QPushButton,
+    QLabel, QStackedWidget, QButtonGroup, QRadioButton, QComboBox,
+    QDateTimeEdit, QSpinBox, QCheckBox, QProgressBar, QTextEdit, QGridLayout
+)
+from PySide6.QtCore import Qt, QDateTime, Signal, QTimer
+from PySide6.QtGui import QPainter, QColor, QLinearGradient, QBrush, QPen
+from core.constants import VIDEO_QUALITIES, AUDIO_QUALITIES, VIDEO_FORMATS, AUDIO_FORMATS, SUBTITLE_OPTIONS, DOWNLOAD_CATEGORIES
+from core.config import DEFAULT_SETTINGS, default_download_dir
+from ui.trim_dialog import TrimView
+from ui.views.base_view import BaseView
+from core.i18n import _
+from ui.themes import get_theme
+
+class LiquidProgressBar(QProgressBar):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._liquid_phase = 0.0
+
+    def set_liquid_phase(self, phase: float):
+        try:
+            value = float(phase or 0.0)
+        except Exception:
+            value = 0.0
+        if value < 0.0:
+            value = 0.0
+        if value > 1.0:
+            value = 1.0
+        if value == self._liquid_phase:
+            return
+        self._liquid_phase = value
+        self.update()
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        theme_name = ""
+        try:
+            theme_name = str(getattr(getattr(self.parent(), "main_window", None), "theme", "") or "")
+        except Exception:
+            theme_name = ""
+        t = get_theme(theme_name or "Modern Dark")
+        w = self.width()
+        h = self.height()
+        radius = max(2, min(6, int(h / 2)))
+        bg = QColor(t.get("bg", "#111111"))
+        border = QColor(t.get("border", "#333333"))
+        accent = QColor(t.get("accent", "#5aa3ff"))
+        accent_2 = QColor(t.get("accent_2", "#7cf7ff"))
+
+        rect = self.rect().adjusted(1, 1, -1, -1)
+        painter.setPen(QPen(border, 1))
+        painter.setBrush(QBrush(bg))
+        painter.drawRoundedRect(rect, radius, radius)
+
+        mn = int(self.minimum())
+        mx = int(self.maximum())
+        val = int(self.value())
+        denom = max(1, mx - mn)
+        pct = max(0.0, min(1.0, (val - mn) / float(denom)))
+        fill_w = int(rect.width() * pct)
+        if fill_w <= 0:
+            return
+
+        fill_rect = rect.adjusted(0, 0, -(rect.width() - fill_w), 0)
+        grad = QLinearGradient(fill_rect.left(), 0, fill_rect.right(), 0)
+        pos = self._liquid_phase
+        grad.setColorAt(0.0, accent)
+        grad.setColorAt(max(0.0, min(1.0, pos)), accent_2)
+        grad.setColorAt(1.0, accent)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QBrush(grad))
+        painter.drawRoundedRect(fill_rect, radius, radius)
+
+class SearchView(BaseView):
+    # Signals to communicate to the controller/MainWindow
+    analyze_requested = Signal(str)
+    formats_requested = Signal(str)
+    paste_requested = Signal()
+    clear_history_requested = Signal()
+    download_requested = Signal()
+    schedule_requested = Signal()
+    trim_toggle_requested = Signal()
+
+    def __init__(self, main_window=None, parent=None):
+        super().__init__(main_window, parent)
+        self.setup_ui()
+
+    def setup_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        # ── Search Bar ──
+        container = QFrame()
+        container.setObjectName("search_bar_container")
+        cl = QHBoxLayout(container)
+        cl.setContentsMargins(15, 0, 15, 0)
+        cl.setSpacing(10)
+
+        self.url_input = QLineEdit()
+        self.url_input.setObjectName("search_input")
+        self.url_input.setPlaceholderText(_("Paste video link or enter search keyword..."))
+        self.url_input.returnPressed.connect(self._on_search_clicked)
+        # Note: Completer setup can be done by controller later
+
+        self.search_btn = QPushButton(_("Search"))
+        self.search_btn.setObjectName("search_btn")
+        self.search_btn.clicked.connect(self._on_search_clicked)
+
+        formats_btn = QPushButton(_("Formats"))
+        formats_btn.setObjectName("action_button")
+        formats_btn.setFixedWidth(80)
+        formats_btn.clicked.connect(self._on_formats_clicked)
+
+        paste_btn = QPushButton(_("Paste"))
+        paste_btn.setObjectName("action_button")
+        paste_btn.setFixedWidth(60)
+        paste_btn.clicked.connect(self.paste_requested.emit)
+
+        clear_history_btn = QPushButton(_("Clear History"))
+        clear_history_btn.setObjectName("action_button")
+        clear_history_btn.setFixedWidth(110)
+        clear_history_btn.clicked.connect(self.clear_history_requested.emit)
+
+        cl.addWidget(self.url_input, 1)
+        cl.addWidget(paste_btn)
+        cl.addWidget(clear_history_btn)
+        cl.addWidget(formats_btn)
+        cl.addWidget(self.search_btn)
+
+        # ── Search Stack ──
+        self.search_stack = QStackedWidget()
+        self.search_stack.addWidget(self._build_search_empty_state())
+        self.search_stack.addWidget(self._build_search_single_state())
+        
+        self.trim_view = TrimView(self)
+        self.search_stack.addWidget(self.trim_view)
+
+        layout.addWidget(container)
+        layout.addWidget(self.search_stack, 1)
+
+    def _build_search_empty_state(self):
+        frame = QFrame()
+        frame.setObjectName("single_card")
+        col = QVBoxLayout(frame)
+        col.setContentsMargins(0, 0, 0, 0)
+        col.setSpacing(0)
+        
+        center_wrap = QWidget()
+        center = QVBoxLayout(center_wrap)
+        center.setContentsMargins(0, 0, 0, 0)
+        center.setSpacing(15)
+        
+        title = QLabel(_("Search and download your favorite videos"))
+        title.setObjectName("empty_title")
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        
+        sub = QLabel(_("More than 900 websites supported"))
+        sub.setObjectName("empty_sub")
+        sub.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        
+        center.addStretch(1)
+        center.addWidget(title)
+        center.addWidget(sub)
+        center.addStretch(1)
+        
+        col.addWidget(center_wrap, 1)
+        return frame
+
+    def _build_search_single_state(self):
+        frame = QFrame()
+        frame.setObjectName("main_root")
+        
+        self.search_main_layout = QHBoxLayout(frame)
+        self.search_main_layout.setContentsMargins(15, 15, 15, 15)
+        self.search_main_layout.setSpacing(15)
+
+        # Left Column: Video Player and Settings
+        left_container = QWidget()
+        left_col = QVBoxLayout(left_container)
+        left_col.setContentsMargins(0, 0, 0, 0)
+        left_col.setSpacing(15)
+
+        self.single_player_card = QFrame()
+        self.single_player_card.setObjectName("single_card")
+        player_layout = QHBoxLayout(self.single_player_card)
+        player_layout.setContentsMargins(12, 12, 12, 12)
+        player_layout.setSpacing(16)
+
+        self.single_thumb = QLabel(_("Loading video preview..."))
+        self.single_thumb.setObjectName("thumb_preview")
+        self.single_thumb.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.single_thumb.setFixedSize(280, 158)
+        self.single_thumb.setProperty("class", "thumb_preview")
+        player_layout.addWidget(self.single_thumb)
+
+        # Video Info
+        info_layout = QVBoxLayout()
+        info_layout.setSpacing(8)
+
+        self.single_title = QLabel(_("عنوان الفيديو هيظهر هنا"))
+        self.single_title.setObjectName("single_title")
+        self.single_title.setWordWrap(True)
+
+        meta_row = QHBoxLayout()
+        self.single_channel = QLabel(_("by القناة"))
+        self.single_channel.setObjectName("single_sub")
+        
+        self.single_category = QLabel(_("Category"))
+        self.single_category.setObjectName("chip")
+        self.single_category.hide()
+
+        meta_row.addWidget(self.single_channel)
+        meta_row.addStretch(1)
+        meta_row.addWidget(self.single_category)
+
+        info_layout.addWidget(self.single_title)
+        info_layout.addLayout(meta_row)
+        info_layout.addStretch(1)
+
+        player_layout.addLayout(info_layout, 1)
+        left_col.addWidget(self.single_player_card)
+
+        # Settings Area (Format & Quality)
+        self.single_settings_card = QFrame()
+        self.single_settings_card.setObjectName("single_card")
+        settings_layout = QHBoxLayout(self.single_settings_card)
+        settings_layout.setContentsMargins(15, 15, 15, 15)
+        settings_layout.setSpacing(30)
+
+        fmt_col = QVBoxLayout()
+        fmt_col.setSpacing(15)
+        fmt_title = QLabel(_("Output Format"))
+        fmt_title.setObjectName("section_title")
+        fmt_col.addWidget(fmt_title)
+
+        mode_row = QHBoxLayout()
+        self.video_radio = QRadioButton(_("Video"))
+        self.audio_radio = QRadioButton(_("Audio"))
+        self.gif_radio = QRadioButton(_("GIF"))
+        self.video_radio.setChecked(True)
+        self.mode_group = QButtonGroup(self)
+        self.mode_group.addButton(self.video_radio)
+        self.mode_group.addButton(self.audio_radio)
+        self.mode_group.addButton(self.gif_radio)
+        
+        self.video_radio.toggled.connect(self._on_mode_changed)
+        self.audio_radio.toggled.connect(self._on_mode_changed)
+        self.gif_radio.toggled.connect(self._on_mode_changed)
+        
+        mode_row.addWidget(self.video_radio)
+        mode_row.addWidget(self.audio_radio)
+        mode_row.addWidget(self.gif_radio)
+        fmt_col.addLayout(mode_row)
+
+        drop_row = QHBoxLayout()
+        drop_row.setSpacing(10)
+        self.format_combo = QComboBox()
+        self.format_combo.setMinimumWidth(100)
+        self.subtitle_combo = QComboBox()
+        self.subtitle_combo.addItems(SUBTITLE_OPTIONS)
+        self.subtitle_combo.setCurrentText("None")
+        self.subtitle_combo.setMinimumWidth(100)
+        self.category_combo = QComboBox()
+        self.category_combo.addItems([_(name) for name in DOWNLOAD_CATEGORIES])
+        self.category_combo.setMinimumWidth(120)
+        drop_row.addWidget(QLabel(_("Format:"), objectName="single_sub"))
+        drop_row.addWidget(self.format_combo)
+        drop_row.addSpacing(15)
+        drop_row.addWidget(QLabel(_("Subtitle:"), objectName="single_sub"))
+        drop_row.addWidget(self.subtitle_combo)
+        drop_row.addSpacing(15)
+        drop_row.addWidget(QLabel(_("Category:"), objectName="single_sub"))
+        drop_row.addWidget(self.category_combo)
+        drop_row.addStretch(1)
+        fmt_col.addLayout(drop_row)
+        fmt_col.addStretch(1)
+
+        self.quality_stack = QStackedWidget()
+        self.quality_stack.addWidget(self._build_video_quality_widget())
+        self.quality_stack.addWidget(self._build_audio_quality_widget())
+        self.quality_stack.addWidget(self._build_gif_settings_widget())
+
+        left_wrapper = QWidget()
+        left_wl = QVBoxLayout(left_wrapper)
+        left_wl.setContentsMargins(0,0,0,0)
+        left_wl.addLayout(fmt_col)
+        
+        settings_layout.addWidget(left_wrapper, 2)
+        
+        sep = QFrame()
+        sep.setFrameShape(QFrame.Shape.VLine)
+        sep.setObjectName("v_separator")
+        settings_layout.addWidget(sep)
+        
+        settings_layout.addWidget(self.quality_stack, 3)
+
+        left_col.addWidget(self.single_settings_card)
+
+        # Advanced Options
+        self.adv_container = QFrame()
+        self.adv_container.setObjectName("playlist_row")
+        adv_layout = QVBoxLayout(self.adv_container)
+        adv_layout.setContentsMargins(10, 10, 10, 10)
+        adv_layout.setSpacing(10)
+
+        r1 = QHBoxLayout()
+        r1.setSpacing(8)
+        self.start_input = QLineEdit()
+        self.start_input.setPlaceholderText(_("Start HH:MM:SS"))
+        self.start_input.setMinimumWidth(130)
+        self.end_input = QLineEdit()
+        self.end_input.setPlaceholderText(_("End HH:MM:SS"))
+        self.end_input.setMinimumWidth(130)
+        r1.addWidget(QLabel(_("Range:"), objectName="single_sub"))
+        r1.addWidget(self.start_input)
+        r1.addWidget(QLabel("-", objectName="single_sub"))
+        r1.addWidget(self.end_input)
+        r1.addStretch(1)
+
+        r2 = QHBoxLayout()
+        r2.setSpacing(8)
+        self.schedule_time_edit = QDateTimeEdit(QDateTime.currentDateTime().addSecs(3600))
+        self.schedule_time_edit.setCalendarPopup(True)
+        self.concurrent_spin = QSpinBox()
+        self.concurrent_spin.setRange(1, 10)
+        self.concurrent_spin.setValue(int(DEFAULT_SETTINGS["max_concurrent"]))
+        self.out_dir_input = QLineEdit(default_download_dir())
+        self.out_dir_input.setObjectName("path_input")
+        self.out_dir_input.setMinimumWidth(220)
+        self.aria2_checkbox = QCheckBox(_("Accelerate (aria2)"))
+        self.aria2_checkbox.setChecked(True)
+        r2.addWidget(QLabel(_("Save to:"), objectName="single_sub"))
+        r2.addWidget(self.out_dir_input, 1)
+        r2.addWidget(self.aria2_checkbox)
+
+        r3 = QHBoxLayout()
+        r3.setSpacing(8)
+        r3.addWidget(QLabel(_("📅 Schedule:"), objectName="single_sub"))
+        r3.addWidget(self.schedule_time_edit)
+        r3.addStretch(1)
+        r3.addWidget(QLabel(_("Max Tasks:"), objectName="single_sub"))
+        r3.addWidget(self.concurrent_spin)
+
+        r4 = QHBoxLayout()
+        r4.setSpacing(8)
+        self.schedule_repeat_combo = QComboBox()
+        self.schedule_repeat_combo.addItem(_("No repeat"), "none")
+        self.schedule_repeat_combo.addItem(_("Repeat daily"), "daily")
+        self.schedule_repeat_combo.addItem(_("Repeat weekly"), "weekly")
+        r4.addWidget(QLabel(_("Repeat:"), objectName="single_sub"))
+        r4.addWidget(self.schedule_repeat_combo)
+        r4.addStretch(1)
+
+        adv_layout.addLayout(r1)
+        adv_layout.addLayout(r2)
+        adv_layout.addLayout(r3)
+        adv_layout.addLayout(r4)
+
+        left_col.addWidget(self.adv_container)
+
+        # Status and Progress
+        self.status_container = QWidget()
+        status_layout = QVBoxLayout(self.status_container)
+        status_layout.setContentsMargins(5, 0, 5, 0)
+        status_layout.setSpacing(5)
+        
+        self.status_row = QHBoxLayout()
+        self.state_label = QLabel(_("جاهز"))
+        self.state_label.setObjectName("single_sub")
+        self.speed_label = QLabel(_("Speed: --"))
+        self.speed_label.setObjectName("single_sub")
+        self.eta_label = QLabel(_("ETA: --"))
+        self.eta_label.setObjectName("single_sub")
+        self.size_label = QLabel("--")
+        self.size_label.setObjectName("single_sub")
+        self.status_row.addWidget(self.state_label)
+        self.status_row.addStretch(1)
+        self.status_row.addWidget(self.speed_label)
+        self.status_row.addWidget(self.eta_label)
+        self.status_row.addWidget(self.size_label)
+
+        self.progress_bar = LiquidProgressBar()
+        self.progress_bar.setFixedHeight(8)
+        self.progress_bar.setRange(0, 100)
+        self.progress_bar.setValue(0)
+        
+        status_layout.addLayout(self.status_row)
+        status_layout.addWidget(self.progress_bar)
+        self.status_container.hide() 
+
+        left_col.addWidget(self.status_container)
+
+        actions = QHBoxLayout()
+        actions.setSpacing(12)
+
+        self.trim_btn = QPushButton(_("Trim"))
+        self.trim_btn.setObjectName("action_button")
+        self.trim_btn.setMinimumHeight(48)
+        self.trim_btn.clicked.connect(self._toggle_trim_options)
+
+        self.schedule_btn = QPushButton(_("Schedule"))
+        self.schedule_btn.setObjectName("action_schedule")
+        self.schedule_btn.setMinimumHeight(48)
+        self.schedule_btn.clicked.connect(self.schedule_requested.emit)
+
+        self.download_btn = QPushButton(_("Download"))
+        self.download_btn.setObjectName("action_download")
+        self.download_btn.setMinimumHeight(48)
+        self.download_btn.clicked.connect(self.download_requested.emit)
+
+        self.adv_toggle_btn = QPushButton(_("⚙ Change download settings"))
+        self.adv_toggle_btn.setObjectName("more_link")
+        self.adv_toggle_btn.clicked.connect(self._toggle_advanced_options)
+
+        actions.addWidget(self.adv_toggle_btn)
+        actions.addStretch(1)
+        actions.addWidget(self.trim_btn, 1)
+        actions.addWidget(self.schedule_btn, 1)
+        actions.addWidget(self.download_btn, 2)
+
+        left_col.addStretch(1)
+        left_col.addLayout(actions)
+
+        # Debug Log
+        self.log_text = QTextEdit()
+        self.log_text.setReadOnly(True)
+        self.log_text.setFixedHeight(80)
+        self.log_text.setObjectName("debug_log")
+        left_col.addWidget(self.log_text)
+
+        self.search_main_layout.addWidget(left_container, 1)
+
+        self._on_mode_changed()
+        return frame
+
+    def _build_video_quality_widget(self):
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(12)
+
+        label = QLabel(_("Video Quality"))
+        label.setObjectName("section_title")
+        layout.addWidget(label)
+
+        self.quality_group = QButtonGroup(self)
+        grid = QGridLayout()
+        grid.setHorizontalSpacing(40)
+        grid.setVerticalSpacing(8)
+        self.quality_radios = []
+        for idx, quality in enumerate(VIDEO_QUALITIES):
+            radio = QRadioButton(quality)
+            radio.setProperty("base_quality", quality)
+            if quality == "1080p": radio.setChecked(True)
+            self.quality_group.addButton(radio)
+            self.quality_radios.append(radio)
+            grid.addWidget(radio, idx % 4, idx // 4)
+        layout.addLayout(grid)
+        return widget
+
+    def _build_audio_quality_widget(self):
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(12)
+
+        label = QLabel(_("Audio Quality"))
+        label.setObjectName("section_title")
+        layout.addWidget(label)
+
+        self.audio_quality_group = QButtonGroup(self)
+        grid = QGridLayout()
+        grid.setHorizontalSpacing(40)
+        grid.setVerticalSpacing(8)
+        self.audio_quality_radios = []
+        qualities = ["Original"] + AUDIO_QUALITIES
+        for idx, quality in enumerate(qualities):
+            radio = QRadioButton(quality)
+            if quality == "Original": radio.setChecked(True)
+            self.audio_quality_group.addButton(radio)
+            self.audio_quality_radios.append(radio)
+            grid.addWidget(radio, idx % 4, idx // 4)
+        layout.addLayout(grid)
+        return widget
+
+    def _build_gif_settings_widget(self):
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(12)
+
+        label = QLabel(_("GIF Settings"))
+        label.setObjectName("section_title")
+        layout.addWidget(label)
+
+        row1 = QHBoxLayout()
+        row1.addWidget(QLabel(_("Start")))
+        self.gif_start_input = QLineEdit("00:00")
+        self.gif_start_input.setPlaceholderText(_("mm:ss"))
+        self.gif_start_input.setFixedWidth(120)
+        row1.addWidget(self.gif_start_input)
+        row1.addSpacing(10)
+        row1.addWidget(QLabel(_("End")))
+        self.gif_end_input = QLineEdit("")
+        self.gif_end_input.setPlaceholderText(_("mm:ss"))
+        self.gif_end_input.setFixedWidth(120)
+        row1.addWidget(self.gif_end_input)
+        row1.addStretch(1)
+        layout.addLayout(row1)
+
+        row2 = QHBoxLayout()
+        row2.addWidget(QLabel(_("FPS")))
+        self.gif_fps_spin = QSpinBox()
+        self.gif_fps_spin.setRange(5, 60)
+        self.gif_fps_spin.setValue(15)
+        self.gif_fps_spin.setFixedWidth(100)
+        row2.addWidget(self.gif_fps_spin)
+        row2.addSpacing(10)
+        row2.addWidget(QLabel(_("Resolution")))
+        self.gif_resolution_combo = QComboBox()
+        self.gif_resolution_combo.addItems(["426x240", "640x360", "854x480", "1280x720"])
+        self.gif_resolution_combo.setCurrentText("640x360")
+        self.gif_resolution_combo.setFixedWidth(140)
+        row2.addWidget(self.gif_resolution_combo)
+        row2.addStretch(1)
+        layout.addLayout(row2)
+
+        return widget
+
+    def _on_search_clicked(self):
+        url = self.url_input.text().strip()
+        if url:
+            self.analyze_requested.emit(url)
+
+    def _toggle_advanced_options(self):
+        if self.adv_container.isVisible():
+            self.adv_container.hide()
+            self.adv_toggle_btn.setText(_("⚙ Show advanced settings"))
+        else:
+            self.adv_container.show()
+            self.adv_toggle_btn.setText(_("⚙ Hide advanced settings"))
+
+    def _toggle_trim_options(self):
+        self.trim_toggle_requested.emit()
+
+    def _on_formats_clicked(self):
+        url = self.url_input.text().strip()
+        if url:
+            self.formats_requested.emit(url)
+
+    def _on_mode_changed(self):
+        if self.video_radio.isChecked():
+            self.quality_stack.setCurrentIndex(0)
+            self.format_combo.clear()
+            self.format_combo.addItems(VIDEO_FORMATS)
+        elif self.audio_radio.isChecked():
+            self.quality_stack.setCurrentIndex(1)
+            self.format_combo.clear()
+            self.format_combo.addItems(AUDIO_FORMATS)
+        elif self.gif_radio.isChecked():
+            self.quality_stack.setCurrentIndex(2)
+            self.format_combo.clear()
+            self.format_combo.addItem("GIF")
+
+    def show_empty_state(self):
+        self.search_stack.setCurrentIndex(0)
+
+    def show_single_state(self):
+        self.search_stack.setCurrentIndex(1)
+
+    def get_url(self) -> str:
+        return str(self.url_input.text() if hasattr(self, "url_input") else "").strip()
+
+    def set_url(self, url: str):
+        if hasattr(self, "url_input"):
+            self.url_input.setText(str(url or ""))
+
+    def set_search_button(self, text: str | None = None, enabled: bool | None = None):
+        if not hasattr(self, "search_btn"):
+            return
+        if text is not None:
+            self.search_btn.setText(str(text))
+        if enabled is not None:
+            self.search_btn.setEnabled(bool(enabled))
+
+    def get_out_dir(self) -> str:
+        return str(self.out_dir_input.text() if hasattr(self, "out_dir_input") else "").strip()
+
+    def set_out_dir(self, out_dir: str):
+        if hasattr(self, "out_dir_input"):
+            self.out_dir_input.setText(str(out_dir or ""))
+
+    def set_aria2_checked(self, checked: bool):
+        if hasattr(self, "aria2_checkbox"):
+            self.aria2_checkbox.setChecked(bool(checked))
+
+
+
+
+====================================================================================================
+FILE: ui\views\settings_view.py
+====================================================================================================
+
+
+from PySide6.QtCore import Signal, QTime
+from PySide6.QtWidgets import (
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QFrame,
+    QLineEdit,
+    QPushButton,
+    QLabel,
+    QCheckBox,
+    QSpinBox,
+    QComboBox,
+    QScrollArea,
+    QTimeEdit,
+    QListWidget,
+    QTextEdit,
+    QGridLayout,
+    QGroupBox,
+)
+
+from core.config import DEFAULT_SETTINGS, default_download_dir
+from core.cookie_importer import get_available_browsers
+from core.i18n import _, i18n
+from core.proxy_manager import proxy_manager
+from core.smart_rename import TEMPLATES as RENAME_TEMPLATES
+from core.sustainability import ACTIONS as SUSTAINABILITY_ACTIONS
+from ui.views.base_view import BaseView
+
+class SettingsView(BaseView):
+    apply_requested = Signal()
+    dir_picker_requested = Signal()
+    cookie_picker_requested = Signal()
+    auto_cookie_requested = Signal()
+    update_ytdlp_requested = Signal()
+    proxy_test_requested = Signal()
+    proxy_add_requested = Signal()
+    normalize_requested = Signal()
+    mini_mode_requested = Signal()
+    sustainability_apply_requested = Signal()
+    export_settings_requested = Signal()
+    import_settings_requested = Signal()
+    check_app_updates_requested = Signal()
+    ui_language_changed = Signal(str)
+    bandwidth_rule_selected = Signal(int)
+    bandwidth_editor_changed = Signal()
+    bandwidth_new_rule_requested = Signal()
+    bandwidth_save_rule_requested = Signal()
+    bandwidth_remove_rule_requested = Signal()
+    bandwidth_apply_schedule_requested = Signal()
+    bandwidth_reset_schedule_requested = Signal()
+
+    def __init__(self, main_window=None, parent=None):
+        super().__init__(main_window, parent)
+        self.setup_ui()
+
+    def setup_ui(self):
+        def _disable_wheel_scroll(widget):
+            main = getattr(self, "main_window", None)
+            wheel_filter = getattr(main, "wheel_filter", None)
+            if wheel_filter is not None:
+                widget.installEventFilter(wheel_filter)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setFrameShape(QFrame.Shape.NoFrame)
+        layout.addWidget(scroll_area)
+
+        inner_widget = QWidget()
+        col = QVBoxLayout(inner_widget)
+        col.setContentsMargins(12, 12, 12, 12)
+        col.setSpacing(10)
+        
+        title = QLabel(_("Settings"))
+        title.setObjectName("single_title")
+        
+        self.settings_out_dir = QLineEdit(default_download_dir())
+        pick_dir_btn = QPushButton(_("اختيار مجلد"))
+        pick_dir_btn.setObjectName("action_schedule")
+        pick_dir_btn.clicked.connect(self.dir_picker_requested.emit)
+
+        self.settings_rename_template = QComboBox()
+        self.settings_rename_template.addItems(list(RENAME_TEMPLATES.keys()))
+        _disable_wheel_scroll(self.settings_rename_template)
+        
+        self.settings_language_combo = QComboBox()
+        _disable_wheel_scroll(self.settings_language_combo)
+        for code, label in i18n.available_languages().items():
+            self.settings_language_combo.addItem(label, code)
+        self.settings_language_combo.currentIndexChanged.connect(
+            lambda _=None: self.ui_language_changed.emit(str(self.settings_language_combo.currentData() or ""))
+        )
+
+        self.settings_retries = QSpinBox()
+        self.settings_retries.setRange(1, 7)
+        self.settings_retries.setValue(int(DEFAULT_SETTINGS["retries"]))
+        _disable_wheel_scroll(self.settings_retries)
+        
+        self.settings_retry_delay = QSpinBox()
+        self.settings_retry_delay.setRange(1, 120)
+        self.settings_retry_delay.setValue(int(DEFAULT_SETTINGS["auto_retry_delay_seconds"]))
+        self.settings_retry_delay.setPrefix(_("Retry Delay (sec): "))
+        _disable_wheel_scroll(self.settings_retry_delay)
+        
+        self.settings_queue_retry_limit = QSpinBox()
+        self.settings_queue_retry_limit.setRange(0, 8)
+        self.settings_queue_retry_limit.setValue(int(DEFAULT_SETTINGS["queue_auto_retry_limit"]))
+        self.settings_queue_retry_limit.setPrefix(_("Queue Auto Retry: "))
+        _disable_wheel_scroll(self.settings_queue_retry_limit)
+
+        self.settings_queue_priority = QComboBox()
+        self.settings_queue_priority.addItem(_("FIFO (افتراضي)"), "fifo")
+        self.settings_queue_priority.addItem(_("الأصغر أولاً"), "smallest_first")
+        preferred_priority = str(DEFAULT_SETTINGS.get("queue_priority", "fifo"))
+        idx_priority = self.settings_queue_priority.findData(preferred_priority)
+        if idx_priority >= 0:
+            self.settings_queue_priority.setCurrentIndex(idx_priority)
+        _disable_wheel_scroll(self.settings_queue_priority)
+        
+        self.settings_concurrent = QSpinBox()
+        self.settings_concurrent.setRange(1, 10)
+        self.settings_concurrent.setValue(int(DEFAULT_SETTINGS["max_concurrent"]))
+        self.settings_concurrent.setPrefix(_("Max Concurrent Downloads: "))
+        _disable_wheel_scroll(self.settings_concurrent)
+        
+        self.settings_search_history_limit = QSpinBox()
+        self.settings_search_history_limit.setRange(5, 500)
+        self.settings_search_history_limit.setValue(int(DEFAULT_SETTINGS["search_history_limit"]))
+        self.settings_search_history_limit.setPrefix(_("Search History Limit: "))
+        _disable_wheel_scroll(self.settings_search_history_limit)
+
+        self.settings_search_history_ttl_days = QSpinBox()
+        self.settings_search_history_ttl_days.setRange(1, 365)
+        self.settings_search_history_ttl_days.setValue(int(DEFAULT_SETTINGS["search_history_ttl_days"]))
+        self.settings_search_history_ttl_days.setPrefix(_("Search History TTL: "))
+        self.settings_search_history_ttl_days.setSuffix(_(" days"))
+        _disable_wheel_scroll(self.settings_search_history_ttl_days)
+
+        self.settings_thumbnail_cache_max = QSpinBox()
+        self.settings_thumbnail_cache_max.setRange(50, 2000)
+        self.settings_thumbnail_cache_max.setValue(int(DEFAULT_SETTINGS["thumbnail_cache_max"]))
+        self.settings_thumbnail_cache_max.setPrefix(_("Thumbnail Cache: "))
+        self.settings_thumbnail_cache_max.setSuffix(_(" items"))
+        _disable_wheel_scroll(self.settings_thumbnail_cache_max)
+
+        self.settings_aria2 = QCheckBox(_("استخدام aria2 للتسريع"))
+        self.settings_aria2.setChecked(True)
+
+        self.settings_use_ytdlp_api = QCheckBox(_("استخدام yt-dlp API (تجريبي)"))
+        self.settings_use_ytdlp_api.setChecked(bool(DEFAULT_SETTINGS.get("use_ytdlp_api", False)))
+        
+        self.settings_storage_guard = QCheckBox(_("إيقاف التحميل مؤقتاً عند انخفاض المساحة"))
+        self.settings_storage_min_free_gb = QSpinBox()
+        self.settings_storage_min_free_gb.setRange(1, 500)
+        self.settings_storage_min_free_gb.setValue(int(DEFAULT_SETTINGS["storage_min_free_gb"]))

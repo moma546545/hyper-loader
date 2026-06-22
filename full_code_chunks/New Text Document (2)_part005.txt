@@ -1,0 +1,2015 @@
+﻿        sv.settings_bandwidth_rule_limit.setValue(max(0, int(value.get("limit_kbps", 0) or 0)))
+        sv.settings_bandwidth_rule_label.setText(str(value.get("label", "") or ""))
+
+    def prepare_new_bandwidth_rule(self):
+        sv = getattr(self.window, "settings_view", None)
+        self.window._editing_bandwidth_rule_index = None
+        if sv is not None and hasattr(sv, "clear_bandwidth_rule_selection"):
+            sv.clear_bandwidth_rule_selection(block_signals=True)
+        elif sv is not None and hasattr(sv, "settings_bandwidth_rule_list"):
+            sv.settings_bandwidth_rule_list.blockSignals(True)
+            sv.settings_bandwidth_rule_list.clearSelection()
+            sv.settings_bandwidth_rule_list.blockSignals(False)
+        self.set_bandwidth_rule_form()
+        if sv is not None and hasattr(sv, "set_bandwidth_schedule_status"):
+            sv.set_bandwidth_schedule_status("جاهز لإضافة قاعدة جديدة إلى المحرر")
+        elif sv is not None and hasattr(sv, "settings_bandwidth_schedule_status"):
+            sv.settings_bandwidth_schedule_status.setText("جاهز لإضافة قاعدة جديدة إلى المحرر")
+
+    def load_selected_bandwidth_rule(self, row: int):
+        if row < 0:
+            self.window._editing_bandwidth_rule_index = None
+            self.set_bandwidth_rule_form()
+            return
+        try:
+            rules = self.get_bandwidth_schedule_editor_rules()
+        except Exception:
+            self.window._editing_bandwidth_rule_index = None
+            return
+        if 0 <= row < len(rules):
+            self.window._editing_bandwidth_rule_index = row
+            self.set_bandwidth_rule_form(rules[row])
+        else:
+            self.window._editing_bandwidth_rule_index = None
+            self.set_bandwidth_rule_form()
+
+    def save_bandwidth_rule_from_form(self):
+        try:
+            rules = self.get_bandwidth_schedule_editor_rules()
+        except Exception as exc:
+            self.window._warn(f"تعذر قراءة قواعد المحرر الحالية: {exc}")
+            return
+        sv = getattr(self.window, "settings_view", None)
+        if sv is None:
+            self.window._warn("تعذر حفظ القاعدة: واجهة الجدول غير جاهزة")
+            return
+        try:
+            if hasattr(sv, "get_bandwidth_rule_form"):
+                form_rule = sv.get_bandwidth_rule_form()
+            else:
+                if not hasattr(sv, "settings_bandwidth_rule_start"):
+                    raise ValueError("Bandwidth form is not available")
+                form_rule = {
+                    "start": sv.settings_bandwidth_rule_start.time().toString("HH:mm"),
+                    "end": sv.settings_bandwidth_rule_end.time().toString("HH:mm"),
+                    "limit_kbps": int(sv.settings_bandwidth_rule_limit.value()),
+                    "label": sv.settings_bandwidth_rule_label.text().strip(),
+                }
+            rule = scheduler.normalize_schedule(
+                [
+                    form_rule
+                ]
+            )[0]
+        except Exception as exc:
+            self.window._warn(f"تعذر حفظ القاعدة: {exc}")
+            return
+        index = self.window._editing_bandwidth_rule_index if isinstance(self.window._editing_bandwidth_rule_index, int) else -1
+        if 0 <= index < len(rules):
+            rules[index] = rule
+            message = "تم تحديث القاعدة داخل المحرر"
+        else:
+            rules.append(rule)
+            index = len(rules) - 1
+            message = "تمت إضافة القاعدة داخل المحرر"
+        self.set_bandwidth_schedule_editor_rules(rules, selected_index=index)
+        if sv is not None and hasattr(sv, "set_bandwidth_schedule_status"):
+            sv.set_bandwidth_schedule_status(f"{message} — اضغط تطبيق جدول السرعة للحفظ النهائي")
+        elif sv is not None and hasattr(sv, "settings_bandwidth_schedule_status"):
+            sv.settings_bandwidth_schedule_status.setText(f"{message} — اضغط تطبيق جدول السرعة للحفظ النهائي")
+
+    def remove_selected_bandwidth_rule(self):
+        try:
+            rules = self.get_bandwidth_schedule_editor_rules()
+        except Exception as exc:
+            self.window._warn(f"تعذر قراءة قواعد المحرر الحالية: {exc}")
+            return
+        sv = getattr(self.window, "settings_view", None)
+        index = self.window._editing_bandwidth_rule_index if isinstance(self.window._editing_bandwidth_rule_index, int) else -1
+        if not (0 <= index < len(rules)):
+            self.window._warn("اختر قاعدة أولاً لحذفها")
+            return
+        rules.pop(index)
+        next_index = index if index < len(rules) else len(rules) - 1
+        self.window._editing_bandwidth_rule_index = None
+        self.set_bandwidth_schedule_editor_rules(rules, selected_index=next_index)
+        self.prepare_new_bandwidth_rule()
+        if sv is not None and hasattr(sv, "set_bandwidth_schedule_status"):
+            sv.set_bandwidth_schedule_status("تم حذف القاعدة من المحرر — اضغط تطبيق جدول السرعة للحفظ النهائي")
+        elif sv is not None and hasattr(sv, "settings_bandwidth_schedule_status"):
+            sv.settings_bandwidth_schedule_status.setText("تم حذف القاعدة من المحرر — اضغط تطبيق جدول السرعة للحفظ النهائي")
+
+    def apply_bandwidth_schedule_rules(self):
+        sv = getattr(self.window, "settings_view", None)
+        if sv is None:
+            return
+        if hasattr(sv, "get_bandwidth_schedule_editor_text"):
+            raw_text = sv.get_bandwidth_schedule_editor_text().strip()
+        elif hasattr(sv, "settings_bandwidth_schedule_editor"):
+            raw_text = sv.settings_bandwidth_schedule_editor.toPlainText().strip()
+        else:
+            return
+        if not raw_text:
+            self.window._warn("أدخل قواعد جدول السرعة أولاً")
+            return
+        try:
+            scheduler.set_schedule(self.get_bandwidth_schedule_editor_rules())
+            self.reload_bandwidth_schedule_editor()
+            self.refresh_bandwidth_schedule(notify=True)
+            if hasattr(sv, "set_bandwidth_schedule_status"):
+                sv.set_bandwidth_schedule_status("تم حفظ القواعد وتطبيقها بنجاح")
+            elif hasattr(sv, "settings_bandwidth_schedule_status"):
+                sv.settings_bandwidth_schedule_status.setText("تم حفظ القواعد وتطبيقها بنجاح")
+            self.window._info("تم تحديث جدول السرعة")
+        except Exception as exc:
+            self.window._warn(f"تعذر تطبيق جدول السرعة: {exc}")
+
+    def reset_bandwidth_schedule_rules(self):
+        try:
+            scheduler.reset_to_defaults()
+            self.reload_bandwidth_schedule_editor()
+            self.refresh_bandwidth_schedule(notify=True)
+            self.prepare_new_bandwidth_rule()
+            sv = getattr(self.window, "settings_view", None)
+            if sv is not None and hasattr(sv, "set_bandwidth_schedule_status"):
+                sv.set_bandwidth_schedule_status("تمت استعادة القواعد الافتراضية")
+            elif sv is not None and hasattr(sv, "settings_bandwidth_schedule_status"):
+                sv.settings_bandwidth_schedule_status.setText("تمت استعادة القواعد الافتراضية")
+            self.window._info("تمت استعادة جدول السرعة الافتراضي")
+        except Exception as exc:
+            self.window._warn(f"تعذر استعادة جدول السرعة: {exc}")
+
+    def pick_settings_dir(self):
+        sv = getattr(self.window, "settings_view", None)
+        if sv is None:
+            return
+        if hasattr(sv, "get_out_dir"):
+            initial_dir = sv.get_out_dir() or os.getcwd()
+        else:
+            initial_dir = sv.settings_out_dir.text().strip() if hasattr(sv, "settings_out_dir") else os.getcwd()
+        selected = QFileDialog.getExistingDirectory(
+            self.window,
+            "اختيار مجلد",
+            initial_dir,
+        )
+        if selected:
+            if hasattr(sv, "set_out_dir"):
+                sv.set_out_dir(selected)
+            elif hasattr(sv, "settings_out_dir"):
+                sv.settings_out_dir.setText(selected)
+
+    def bind_settings_autosave(self):
+        sv = getattr(self.window, "settings_view", None)
+        if sv is None:
+            return
+        if hasattr(sv, "autosave_controls"):
+            controls = list(sv.autosave_controls() or [])
+        else:
+            controls = [
+                sv.settings_out_dir,
+                sv.settings_retries,
+                sv.settings_retry_delay,
+                sv.settings_queue_retry_limit,
+                sv.settings_aria2,
+                sv.settings_concurrent,
+                sv.settings_search_history_limit,
+                sv.settings_search_history_ttl_days,
+                sv.settings_thumbnail_cache_max,
+                sv.settings_storage_guard,
+                sv.settings_storage_min_free_gb,
+                sv.settings_system_theme_sync,
+                sv.settings_bandwidth_scheduler,
+                sv.settings_cookies,
+                sv.settings_embed_subs,
+                sv.settings_rename_template,
+                sv.settings_split_chapters,
+                sv.settings_verify_checksum,
+                sv.proxy_enabled_cb,
+                sv.proxy_input,
+                sv.sustainability_combo,
+                sv.sustainability_spin,
+            ]
+        for control in controls:
+            if control is None:
+                continue
+            if isinstance(control, QLineEdit):
+                control.textChanged.connect(self.schedule_settings_autosave)
+            elif isinstance(control, QSpinBox):
+                control.valueChanged.connect(self.schedule_settings_autosave)
+            elif isinstance(control, QCheckBox):
+                control.toggled.connect(self.schedule_settings_autosave)
+            elif isinstance(control, QComboBox):
+                control.currentIndexChanged.connect(self.schedule_settings_autosave)
+            elif hasattr(control, "toggled"):
+                control.toggled.connect(self.schedule_settings_autosave)
+            elif hasattr(control, "currentIndexChanged"):
+                control.currentIndexChanged.connect(self.schedule_settings_autosave)
+            elif hasattr(control, "valueChanged"):
+                control.valueChanged.connect(self.schedule_settings_autosave)
+
+    def schedule_settings_autosave(self, *_):
+        if hasattr(self.window, "_settings_autosave_timer") and self.window._settings_autosave_timer is not None:
+            self.window._settings_autosave_timer.start()
+
+    def apply_settings_to_search(self, silent: bool = False):
+        sv = getattr(self.window, "settings_view", None)
+        if sv is None:
+            return
+        if hasattr(sv, "get_form_settings"):
+            form = sv.get_form_settings()
+        else:
+            form = {}
+        out_dir = str(form.get("out_dir") or sv.settings_out_dir.text()).strip()
+        self.window.search_view.out_dir_input.setText(out_dir)
+        self.window.search_view.aria2_checkbox.setChecked(bool(form.get("use_aria2", sv.settings_aria2.isChecked() if hasattr(sv, "settings_aria2") else True)))
+        self.window.auto_retry_delay_seconds = max(1, int(form.get("auto_retry_delay_seconds", sv.settings_retry_delay.value() if hasattr(sv, "settings_retry_delay") else self.window.auto_retry_delay_seconds)))
+        self.window.queue_auto_retry_limit = max(0, int(form.get("queue_auto_retry_limit", sv.settings_queue_retry_limit.value() if hasattr(sv, "settings_queue_retry_limit") else self.window.queue_auto_retry_limit)))
+        self.window.max_concurrent = max(1, int(form.get("max_concurrent", sv.settings_concurrent.value() if hasattr(sv, "settings_concurrent") else self.window.max_concurrent)))
+        self.window._search_history_limit = max(5, int(form.get("search_history_limit", sv.settings_search_history_limit.value() if hasattr(sv, "settings_search_history_limit") else self.window._search_history_limit)))
+        self.window.search_history_ttl_days = max(1, int(form.get("search_history_ttl_days", sv.settings_search_history_ttl_days.value() if hasattr(sv, "settings_search_history_ttl_days") else self.window.search_history_ttl_days)))
+        self.window.search_history = self.window._normalize_search_history(self.window.search_history)
+        self.window.search_history_model.setStringList([entry["url"] for entry in self.window.search_history])
+        self.window.thumbnail_cache_max = max(50, int(form.get("thumbnail_cache_max", sv.settings_thumbnail_cache_max.value() if hasattr(sv, "settings_thumbnail_cache_max") else self.window.thumbnail_cache_max)))
+        self.window._trim_thumbnail_cache()
+        self.window.storage_guard_enabled = bool(form.get("storage_guard_enabled", sv.settings_storage_guard.isChecked() if hasattr(sv, "settings_storage_guard") else self.window.storage_guard_enabled))
+        self.window.storage_min_free_gb = max(1, int(form.get("storage_min_free_gb", sv.settings_storage_min_free_gb.value() if hasattr(sv, "settings_storage_min_free_gb") else self.window.storage_min_free_gb)))
+        if hasattr(sv, "settings_system_theme_sync") or "system_theme_sync_enabled" in form:
+            self.set_system_theme_sync_enabled(bool(form.get("system_theme_sync_enabled", sv.settings_system_theme_sync.isChecked() if hasattr(sv, "settings_system_theme_sync") else self.window.system_theme_sync_enabled)))
+            if self.window.system_theme_sync_enabled:
+                self.refresh_system_theme(force=True)
+        if not silent:
+            if hasattr(sv, "get_bandwidth_schedule_editor_text"):
+                raw_text = sv.get_bandwidth_schedule_editor_text().strip()
+            elif hasattr(sv, "settings_bandwidth_schedule_editor"):
+                raw_text = sv.settings_bandwidth_schedule_editor.toPlainText().strip()
+            else:
+                raw_text = ""
+            if raw_text:
+                try:
+                    scheduler.set_schedule(self.get_bandwidth_schedule_editor_rules())
+                    self.reload_bandwidth_schedule_editor()
+                    if hasattr(sv, "settings_bandwidth_schedule_status"):
+                        sv.settings_bandwidth_schedule_status.setText("تم حفظ قواعد جدول السرعة مع بقية الإعدادات")
+                except Exception as exc:
+                    self.window._warn(f"تعذر تطبيق قواعد جدول السرعة: {exc}")
+                    return
+        if hasattr(sv, "settings_bandwidth_scheduler") or "bandwidth_scheduler_enabled" in form:
+            scheduler.set_enabled(bool(form.get("bandwidth_scheduler_enabled", sv.settings_bandwidth_scheduler.isChecked() if hasattr(sv, "settings_bandwidth_scheduler") else False)))
+            self.window.bandwidth_scheduler_enabled = bool(scheduler.enabled)
+            self.refresh_bandwidth_schedule(notify=not silent)
+        self.window.cookies_path = str(form.get("cookies_path", sv.settings_cookies.text() if hasattr(sv, "settings_cookies") else self.window.cookies_path) or "").strip()
+        self.window.current_download_path = out_dir
+        self.save_session()
+        if not silent:
+            self.window._info("تم تطبيق الإعدادات")
+
+    def add_proxy(self):
+        sv = getattr(self.window, "settings_view", None)
+        if sv is None:
+            return
+        if hasattr(sv, "get_proxy_text"):
+            proxy = sv.get_proxy_text()
+        else:
+            proxy = sv.proxy_input.text().strip() if hasattr(sv, "proxy_input") else ""
+        if not proxy:
+            self.window._warn("Enter a proxy URL first (e.g. http://1.2.3.4:8080)")
+            return
+        proxy_manager.add_proxy(proxy)
+        self.window._info(f"✅ Proxy added: {proxy[:40]}")
+        logger.info(f"[Proxy] Added: {proxy}")
+
+    def test_proxy(self):
+        sv = getattr(self.window, "settings_view", None)
+        if sv is None:
+            return
+        if hasattr(sv, "get_proxy_text"):
+            proxy = sv.get_proxy_text()
+        else:
+            proxy = sv.proxy_input.text().strip() if hasattr(sv, "proxy_input") else ""
+        if not proxy:
+            self.window._warn(_("Enter a proxy URL to test"))
+            return
+        self.window._info(_("Testing proxy: {proxy} ...").format(proxy=proxy[:40]))
+
+        def do_test():
+            ok, result = proxy_manager.test_proxy(proxy)
+            msg = f"{'✅ OK' if ok else '❌ Failed'}: {result[:80]}"
+            QTimer.singleShot(0, lambda m=msg, o=ok: self.window._show_toast(m, "info" if o else "warn"))
+            QTimer.singleShot(0, lambda p=proxy, m=msg: self.window._append_log(f"[Proxy Test] {p} → {m}"))
+
+        threading.Thread(target=do_test, daemon=True).start()
+
+    def apply_sustainability(self):
+        sv = getattr(self.window, "settings_view", None)
+        if sv is None:
+            return
+        if hasattr(sv, "get_sustainability_config"):
+            config = sv.get_sustainability_config()
+            action = str(config.get("action", "") or "").strip()
+            delay = int(config.get("delay_seconds", 60) or 60)
+        else:
+            if not hasattr(sv, "sustainability_combo"):
+                return
+            raw = sv.sustainability_combo.currentText()
+            action = raw.split(" — ")[0].strip()
+            delay = sv.sustainability_spin.value() if hasattr(sv, "sustainability_spin") else 60
+        try:
+            sustainability.configure(action=action, delay_seconds=delay)
+            label = sustainability.get_action_label()
+            self.window._info(f"⚡ After-queue action set: {label} (delay {delay}s)")
+        except Exception as exc:
+            self.window._warn(f"Sustainability error: {exc}")
+
+    def export_settings(self):
+        payload = self.build_session_payload()
+        settings = payload.get("settings", {})
+        if not isinstance(settings, dict) or not settings:
+            self.window._warn(_("لا توجد إعدادات صالحة لتصديرها"))
+            return
+        default_path = os.path.join(os.getcwd(), "snapdownloader-settings.json")
+        path, _ = QFileDialog.getSaveFileName(
+            self.window,
+            _("Export Settings"),
+            default_path,
+            "JSON Files (*.json);;All Files (*)",
+        )
+        if not path:
+            return
+        try:
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump({"settings": settings}, f, ensure_ascii=False, indent=2)
+            self.window._info(_("تم تصدير الإعدادات بنجاح إلى: {path}").format(path=path))
+        except Exception as exc:
+            logger.error(f"Failed to export settings: {exc}", exc_info=True)
+            self.window._warn(_("فشل تصدير الإعدادات: {err}").format(err=str(exc)))
+
+    def import_settings(self):
+        path, _ = QFileDialog.getOpenFileName(
+            self.window,
+            _("Import Settings"),
+            os.getcwd(),
+            "JSON Files (*.json);;All Files (*)",
+        )
+        if not path:
+            return
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            if not isinstance(data, dict):
+                raise ValueError("Invalid settings file format")
+            settings = data.get("settings", data)
+            if not isinstance(settings, dict):
+                raise ValueError("Invalid settings payload")
+        except Exception as exc:
+            logger.error(f"Failed to import settings: {exc}", exc_info=True)
+            self.window._warn(_("فشل استيراد الإعدادات: {err}").format(err=str(exc)))
+            return
+        payload = {"queue_items": [], "settings": settings}
+        try:
+            self.apply_session_payload(payload)
+            self.save_session(sync=True)
+            self.window._info(_("تم استيراد الإعدادات وتطبيقها بنجاح"))
+        except Exception as exc:
+            logger.error(f"Failed to apply imported settings: {exc}", exc_info=True)
+            self.window._warn(_("فشل تطبيق الإعدادات المستوردة: {err}").format(err=str(exc)))
+
+    def session_path(self):
+        app_data_dir = _get_app_data_dir()
+        os.makedirs(app_data_dir, exist_ok=True)
+        return os.path.join(app_data_dir, "xd_session.json")
+
+    def migrate_legacy_session_json(self):
+        legacy_path = self.session_path()
+        migrated_path = legacy_path + ".migrated"
+        if not os.path.exists(legacy_path) or os.path.exists(migrated_path):
+            return
+        try:
+            with open(legacy_path, "r", encoding="utf-8") as file:
+                payload = json.load(file)
+            if not isinstance(payload, dict):
+                return
+            queue_items = payload.get("queue_items", [])
+            settings = payload.get("settings", {})
+            if isinstance(queue_items, list):
+                save_queue_items(queue_items)
+            if isinstance(settings, dict):
+                save_session_settings(settings)
+            os.rename(legacy_path, migrated_path)
+            logger.info("[DB] Legacy session migrated to SQLite")
+        except (OSError, json.JSONDecodeError) as exc:
+            logger.error(f"[DB] Session migration failed: {exc}")
+
+    def session_save_loop(self):
+        self._ensure_session_sync_state()
+        while not self.window._session_save_shutdown:
+            self.window._session_save_event.wait(timeout=1.0)
+            self.window._session_save_event.clear()
+            if self.window._session_save_shutdown:
+                break
+            while True:
+                with self.window._session_save_lock:
+                    payload = self.window._session_save_payload
+                    self.window._session_save_payload = None
+                if payload is None:
+                    break
+                self.write_session_payload(payload)
+
+    def build_session_payload(self) -> dict:
+        queue_items = []
+        for item in self.window.queue_manager.get_queue_items():
+            if isinstance(item, dict):
+                queue_items.append(dict(item))
+            else:
+                queue_items.append(item)
+        sv = getattr(self.window, "settings_view", None)
+        if sv is not None and hasattr(sv, "get_form_settings"):
+            form = sv.get_form_settings()
+        else:
+            form = {}
+        return {
+            "queue_items": queue_items,
+            "settings": {
+                "out_dir": str(form.get("out_dir") or (self.window.search_view.out_dir_input.text().strip() if hasattr(self.window.search_view, "out_dir_input") else "")),
+                "retries": int(form.get("retries", 3) or 3),
+                "auto_retry_delay_seconds": int(form.get("auto_retry_delay_seconds", self.window.auto_retry_delay_seconds) or self.window.auto_retry_delay_seconds),
+                "queue_auto_retry_limit": int(form.get("queue_auto_retry_limit", self.window.queue_auto_retry_limit) or self.window.queue_auto_retry_limit),
+                "use_aria2": bool(form.get("use_aria2", bool(self.window.search_view.aria2_checkbox.isChecked()) if hasattr(self.window.search_view, "aria2_checkbox") else True)),
+                "use_ytdlp_api": bool(form.get("use_ytdlp_api", False)),
+                "queue_priority": str(form.get("queue_priority", "fifo") or "fifo"),
+                "max_concurrent": int(form.get("max_concurrent", self.window.max_concurrent) or self.window.max_concurrent),
+                "search_history_limit": int(form.get("search_history_limit", self.window._search_history_limit) or self.window._search_history_limit),
+                "search_history_ttl_days": int(form.get("search_history_ttl_days", self.window.search_history_ttl_days) or self.window.search_history_ttl_days),
+                "thumbnail_cache_max": int(form.get("thumbnail_cache_max", self.window.thumbnail_cache_max) or self.window.thumbnail_cache_max),
+                "storage_guard_enabled": bool(form.get("storage_guard_enabled", self.window.storage_guard_enabled)),
+                "storage_min_free_gb": int(form.get("storage_min_free_gb", self.window.storage_min_free_gb) or self.window.storage_min_free_gb),
+                "system_theme_sync_enabled": bool(getattr(self.window, "system_theme_sync_enabled", True)),
+                "cookies_path": str(form.get("cookies_path", self.window.cookies_path) or ""),
+                "theme": str(self.window.theme or "dark"),
+                "embed_subs": bool(form.get("embed_subs", True)),
+                "split_chapters": bool(form.get("split_chapters", False)),
+                "verify_checksum": bool(form.get("verify_checksum", False)),
+                "rename_template": str(form.get("rename_template", "Default") or "Default"),
+                "proxy_enabled": bool(form.get("proxy_enabled", False)),
+                "trial_started_at": str(self.window.trial_started_at or ""),
+                "trial_total_days": int(self.window.trial_total_days),
+                "search_history": list(self.window.search_history),
+                "ui_language": str(getattr(self.window, "ui_language", i18n.current_lang)),
+                # M-16: Advanced Merging Settings
+                "custom_merge_enabled": bool(form.get("custom_merge_enabled", False)),
+                "custom_merge_video_codec": str(form.get("custom_merge_video_codec", "copy") or "copy"),
+                "custom_merge_video_crf": int(form.get("custom_merge_video_crf", 23) or 23),
+                "custom_merge_audio_codec": str(form.get("custom_merge_audio_codec", "aac") or "aac"),
+                "custom_merge_audio_bitrate": str(form.get("custom_merge_audio_bitrate", "192k") or "192k"),
+
+            },
+        }
+
+    def write_session_payload(self, payload: dict):
+        self._ensure_session_sync_state()
+        try:
+            with self.window._session_save_write_lock:
+                save_queue_items(payload.get("queue_items", []))
+                save_session_settings(payload.get("settings", {}))
+        except (OSError, ValueError) as exc:
+            logger.error(f"تعذر حفظ الجلسة في قاعدة البيانات: {exc}")
+
+    def save_session(self, sync: bool = False):
+        self._ensure_session_sync_state()
+        try:
+            payload = self.build_session_payload()
+            if sync:
+                self.write_session_payload(payload)
+                return
+            with self.window._session_save_lock:
+                self.window._session_save_payload = payload
+            self.window._session_save_event.set()
+        except Exception as exc:
+            logger.error(f"تعذر تجهيز بيانات حفظ الجلسة: {exc}", exc_info=True)
+
+    def read_session_payload(self) -> dict:
+        self._ensure_session_sync_state()
+        with self.window._session_save_write_lock:
+            return {
+                "queue_items": load_queue_items(),
+                "settings": load_session_settings(),
+            }
+
+    def apply_session_payload(self, payload: dict):
+        queue_items = payload.get("queue_items")
+        if isinstance(queue_items, list):
+            def _scan_resume_from_disk(path_value: str) -> dict | None:
+                p = str(path_value or "").strip()
+                if not p:
+                    return None
+                try:
+                    ap = os.path.abspath(p)
+                except Exception:
+                    ap = p
+                base_no_ext, _ext = os.path.splitext(ap)
+                candidates = [
+                    ap + ".part",
+                    ap + ".ytdl",
+                    ap + ".aria2",
+                    base_no_ext + ".ytdl",
+                    base_no_ext + ".aria2",
+                ]
+                found = []
+                for c in candidates:
+                    try:
+                        if c and os.path.isfile(c):
+                            found.append(os.path.abspath(c))
+                    except Exception:
+                        continue
+                try:
+                    for c in glob.glob(base_no_ext + ".*"):
+                        if not c or not os.path.isfile(c):
+                            continue
+                        lc = c.lower()
+                        if lc.endswith((".part", ".ytdl", ".aria2", ".tmp", ".temp")):
+                            found.append(os.path.abspath(c))
+                except Exception:
+                    pass
+                if not found:
+                    return None
+                unique = []
+                seen = set()
+                total_bytes = 0
+                for c in found:
+                    if c in seen:
+                        continue
+                    seen.add(c)
+                    try:
+                        size = int(os.path.getsize(c))
+                    except Exception:
+                        size = 0
+                    try:
+                        mtime = float(os.path.getmtime(c))
+                    except Exception:
+                        mtime = 0.0
+                    total_bytes += max(0, size)
+                    unique.append({"path": c, "size": size, "mtime": mtime})
+                return {
+                    "output_path": ap,
+                    "partials_total_bytes": int(total_bytes),
+                    "partials_count": int(len(unique)),
+                    "partials": unique,
+                    "updated_at": datetime.now().timestamp(),
+                }
+
+            for item in queue_items:
+                if item.get("status") == "running":
+                    item["status"] = "pending"
+                raw_resume = str(item.get("resume_json", "") or "").strip()
+                if raw_resume:
+                    try:
+                        parsed = json.loads(raw_resume)
+                        if isinstance(parsed, dict):
+                            item["resume"] = parsed
+                    except Exception:
+                        item["resume_json"] = ""
+                disk_resume = _scan_resume_from_disk(item.get("last_output_path", ""))
+                if isinstance(disk_resume, dict):
+                    item["resume"] = disk_resume
+                    try:
+                        item["resume_json"] = json.dumps(disk_resume, ensure_ascii=False)
+                    except Exception:
+                        item["resume_json"] = ""
+            self.window.queue_manager.add_tasks(queue_items)
+        settings = payload.get("settings", {})
+        if isinstance(settings, dict):
+            sv = getattr(self.window, "settings_view", None)
+            search_view = getattr(self.window, "search_view", None)
+            out_dir = str(settings.get("out_dir", "")).strip()
+            if out_dir:
+                self.window.current_download_path = out_dir
+                if search_view is not None and hasattr(search_view, "set_out_dir"):
+                    search_view.set_out_dir(out_dir)
+                elif search_view is not None and hasattr(search_view, "out_dir_input"):
+                    search_view.out_dir_input.setText(out_dir)
+
+            self.window.auto_retry_delay_seconds = max(1, int(settings.get("auto_retry_delay_seconds", self.window.auto_retry_delay_seconds)))
+            self.window.queue_auto_retry_limit = max(0, int(settings.get("queue_auto_retry_limit", self.window.queue_auto_retry_limit)))
+            self.window._search_history_limit = max(5, int(settings.get("search_history_limit", self.window._search_history_limit)))
+            self.window.search_history_ttl_days = max(1, int(settings.get("search_history_ttl_days", self.window.search_history_ttl_days)))
+            self.window.thumbnail_cache_max = max(50, int(settings.get("thumbnail_cache_max", self.window.thumbnail_cache_max)))
+            self.window._trim_thumbnail_cache()
+
+            use_aria2 = bool(settings.get("use_aria2", True))
+            if search_view is not None and hasattr(search_view, "set_aria2_checked"):
+                search_view.set_aria2_checked(use_aria2)
+            elif search_view is not None and hasattr(search_view, "aria2_checkbox"):
+                search_view.aria2_checkbox.setChecked(use_aria2)
+
+            self.window.max_concurrent = max(1, int(settings.get("max_concurrent", self.window.max_concurrent)))
+            self.window.storage_guard_enabled = bool(settings.get("storage_guard_enabled", self.window.storage_guard_enabled))
+            self.window.storage_min_free_gb = max(1, int(settings.get("storage_min_free_gb", self.window.storage_min_free_gb)))
+
+            self.set_system_theme_sync_enabled(
+                bool(settings.get("system_theme_sync_enabled", getattr(self.window, "system_theme_sync_enabled", True)))
+            )
+
+            self.window.cookies_path = str(settings.get("cookies_path", self.window.cookies_path))
+
+            legacy_proxy_value = str(settings.get("proxy_value", "")).strip()
+            current_proxy_value = proxy_manager.get_current_proxy() or ""
+            if legacy_proxy_value and not current_proxy_value:
+                proxy_manager.add_proxy(legacy_proxy_value)
+                current_proxy_value = proxy_manager.get_current_proxy() or legacy_proxy_value
+                self.save_session()
+
+            if sv is not None and hasattr(sv, "apply_form_settings"):
+                to_apply = dict(settings)
+                to_apply["auto_retry_delay_seconds"] = int(self.window.auto_retry_delay_seconds)
+                to_apply["queue_auto_retry_limit"] = int(self.window.queue_auto_retry_limit)
+                to_apply["search_history_limit"] = int(self.window._search_history_limit)
+                to_apply["search_history_ttl_days"] = int(self.window.search_history_ttl_days)
+                to_apply["thumbnail_cache_max"] = int(self.window.thumbnail_cache_max)
+                to_apply["max_concurrent"] = int(self.window.max_concurrent)
+                to_apply["storage_guard_enabled"] = bool(self.window.storage_guard_enabled)
+                to_apply["storage_min_free_gb"] = int(self.window.storage_min_free_gb)
+                to_apply["system_theme_sync_enabled"] = bool(getattr(self.window, "system_theme_sync_enabled", True))
+                to_apply["cookies_path"] = str(self.window.cookies_path or "")
+                to_apply["use_aria2"] = bool(use_aria2)
+                to_apply["proxy"] = str(current_proxy_value or "")
+                sv.apply_form_settings(to_apply, block_signals=True)
+            self.window.trial_started_at = str(settings.get("trial_started_at", self.window.trial_started_at)).strip() or self.window.trial_started_at
+            self.window.trial_total_days = max(1, int(settings.get("trial_total_days", self.window.trial_total_days)))
+            self.window._recompute_trial_days()
+            self.window.search_history = self.window._normalize_search_history(settings.get("search_history", self.window.search_history))
+            self.window.search_history_model.setStringList([e["url"] for e in self.window.search_history])
+            self.set_ui_language(
+                str(settings.get("ui_language", getattr(self.window, "ui_language", i18n.current_lang))),
+                persist=False,
+                notify=False,
+            )
+            theme = str(settings.get("theme", self.window.theme))
+            if self.window.system_theme_sync_enabled:
+                self.refresh_system_theme(force=True)
+            elif theme in THEMES:
+                self.apply_theme(theme, persist=False)
+        pending_after_restore = [
+            q for q in self.window.queue_manager.get_queue_items()
+            if q.get("status", "pending") == "pending"
+        ]
+        if pending_after_restore:
+            QTimer.singleShot(900, self.window._start_queue_download)
+            self.window._append_log(f"تم استرجاع {len(pending_after_restore)} عنصر من الجلسة")
+        self.window._refresh_downloads_list()
+
+    def load_session_async(self):
+        if self.window._session_load_thread is not None and self.window._session_load_thread.is_alive():
+            return
+
+        def _worker():
+            try:
+                payload = self.read_session_payload()
+                self.window.session_loaded_ui.emit({"ok": True, "payload": payload, "error": ""})
+            except Exception as exc:
+                self.window.session_loaded_ui.emit({"ok": False, "payload": None, "error": str(exc)})
+            finally:
+                close_thread_connection()
+
+        self.window._session_load_thread = threading.Thread(target=_worker, daemon=True, name="SessionLoadWorker")
+        self.window._session_load_thread.start()
+
+    def handle_session_load_result(self, result: dict):
+        self.window._session_load_thread = None
+        if not result.get("ok"):
+            self.window._append_log(f"تعذر تحميل الجلسة: {result.get('error', 'Unknown error')}")
+            return
+        try:
+            self.apply_session_payload(result.get("payload") or {})
+        except Exception as apply_exc:
+            self.window._append_log(f"تعذر تطبيق بيانات الجلسة: {apply_exc}")
+
+
+class AnalyzeController:
+    SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+
+    def __init__(self, window):
+        self.window = window
+
+    def has_active_process(self) -> bool:
+        return self.window.current_worker is not None
+
+    def stop_analyze_worker(self):
+        worker = getattr(self.window, "analyze_worker", None)
+        if worker is None:
+            return
+        try:
+            if worker.isRunning():
+                worker.requestInterruption()
+                worker.wait(1200)
+                if worker.isRunning():
+                    worker.terminate()
+                    worker.wait(800)
+        except Exception as exc:
+            logger.debug(f"تعذر إيقاف عامل التحليل الحالي: {exc}")
+        self.window.analyze_worker = None
+
+    def start_worker(self, url: str, finished_handler):
+        self.stop_analyze_worker()
+        self.window.analyze_worker = AnalyzeWorker(url)
+        self.window.analyze_worker.finished.connect(finished_handler)
+        self.window.analyze_worker.start()
+
+    def stop_search_timers(self):
+        if hasattr(self.window, "_search_timeout_timer"):
+            self.window._search_timeout_timer.stop()
+        if hasattr(self.window, "search_spinner_timer"):
+            self.window.search_spinner_timer.stop()
+            self.window.search_spinner_timer.deleteLater()
+            del self.window.search_spinner_timer
+
+    def reset_search_controls(self):
+        sv = getattr(self.window, "search_view", None)
+        if sv is not None and hasattr(sv, "set_search_button"):
+            sv.set_search_button("Search", True)
+            return
+        self.window.search_view.search_btn.setText("Search")
+        self.window.search_view.search_btn.setEnabled(True)
+
+    def normalize_search_error_message(self, message: str) -> str:
+        msg_text = str(message or "").strip() or "تعذر تحليل الرابط"
+        if "unable to download api page" in msg_text.lower() or "http error 400" in msg_text.lower():
+            return "تعذر قراءة البلاي ليست. غالباً الرابط غير صحيح أو القائمة خاصة/محذوفة."
+        return msg_text
+
+    def on_playlist_view_analyze_requested(self, url: str):
+        if self.has_active_process():
+            self.window._warn("There is an active process. Please wait.")
+            self.window.playlist_view.set_loading_state(False)
+            return
+        self.window.playlist_view.set_loading_state(True)
+        self.start_worker(url, self.window._on_playlist_analyze_finished)
+
+    def on_playlist_analyze_finished(self, success: bool, message: str, payload: dict, items: list):
+        self.window.analyze_worker = None
+        self.window.playlist_view.set_loading_state(False)
+        if not success:
+            msg_text = str(message or "").strip() or "Failed to analyze link"
+            self.window._warn(msg_text)
+            self.window.playlist_view.status_lbl.setText("Error: " + msg_text)
+            return
+        if payload.get("kind") != "playlist":
+            items = [payload]
+        self.window.playlist_view.set_playlist_data(payload, items)
+        self.window._append_log(message)
+
+    def start_analyze(self):
+        if self.has_active_process():
+            return
+        sv = getattr(self.window, "search_view", None)
+        if sv is not None and hasattr(sv, "get_url"):
+            url = sv.get_url()
+        else:
+            url = self.window.search_view.url_input.text().strip()
+        if not url:
+            self.window._warn("الرابط مطلوب")
+            return
+        self.window._record_search_history(url)
+        self.window._set_status("جاري تحليل الرابط")
+        if sv is not None and hasattr(sv, "set_search_button"):
+            sv.set_search_button(enabled=False)
+        else:
+            self.window.search_view.search_btn.setEnabled(False)
+        self.window.search_spinner_frames = list(self.SPINNER_FRAMES)
+        self.window.search_spinner_idx = 0
+        self.window.search_spinner_timer = QTimer(self.window)
+        self.window.search_spinner_timer.timeout.connect(self.window._update_search_spinner)
+        self.window.search_spinner_timer.start(100)
+        self.window._search_timeout_timer = QTimer(self.window)
+        self.window._search_timeout_timer.setSingleShot(True)
+        self.window._search_timeout_timer.timeout.connect(self.window._force_reset_search_ui)
+        timeout_ms = 130_000 if ("list=" in url or "/playlist" in url) else 70_000
+        self.window._search_timeout_timer.start(timeout_ms)
+        self.start_worker(url, self.window._on_analyze_finished)
+
+    def force_reset_search_ui(self):
+        self.window.analyze_worker = None
+        self.stop_search_timers()
+        self.reset_search_controls()
+        self.window._set_status("جاهز")
+
+    def update_search_spinner(self):
+        frames = getattr(self.window, "search_spinner_frames", None) or self.SPINNER_FRAMES
+        idx = int(getattr(self.window, "search_spinner_idx", 0) or 0) % len(frames)
+        sv = getattr(self.window, "search_view", None)
+        if sv is not None and hasattr(sv, "set_search_button"):
+            sv.set_search_button(f"{frames[idx]} Searching...")
+        else:
+            self.window.search_view.search_btn.setText(f"{frames[idx]} Searching...")
+        self.window.search_spinner_idx = (idx + 1) % len(frames)
+
+    def on_analyze_finished(self, success: bool, message: str, payload: dict, items: list):
+        self.window.analyze_worker = None
+        self.stop_search_timers()
+        self.reset_search_controls()
+        if not success:
+            self.window._set_status("جاهز")
+            self.window._set_search_state("empty")
+            msg_text = self.normalize_search_error_message(message)
+            self.window._warn(msg_text)
+            self.window._append_log(msg_text)
+            return
+        if payload.get("kind") == "playlist":
+            self.window.playlist_items = list(items or [])
+            self.window.playlist_view.set_playlist_data(payload, self.window.playlist_items)
+            self.window._switch_view("playlists")
+            self.window._set_status("جاهز")
+            self.window._append_log(message)
+            return
+        self.window._set_single_preview(payload or {})
+        self.window._set_search_state("single")
+        self.window._set_status("جاهز")
+        self.window._append_log(message)
+
+    def on_playlist_view_download_requested(self, tasks: list):
+        normalized_tasks = []
+        default_retries = int(DEFAULT_SETTINGS["retries"])
+        fallback_out_dir = self.default_out_dir()
+        for raw in tasks or []:
+            item = raw if isinstance(raw, dict) else {}
+            fmt = str(item.get("format", "MP4")).strip() or "MP4"
+            quality = str(item.get("quality", "1080p")).strip() or "1080p"
+            subtitle = str(item.get("subtitle", "None")).strip() or "None"
+            task = self.window._build_task(
+                url=item.get("url", ""),
+                title=item.get("title", ""),
+                thumbnail=item.get("thumbnail", ""),
+                fmt=fmt,
+                quality=quality,
+            )
+            task["subtitle"] = subtitle
+            task["duration_seconds"] = int(item.get("duration_seconds") or task.get("duration_seconds") or 0)
+            task["status"] = "pending"
+            task["retries"] = int(item.get("retries", task.get("retries", default_retries)) or default_retries)
+            out_dir = str(item.get("out_dir", task.get("out_dir", ""))).strip() or fallback_out_dir
+            task["out_dir"] = out_dir
+            normalized_tasks.append(task)
+        if not normalized_tasks:
+            self.window._warn("لا توجد عناصر صالحة للإضافة للطابور")
+            return
+        self.window.queue_manager.add_tasks(normalized_tasks)
+        self.window._append_log(f"Added {len(normalized_tasks)} items to the queue from Playlist View")
+        self.window._switch_view("downloads")
+        self.window._set_downloads_filter("active")
+        self.window._start_queue_download()
+
+    def default_out_dir(self) -> str:
+        if hasattr(self.window, "out_dir_input"):
+            out_dir = self.window.search_view.out_dir_input.text().strip()
+            if out_dir:
+                return out_dir
+        return default_download_dir()
+
+    def toggle_trim_options(self):
+        preview_data = getattr(self.window, "preview_data", {}) or {}
+        if not preview_data:
+            return
+        self.window.trim_context = {"mode": "search"}
+        self.window.search_view.trim_view.set_task(preview_data, net_manager=self.window.net_manager)
+        self.window._switch_view("search")
+        self.window._set_search_state("trim")
+
+    def open_trim_for_queue_item(self, item_index: int):
+        item = self.window.queue_manager.get_task(item_index)
+        if not item:
+            return
+        status = str(item.get("status", "pending")).lower()
+        if status == "running":
+            self.window._warn("مينفعش تعديل القص أثناء التحميل. اعمل Pause الأول.")
+            return
+        self.window.trim_context = {"mode": "queue", "queue_index": item_index}
+        self.window.search_view.trim_view.set_task(item, net_manager=self.window.net_manager)
+        self.window._switch_view("search")
+        self.window._set_search_state("trim")
+
+    def on_trim_view_saved(self, data: dict):
+        payload = data or {}
+        start = str(payload.get("start", "")).strip()
+        end = str(payload.get("end", "")).strip()
+        title = str(payload.get("title", "")).strip()
+        trims = payload.get("trims", None)
+        ctx = getattr(self.window, "trim_context", {}) or {}
+        mode = ctx.get("mode", "search")
+        if mode == "queue":
+            idx = ctx.get("queue_index")
+            if isinstance(idx, int):
+                item = self.window.queue_manager.get_task(idx)
+                if item:
+                    item["start_time"] = start
+                    item["end_time"] = end
+                    if title:
+                        item["title"] = title
+                    if isinstance(trims, list):
+                        item["trims"] = trims
+                    self.window._save_session()
+                    self.window._refresh_downloads_list()
+            self.window._switch_view("downloads")
+            self.window._set_downloads_filter("queued")
+            return
+        self.window.search_view.start_input.setText(start)
+        self.window.search_view.end_input.setText(end)
+        if title:
+            duration = self.window._format_seconds(self.window.preview_data.get("duration_seconds", 0))
+            self.window.search_view.single_title.setText(f"{title} ({duration})")
+            self.window.preview_data["title"] = title
+        if isinstance(trims, list):
+            self.window.preview_data["trims"] = trims
+        self.window.trim_btn.setProperty("trimActive", True)
+        self.window.trim_btn.style().unpolish(self.window.trim_btn)
+        self.window.trim_btn.style().polish(self.window.trim_btn)
+        self.window._append_log(f"Trim set: {start} to {end}")
+        self.window._switch_view("search")
+        self.window._set_search_state("single")
+
+    def on_trim_view_back(self):
+        ctx = getattr(self.window, "trim_context", {}) or {}
+        mode = ctx.get("mode", "search")
+        if mode == "queue":
+            self.window._switch_view("downloads")
+            self.window._set_downloads_filter("queued")
+            return
+        self.window._switch_view("search")
+        self.window._set_search_state("single")
+
+
+class ImportController:
+    def __init__(self, window):
+        self.window = window
+
+    def bulk_import(self):
+        file_path, _ = QFileDialog.getOpenFileName(self.window, _("Open Links File"), "", _("Text Files (*.txt);;All Files (*)"))
+        if not file_path:
+            return
+        self.window._set_status("جاري استيراد الروابط...")
+        worker = threading.Thread(
+            target=self.bulk_import_worker,
+            args=(file_path,),
+            daemon=True,
+            name="BulkImportWorker",
+        )
+        worker.start()
+
+    def parse_bulk_import_links(self, file_path: str) -> list[str]:
+        links = []
+        seen = set()
+        with open(file_path, "r", encoding="utf-8", errors="replace") as file:
+            for raw_line in file:
+                line = str(raw_line or "").strip()
+                if not line or not line.startswith(("http://", "https://")):
+                    continue
+                if line in seen:
+                    continue
+                seen.add(line)
+                links.append(line)
+        return links
+
+    def bulk_import_worker(self, file_path: str):
+        try:
+            links = self.parse_bulk_import_links(file_path)
+            self.window.bulk_import_finished_ui.emit(
+                {
+                    "ok": True,
+                    "file_path": file_path,
+                    "links": links,
+                }
+            )
+        except (PermissionError, FileNotFoundError) as exc:
+            logger.warning(f"Bulk import file error: {exc}")
+            self.window.bulk_import_finished_ui.emit(
+                {
+                    "ok": False,
+                    "file_path": file_path,
+                    "error": f"Cannot read file: {exc}",
+                    "links": [],
+                }
+            )
+        except (UnicodeDecodeError, ValueError) as exc:
+            logger.exception("Bulk import failed to decode or parse file")
+            self.window.bulk_import_finished_ui.emit(
+                {
+                    "ok": False,
+                    "file_path": file_path,
+                    "error": str(exc),
+                    "links": [],
+                }
+            )
+
+    def handle_bulk_import_result(self, payload: dict):
+        self.window._set_status("جاهز")
+        if not payload.get("ok"):
+            ErrorHandler.show_error(
+                self.window,
+                _("Error"),
+                _("Failed to import links: {error}").format(
+                    error=payload.get("error", "Unknown error")
+                ),
+            )
+            return
+        links = list(payload.get("links") or [])
+        if not links:
+            ErrorHandler.show_warning(
+                self.window,
+                _("No Links"),
+                _("No valid links found in the selected file."),
+            )
+            return
+        logger.info(f"Imported {len(links)} links from {payload.get('file_path', '')}")
+        tasks = []
+        for link in links:
+            task = self.window._build_task(url=link, title=f"Bulk: {link}")
+            task["status"] = "pending"
+            tasks.append(task)
+        self.window.queue_manager.add_tasks(tasks)
+        ErrorHandler.show_info(
+            self.window,
+            _("Import Success"),
+            _("Successfully imported {count} links to the queue.").format(count=len(links)),
+        )
+        self.window._switch_view("downloads")
+        self.window._start_queue_download()
+
+
+class ExtensionController:
+    def __init__(self, window):
+        self.window = window
+
+    def handle_extension_link(self, payload: dict):
+        data = payload if isinstance(payload, dict) else {}
+        url = str(data.get("url", "")).strip()
+        if not url:
+            return
+        auto_download = bool(data.get("auto_download", True))
+        fmt = str(data.get("format", "MP4")).strip() or "MP4"
+        quality = str(data.get("quality", "1080p")).strip() or "1080p"
+        subtitle = str(data.get("subtitle", "None")).strip() or "None"
+        title = str(data.get("title", "")).strip()
+        thumbnail = str(data.get("thumbnail", "")).strip()
+        if not auto_download:
+            sv = getattr(self.window, "search_view", None)
+            if sv is not None and hasattr(sv, "set_url"):
+                sv.set_url(url)
+            else:
+                self.window.search_view.url_input.setText(url)
+            self.window._start_analyze()
+            self.window._switch_view("search")
+            return
+        task = self.window._build_task(
+            url=url,
+            title=title,
+            thumbnail=thumbnail,
+            fmt=fmt,
+            quality=quality,
+        )
+        task["subtitle"] = subtitle
+        task["status"] = "pending"
+        self.window.queue_manager.add_task(task)
+        self.window._append_log(f"[Extension] Added URL from browser: {url}")
+        self.window._switch_view("downloads")
+        self.window._set_downloads_filter("active")
+        if not self.window.queue_running:
+            self.window._start_queue_download()
+
+
+class DownloadController:
+    def __init__(self, window):
+        self.window = window
+        self._resume_last_save_ts: dict = {}
+
+    def _queue_priority(self) -> str:
+        sv = getattr(self.window, "settings_view", None)
+        if sv is not None and hasattr(sv, "get_form_settings"):
+            form = sv.get_form_settings()
+            return str(form.get("queue_priority", "fifo") or "fifo")
+        if sv is not None and hasattr(sv, "settings_queue_priority"):
+            value = sv.settings_queue_priority.currentData()
+            return str(value or "fifo")
+        return "fifo"
+
+    def _estimate_task_bytes(self, task: dict) -> int:
+        try:
+            seconds = int(task.get("duration_seconds") or 0)
+        except Exception:
+            seconds = 0
+        if seconds <= 0:
+            return 10**15
+
+        mode = str(task.get("mode", "video")).strip().lower()
+        quality = str(task.get("quality", "") or "").strip().lower()
+
+        if mode in {"audio", "صوت"}:
+            digits = "".join(ch for ch in quality if ch.isdigit())
+            kbps = int(digits) if digits else 192
+            return int((seconds * kbps * 1000) / 8)
+
+        per_minute_mb = 7
+        if "8k" in quality or "4320" in quality:
+            per_minute_mb = 450
+        elif "4k" in quality or "2160" in quality:
+            per_minute_mb = 220
+        elif "1440" in quality:
+            per_minute_mb = 140
+        elif "1080" in quality:
+            per_minute_mb = 90
+        elif "720" in quality:
+            per_minute_mb = 50
+        elif "480" in quality:
+            per_minute_mb = 28
+        elif "360" in quality:
+            per_minute_mb = 17
+        elif "240" in quality:
+            per_minute_mb = 10
+
+        mb = (seconds / 60.0) * per_minute_mb
+        return int(mb * 1024 * 1024)
+
+    def build_task(self, url=None, title=None, thumbnail="", fmt=None, quality=None):
+        mode = "audio" if (fmt in self.window.AUDIO_FORMATS) or self.window.search_view.audio_radio.isChecked() else "video"
+        task_url = str(url if url is not None else self.window.search_view.url_input.text()).strip()
+        settings_form = {}
+        sv = getattr(self.window, "settings_view", None)
+        if sv is not None and hasattr(sv, "get_form_settings"):
+            try:
+                settings_form = sv.get_form_settings()
+            except Exception:
+                settings_form = {}
+        retries_value = int(settings_form.get("retries", 3) or 3)
+        bandwidth_limit_kbps = self.window._current_bandwidth_limit_kbps()
+        base_out_dir = self.window.search_view.out_dir_input.text().strip()
+        category = ""
+        if hasattr(self.window.search_view, "category_combo"):
+            category = self.window.search_view.category_combo.currentText().strip()
+        out_dir = base_out_dir
+        if category:
+            out_dir = os.path.join(base_out_dir, category)
+        scheduled_at = 0.0
+        try:
+            if hasattr(self.window.search_view, "schedule_time_edit"):
+                dt = self.window.search_view.schedule_time_edit.dateTime()
+                scheduled_at = float(dt.toSecsSinceEpoch())
+        except Exception:
+            scheduled_at = 0.0
+        schedule_repeat = "none"
+        if hasattr(self.window.search_view, "schedule_repeat_combo"):
+            data = self.window.search_view.schedule_repeat_combo.currentData()
+            schedule_repeat = str(data or "none")
+        use_aria2_audio = bool(settings_form.get("use_aria2", self.window.search_view.aria2_checkbox.isChecked()))
+        return {
+            "url": task_url,
+            "out_dir": out_dir,
+            "mode": mode,
+            "quality": quality or (self.window.AUDIO_QUALITIES[0] if mode == "audio" else self.window._quality_value()),
+            "format": fmt or self.window.search_view.format_combo.currentText().strip(),
+            "subtitle": self.window.search_view.subtitle_combo.currentText().strip(),
+            "start_time": self.window.search_view.start_input.text().strip(),
+            "end_time": self.window.search_view.end_input.text().strip(),
+            "retries": retries_value,
+            "auto_retry_delay_seconds": int(self.window.auto_retry_delay_seconds),
+            "queue_retry_limit": int(self.window.queue_auto_retry_limit),
+            "retry_count": 0,
+            "next_retry_at": 0,
+            "scheduled_at": scheduled_at,
+            "bandwidth_limit_kbps": int(bandwidth_limit_kbps),
+            "use_aria2": use_aria2_audio,
+            "title": str(title or self.window.preview_data.get("title") or task_url).strip(),
+            "thumbnail": thumbnail or self.window.preview_data.get("thumbnail", ""),
+            "duration_seconds": int(self.window.preview_data.get("duration_seconds") or 0),
+            "status": "pending",
+            "category": category,
+            "schedule_repeat": schedule_repeat,
+        }
+
+    def storage_guard_paths(self) -> list[str]:
+        seen = set()
+        paths = []
+        for wid in list(self.window.active_workers.keys()):
+            task = self.window.queue_manager.get_task(wid) if isinstance(wid, int) else None
+            out_dir = str((task or {}).get("out_dir", "")).strip()
+            if out_dir and out_dir not in seen:
+                seen.add(out_dir)
+                paths.append(out_dir)
+        fallback = str(self.window.current_download_path or "").strip()
+        if not fallback and hasattr(self.window, "out_dir_input"):
+            fallback = self.window.search_view.out_dir_input.text().strip()
+        if fallback and fallback not in seen:
+            paths.append(fallback)
+        return paths
+
+    def storage_guard_message(self, path: str, free: int, threshold: int) -> str:
+        return (
+            f"⚠️ المساحة الحرة منخفضة في {path} — المتاح {format_bytes(free)} "
+            f"والحد المطلوب {format_bytes(threshold)}. تم إيقاف التحميل مؤقتاً."
+        )
+
+    def pause_downloads_for_storage_guard(self, message: str):
+        self.window.queue_paused = True
+        try:
+            self.window.queue_manager.pause_queue()
+        except Exception as exc:
+            logger.debug(f"تعذر إيقاف الطابور بسبب Storage Guard: {exc}")
+        for wid, worker in list(self.window.active_workers.items()):
+            self.window.pause_requested_workers.add(wid)
+            task = self.window.queue_manager.get_task(wid) if isinstance(wid, int) else None
+            if isinstance(task, dict):
+                task["status"] = "paused"
+                task["next_retry_at"] = 0
+            try:
+                worker.stop()
+            except Exception as exc:
+                logger.debug(f"تعذر إيقاف worker {wid} بسبب Storage Guard: {exc}")
+        if message != self.window._storage_guard_last_message or not self.window._storage_guard_alerted:
+            self.window._append_log(message)
+            self.window._warn(message)
+            self.window._show_tray_message(
+                "SnapDownloader",
+                message[:120],
+                QSystemTrayIcon.MessageIcon.Warning,
+                3500,
+            )
+        self.window._storage_guard_alerted = True
+        self.window._storage_guard_last_message = message
+        self.window._set_status("المساحة منخفضة")
+        self.window._save_session()
+        self.window._refresh_downloads_list()
+
+    def check_storage_guard(self, path: str = "", pause_on_low: bool = False) -> bool:
+        if not self.window.storage_guard_enabled:
+            self.window._storage_guard_alerted = False
+            self.window._storage_guard_last_message = ""
+            return True
+        targets = [str(path).strip()] if str(path or "").strip() else self.storage_guard_paths()
+        if not targets:
+            return True
+        for target in targets:
+            has_space, free, threshold, resolved = has_enough_space(target, self.window.storage_min_free_gb)
+            if has_space:
+                continue
+            message = self.storage_guard_message(resolved, free, threshold)
+            if pause_on_low:
+                self.pause_downloads_for_storage_guard(message)
+            else:
+                if message != self.window._storage_guard_last_message or not self.window._storage_guard_alerted:
+                    self.window._append_log(message)
+                    self.window._warn(message)
+                self.window._storage_guard_alerted = True
+                self.window._storage_guard_last_message = message
+                self.window._set_status("المساحة منخفضة")
+            return False
+        self.window._storage_guard_alerted = False
+        self.window._storage_guard_last_message = ""
+        return True
+
+    def run_storage_watchdog(self):
+        if self.window._is_closing or not self.window.storage_guard_enabled:
+            return
+        if self.window._active_workers_count() == 0:
+            return
+        self.check_storage_guard(pause_on_low=True)
+
+    def start_queue_download(self):
+        self.window._prune_inactive_workers()
+        active_worker_ids = set(self.window.active_workers.keys())
+        restored = 0
+        for idx, item in enumerate(self.window.queue_manager.get_queue_items()):
+            status = str(item.get("status", "pending")).lower()
+            if status == "running" and idx not in active_worker_ids:
+                item["status"] = "pending"
+                item["next_retry_at"] = 0
+                restored += 1
+        self.window.queue_running = True
+        self.window.queue_paused = False
+        try:
+            self.window.queue_manager.stop_queue()
+        except Exception as exc:
+            logger.warning(f"تعذر إيقاف الطابور قبل البدء: {exc}")
+        if restored > 0:
+            self.window._append_log(f"تمت استعادة {restored} عنصر قابل للتشغيل")
+            self.window._save_session()
+        self.window._switch_view("downloads")
+        self.window._set_downloads_filter("active")
+        self.process_parallel_queue()
+        QTimer.singleShot(120, lambda: self.window._set_downloads_filter("active"))
+
+    def pause_queue_download(self):
+        self.window.queue_manager.pause_queue()
+        self.window.queue_paused = True
+        for worker in list(self.window.active_workers.values()):
+            worker.stop()
+        self.window._info(_("Queue paused"))
+
+    def resume_queue_download(self):
+        self.window.queue_paused = False
+        self.window.queue_running = True
+        self.process_parallel_queue()
+
+    def pause_queue_item(self, item_index: int):
+        item = self.window.queue_manager.get_task(item_index)
+        if not item:
+            return
+        status = item.get("status", "pending")
+        if status == "cancelled":
+            self.window._warn("العنصر ملغي، استخدم Retry أولاً")
+            return
+        if status == "failed":
+            self.window._warn("العنصر فشل، استخدم Retry أولاً")
+            return
+        if status == "paused":
+            self.window._warn("العنصر متوقف مؤقتاً بالفعل")
+            return
+        if status == "running":
+            self.window.pause_requested_workers.add(item_index)
+            worker = self.window.active_workers.get(item_index)
+            if worker is not None:
+                worker.stop()
+        item["status"] = "paused"
+        item["next_retry_at"] = 0
+        self.window._append_log("تم إيقاف عنصر مؤقتاً")
+        self.window._save_session()
+        self.window._refresh_downloads_list()
+        self.window._info(_("تم إيقاف العنصر مؤقتاً"))
+
+    def resume_queue_item(self, item_index: int):
+        item = self.window.queue_manager.get_task(item_index)
+        if not item:
+            return
+        if item.get("status") != "paused":
+            self.window._warn("العنصر ليس في وضع الإيقاف المؤقت")
+            return
+        item["status"] = "pending"
+        item["next_retry_at"] = 0
+        self.window._append_log("تم استكمال عنصر من الطابور")
+        if not self.window.queue_running and self.window._active_workers_count() == 0:
+            self.window.queue_running = True
+            self.window.queue_paused = False
+        self.window._save_session()
+        self.window._switch_view("downloads")
+        self.window._set_downloads_filter("active")
+        self.process_parallel_queue()
+
+    def cancel_queue_item(self, item_index: int):
+        item = self.window.queue_manager.get_task(item_index)
+        if not item:
+            return
+        status = item.get("status", "pending")
+        if status == "cancelled":
+            self.window._warn("العنصر ملغي بالفعل")
+            return
+        if status == "running":
+            self.window.cancel_requested_workers.add(item_index)
+            worker = self.window.active_workers.get(item_index)
+            if worker is not None:
+                worker.stop()
+        item["status"] = "cancelled"
+        item["next_retry_at"] = 0
+        self.window._append_log("تم إلغاء عنصر من الطابور")
+        self.window._save_session()
+        self.window._refresh_downloads_list()
+        self.window._info(_("تم إلغاء العنصر"))
+        if self.window.queue_running and not self.window.queue_paused:
+            QTimer.singleShot(250, self.process_parallel_queue)
+
+    def delete_queue_item(self, item_index: int):
+        item = self.window.queue_manager.get_task(item_index)
+        if not item:
+            return
+        status = str(item.get("status", "pending")).lower()
+        if status == "running":
+            self.window._warn("مينفعش حذف عنصر شغال. اعمل Cancel الأول.")
+            return
+        item["status"] = "deleted"
+        item["next_retry_at"] = 0
+        self.window._save_session()
+        self.window._refresh_downloads_list()
+
+    def retry_queue_item(self, item_index: int):
+        item = self.window.queue_manager.get_task(item_index)
+        if not item:
+            return
+        status = item.get("status", "pending")
+        if status not in {"failed", "cancelled", "paused"}:
+            self.window._warn("العنصر لا يحتاج Retry حالياً")
+            return
+        item["status"] = "pending"
+        item["retry_count"] = 0
+        item["next_retry_at"] = 0
+        self.window._append_log("تمت إعادة عنصر للطابور يدوياً")
+        if not self.window.queue_running and self.window._active_workers_count() == 0:
+            self.window.queue_running = True
+            self.window.queue_paused = False
+        self.window._save_session()
+        self.window._switch_view("downloads")
+        self.window._set_downloads_filter("active")
+        self.process_parallel_queue()
+
+    def process_parallel_queue(self):
+        if not self.window.queue_running or self.window.queue_paused:
+            return
+        self.window._prune_inactive_workers()
+        effective_max = max(1, int(self.window.max_concurrent or 1))
+        
+        # H-10: Improved worker status check. We must ensure we don't count 
+        # workers that are in the process of finishing but haven't been pruned yet.
+        active_count = sum(1 for w in self.window.active_workers.values() if w is not None and w.isRunning())
+        
+        if active_count >= effective_max:
+            return
+        
+        slots_available = effective_max - active_count
+        queue_items = self.window.queue_manager.get_queue_items()
+        ready_indices = []
+        now_ts = datetime.now().timestamp()
+        next_retry_ts = None
+        
+        # Track IDs of workers that are ALREADY active (running or about to start)
+        active_worker_ids = {wid for wid, w in self.window.active_workers.items() if w is not None and (w.isRunning() or not w.isFinished())}
+        
+        for idx, item in enumerate(queue_items):
+            if item.get("status", "pending") == "pending":
+                if idx not in active_worker_ids:
+                    sched = item.get("scheduled_at", 0)
+                    if sched > 0 and now_ts < sched:
+                        if next_retry_ts is None or sched < next_retry_ts:
+                            next_retry_ts = sched
+                        continue
+                    retry_at = float(item.get("next_retry_at", 0) or 0)
+                    if retry_at > now_ts:
+                        if next_retry_ts is None or retry_at < next_retry_ts:
+                            next_retry_ts = retry_at
+                        continue
+                    ready_indices.append(idx)
+
+        priority = self._queue_priority()
+        if priority == "smallest_first" and len(ready_indices) > 1:
+            ready_indices.sort(key=lambda i: (self._estimate_task_bytes(queue_items[i]), i))
+
+        pending_indices = ready_indices[: max(0, int(slots_available))]
+
+        if not pending_indices and active_count == 0:
+            if next_retry_ts is not None:
+                delay_ms = max(300, int((next_retry_ts - now_ts) * 1000))
+                QTimer.singleShot(delay_ms, self.process_parallel_queue)
+                self.window._set_status("بانتظار إعادة المحاولة")
+                self.window._refresh_downloads_list()
+                return
+            paused_count = len([q for q in queue_items if str(q.get("status", "")).lower() == "paused"])
+            cancelled_count = len([q for q in queue_items if str(q.get("status", "")).lower() == "cancelled"])
+            failed_count = len([q for q in queue_items if str(q.get("status", "")).lower() == "failed"])
+            self.window.queue_running = False
+            if paused_count > 0 or cancelled_count > 0 or failed_count > 0:
+                self.window._set_status("لا توجد عناصر قابلة للتشغيل")
+            else:
+                self.window._set_status("جاهز")
+            self.window._refresh_downloads_list()
+            if paused_count > 0 or cancelled_count > 0 or failed_count > 0:
+                self.window._warn("الطابور لا يحتوي على عناصر Pending. استخدم Retry/Resume أو أضف عناصر جديدة.")
+            else:
+                self.window._info("اكتمل تنفيذ الطابور")
+            return
+        for idx in pending_indices:
+            task = queue_items[idx]
+            if not task.get("url"):
+                task["status"] = "failed"
+                task["error_msg"] = "Missing URL"
+                continue
+            out_dir = str(task.get("out_dir", "")).strip()
+            if not out_dir:
+                fallback_out = self.window.search_view.out_dir_input.text().strip() if hasattr(self.window, "out_dir_input") else ""
+                task["out_dir"] = fallback_out or default_download_dir()
+            task["status"] = "running"
+            self.start_download_worker(task, worker_id=idx)
+        self.window._refresh_downloads_list()
+
+    def start_download_worker(self, task, worker_id=None):
+        wid = worker_id if worker_id is not None else f"single_{datetime.now().timestamp()}"
+        if not isinstance(task, dict):
+            self.window._warn("تعذر بدء التحميل: بيانات المهمة غير صالحة")
+            return
+        out_dir = str(task.get("out_dir", "")).strip()
+        if not out_dir:
+            out_dir = self.window.search_view.out_dir_input.text().strip() if hasattr(self.window, "out_dir_input") else ""
+        if not out_dir:
+            out_dir = default_download_dir()
+        if not self.check_storage_guard(out_dir, pause_on_low=self.window._active_workers_count() > 0 or bool(self.window.queue_running)):
+            task["status"] = "paused"
+            task["next_retry_at"] = 0
+            self.window._save_session()
+            self.window._refresh_downloads_list()
+            return
+        os.makedirs(out_dir, exist_ok=True)
+        task["out_dir"] = out_dir
+        effective_bandwidth_limit_kbps = int(task.get("bandwidth_limit_kbps", 0) or 0)
+        if self.window.bandwidth_scheduler_enabled:
+            effective_bandwidth_limit_kbps = self.window._current_bandwidth_limit_kbps()
+            task["bandwidth_limit_kbps"] = effective_bandwidth_limit_kbps
+        try:
+            dup = build_duplicate_report(
+                url=task.get("url", ""),
+                out_dir=task.get("out_dir", self.window.search_view.out_dir_input.text()),
+                title=task.get("title", ""),
+            )
+            if dup["is_duplicate"]:
+                existing = dup.get("url_duplicate") or {}
+                local = dup.get("local_files", [])
+                msg_parts = []
+                if existing:
+                    msg_parts.append(f"سبق تحميله بتاريخ {existing.get('timestamp', '')[:10]}")
+                if local:
+                    msg_parts.append(f"يوجد ملف محلي: {os.path.basename(local[0])}")
+                self.window._info(f"⚠️ تحذير: تكرار! {' | '.join(msg_parts)}")
+        except Exception as exc:
+            logger.warning(f"فشل فحص التكرار للمهمة الحالية: {exc}")
+        self.window._set_status("جاري التحميل")
+        self.window._append_log(f"بدء التحميل: {task.get('url', '')}")
+        settings_form = {}
+        sv = getattr(self.window, "settings_view", None)
+        if sv is not None and hasattr(sv, "get_form_settings"):
+            try:
+                settings_form = sv.get_form_settings()
+            except Exception:
+                settings_form = {}
+        worker = DownloadWorker(
+            target_url=task["url"],
+            out_dir=out_dir,
+            mode=task["mode"],
+            quality=task["quality"],
+            fmt=task["format"],
+            subtitle_lang=task.get("subtitle", "None"),
+            start_time=task.get("start_time", ""),
+            end_time=task.get("end_time", ""),
+            retries=task.get("retries", 3),
+            retry_delay_seconds=task.get("auto_retry_delay_seconds", self.window.auto_retry_delay_seconds),
+            use_aria2=task.get("use_aria2", True),
+            cookies_file=self.window.cookies_path,
+            embed_subs=bool(settings_form.get("embed_subs", True)),
+            split_chapters=bool(settings_form.get("split_chapters", False)),
+            rename_template=str(settings_form.get("rename_template", "Default") or "Default"),
+            channel=task.get("channel", ""),
+            verify_checksum=bool(settings_form.get("verify_checksum", False)),
+            bandwidth_limit_kbps=effective_bandwidth_limit_kbps,
+            use_ytdlp_api=bool(settings_form.get("use_ytdlp_api", False)),
+            frozen_title=str(task.get("title", "") or ""),
+        )
+        worker.worker_id = wid
+        worker.extra_args = anti_detection_engine.get_yt_dlp_options()
+        self.window.active_workers[wid] = worker
+        if self.window._display_progress_wid is None:
+            self.window._display_progress_wid = wid
+        worker.progress.connect(lambda _, p, s, eta, w=wid: self.window._on_download_progress(w, p, s, eta))
+        worker.log.connect(self.window._on_download_log)
+        worker.state.connect(self.window._on_download_state)
+        worker.finished.connect(lambda w=wid, ref=worker: self.window._on_worker_thread_finished(w, ref))
+        if hasattr(worker, "output_path_changed"):
+            worker.output_path_changed.connect(lambda p, w=wid: self._on_worker_output_path(w, p))
+        if hasattr(worker, "resume_snapshot"):
+            worker.resume_snapshot.connect(lambda payload, w=wid: self._on_worker_resume_snapshot(w, payload))
+        worker.start()
+        logger.info(f"Started worker {wid} for {task['url']}")
+
+    def _on_worker_output_path(self, wid, path: str):
+        if not isinstance(wid, int):
+            return
+        task = self.window.queue_manager.get_task(wid)
+        if not isinstance(task, dict):
+            return
+        task["last_output_path"] = str(path or "").strip()
+        now = datetime.now().timestamp()
+        last = float(self._resume_last_save_ts.get((wid, "path"), 0) or 0)
+        if (now - last) >= 2.0:
+            self._resume_last_save_ts[(wid, "path")] = now
+            self.window._save_session()
+
+    def _on_worker_resume_snapshot(self, wid, payload: dict):
+        if not isinstance(wid, int):
+            return
+        task = self.window.queue_manager.get_task(wid)
+        if not isinstance(task, dict):
+            return
+        if isinstance(payload, dict):
+            task["resume"] = payload
+            try:
+                task["resume_json"] = json.dumps(payload, ensure_ascii=False)
+            except Exception:
+                task["resume_json"] = ""
+        now = datetime.now().timestamp()
+        last = float(self._resume_last_save_ts.get((wid, "resume"), 0) or 0)
+        if (now - last) >= 6.0:
+            self._resume_last_save_ts[(wid, "resume")] = now
+            self.window._save_session()
+
+    def start_download_from_queue(self, task: dict, queue_index: int):
+        self.start_download_worker(task, worker_id=queue_index)
+
+    def on_worker_thread_finished(self, wid, worker):
+        existing = self.window.active_workers.get(wid)
+        if existing is worker:
+            del self.window.active_workers[wid]
+        if self.window._display_progress_wid == wid:
+            self.window._display_progress_wid = next(iter(self.window.active_workers.keys()), None)
+        if self.window.current_worker is worker:
+            self.window.current_worker = None
+        self.window._speed_history.pop(wid, None)
+        # H-02: ensure thread is truly done before deleteLater to avoid zombie threads
+        # We do the wait in a short background thread so we don't block the UI
+        def _safe_cleanup():
+            try:
+                if not worker.isFinished():
+                    worker.wait(3000)  # wait up to 3s
+            except Exception as exc:
+                logger.debug(f"[H-02] worker.wait() failed: {exc}")
+            worker.deleteLater()
+        import threading as _th
+        _th.Thread(target=_safe_cleanup, daemon=True, name="WorkerCleanup").start()
+
+    def on_download_progress(self, wid, percent, speed, eta):
+        self.window.queue_manager.set_task_progress(wid, percent, speed, eta)
+        raw_percent = float(percent or 0)
+        if 0 < raw_percent < 1:
+            value = 1
+        else:
+            value = max(0, min(100, int(round(raw_percent))))
+        if self.window._display_progress_wid is None:
+            self.window._display_progress_wid = wid
+        if wid == self.window._display_progress_wid:
+            self.window.search_view.progress_bar.setValue(value)
+            self.window.search_view.speed_label.setText(f"Speed: {speed}")
+            self.window.search_view.eta_label.setText(f"ETA: {eta}")
+        try:
+            kbps_match = re.search(r"([\d.]+)([KMG])iB/s", str(speed))
+            if kbps_match:
+                val, unit = float(kbps_match.group(1)), kbps_match.group(2)
+                kbps = val * {"K": 1, "M": 1024, "G": 1024 * 1024}.get(unit, 1)
+                record_peak_speed(kbps)
+                self.window._update_speed_history(wid, kbps)
+        except Exception as exc:
+            logger.debug(f"تعذر تسجيل peak speed: {exc}")
+        if hasattr(self.window, "mini_window") and self.window.mini_window.isVisible():
+            active_title = ""
+            task = self.window.queue_manager.get_task(wid)
+            if task:
+                active_title = task.get("title", "")
+            self.window.mini_window.update_progress(
+                title=active_title,
+                progress=value,
+                speed=speed,
+                eta=eta,
+                total_active=self.window._active_workers_count(),
+            )
+        if self.window.active_view == "downloads" and self.window.downloads_filter in {"active", "queued", "scheduled"}:
+            self.window._schedule_downloads_refresh(300)
+        self.window._notify_tray_progress()
+
+    def extract_size_text(self, line: str):
+        try:
+            current_match = re.search(r"(\d+(?:\.\d+)?)\s*([KMG])i?B\s+at", line)
+            total_match = re.search(r"of\s+(\d+(?:\.\d+)?)\s*([KMG])i?B", line)
+            if current_match:
+                current = f"{current_match.group(1)} {current_match.group(2)}B"
+            else:
+                current = self.window.progress_size or "--"
+            if total_match:
+                return f"{current} / {total_match.group(1)} {total_match.group(2)}B"
+            return current
+        except Exception:
+            return self.window.progress_size or "--"
+
+    def on_download_log(self, line: str):
+        text = str(line or "").strip()
+        if not text:
+            return
+        self.window._append_log(text)
+        self.window.progress_size = self.extract_size_text(text)
+        self.window.search_view.size_label.setText(self.window.progress_size)
+
+    def on_download_state(self, state: str):
+        if state == "running":
+            self.window._set_status("جاري التحميل")
+        elif state == "success":
+            self.window._set_status("اكتمل التحميل")
+        elif state == "failed":
+            self.window._set_status("فشل التحميل")
+        elif state == "cancelled":
+            self.window._set_status("تم الإلغاء")
+
+    def append_history(self, success: bool, message: str, payload: dict, task: dict):
+        status = "success" if success else ("cancelled" if payload.get("error") == "cancelled" else "failed")
+        entry = {
+            "timestamp": payload.get("timestamp", datetime.now().isoformat()),
+            "title": task.get("title", task.get("url", "")),
+            "url": task.get("url", ""),
+            "mode": task.get("mode", "video"),
+            "format": task.get("format", "--"),
+            "quality": task.get("quality", "--"),
+            "size": self.window.progress_size or "--",
+            "thumbnail": task.get("thumbnail", ""),
+            "file_path": payload.get("file_path", ""),
+            "status": status,
+            "message": message,
+            "attempts": payload.get("attempts", 1),
+            "error": payload.get("error", ""),
+        }
+        try:
+            entry["size_text"] = entry["size"]
+            entry["size_bytes"] = self.window._size_to_bytes(entry["size"])
+            insert_history(entry)
+            if success:
+                if task.get("mode") == "video":
+                    increment_stat("total_videos", 1)
+                else:
+                    increment_stat("total_audios", 1)
+            self.window.stats["download_history"] = self.window._fetch_db_history(limit=250)
+            db_stats = get_all_stats()
+            self.window.stats["total_videos"] = int(db_stats.get("total_videos", 0))
+            self.window.stats["total_audios"] = int(db_stats.get("total_audios", 0))
+        except Exception as exc:
+            self.window._append_log(f"تعذر حفظ السجل في قاعدة البيانات: {exc}")
+        self.window._save_stats()
+
+    def on_download_finished_event(self, event):
+        self.window.download_finished_ui.emit(event)
+
+    def handle_download_finished_event(self, event):
+        wid, success, msg, data = event.worker_id, event.success, event.message, event.data
+        running_others = self.window._active_workers_count()
+        queue_items = self.window.queue_manager.get_queue_items()
+        is_queue_worker = isinstance(wid, int) and 0 <= wid < len(queue_items)
+        cancelled_by_user = wid in self.window.cancel_requested_workers
+        if cancelled_by_user:
+            self.window.cancel_requested_workers.discard(wid)
+        paused_by_user = wid in self.window.pause_requested_workers
+        if paused_by_user:
+            self.window.pause_requested_workers.discard(wid)
+        task = self.window.queue_manager.get_task(wid) if is_queue_worker else {}
+        if not isinstance(task, dict):
+            task = {}
+        if paused_by_user and not cancelled_by_user:
+            if is_queue_worker:
+                self.window.queue_manager.set_task_status(wid, "paused")
+            self.window._append_log("تم إيقاف عنصر مؤقتاً")
+            self.window._save_session()
+            self.window._refresh_downloads_list()
+            if self.window.queue_running and not self.window.queue_paused:
+                QTimer.singleShot(250, self.process_parallel_queue)
+            elif running_others <= 0:
+                self.window._set_status("الطابور متوقف مؤقتاً")
+            return
+        status = "success" if success else ("cancelled" if data.get("error") == "cancelled" else "failed")
+        if is_queue_worker:
+            self.window.queue_manager.set_task_status(wid, status)
+        if status == "success":
+            file_path = str(data.get("file_path", "") or "").strip()
+            if file_path:
+                task["file_path"] = file_path
+        if status == "failed" and is_queue_worker:
+            retry_count = int(task.get("retry_count", 0) or 0)
+            retry_limit = int(task.get("queue_retry_limit", self.window.queue_auto_retry_limit) or self.window.queue_auto_retry_limit)
+            if retry_count < retry_limit:
+                base_delay = int(task.get("auto_retry_delay_seconds", self.window.auto_retry_delay_seconds) or self.window.auto_retry_delay_seconds)
+                next_retry_count = retry_count + 1
+                delay_seconds = min(300, max(1, base_delay) * (2 ** (next_retry_count - 1)))
+                task["retry_count"] = next_retry_count
+                task["next_retry_at"] = datetime.now().timestamp() + delay_seconds
+                task["status"] = "pending"
+                text = f"فشل العنصر وسيتم إعادة المحاولة تلقائياً بعد {delay_seconds} ثانية ({next_retry_count}/{retry_limit})"
+                self.window._append_log(text)
+                self.window._info(text)
+                self.window._save_session()
+                self.window._refresh_downloads_list()
+                if self.window.queue_running:
+                    QTimer.singleShot(500, self.process_parallel_queue)
+                return
+        if status == "success" and is_queue_worker:
+            task["retry_count"] = 0
+            task["next_retry_at"] = 0
+            repeat_mode = str(task.get("schedule_repeat", "none") or "none")
+            if repeat_mode in {"daily", "weekly"}:
+                base_ts = float(task.get("scheduled_at", 0) or 0)
+                if base_ts <= 0:
+                    base_ts = datetime.now().timestamp()
+                days = 1 if repeat_mode == "daily" else 7
+                next_ts = base_ts + days * 24 * 3600
+                cloned = dict(task)
+                cloned["status"] = "pending"
+                cloned["retry_count"] = 0
+                cloned["next_retry_at"] = 0
+                cloned["scheduled_at"] = next_ts
+                self.window.queue_manager.add_task(cloned)
+                self.window._append_log(
+                    f"تمت جدولة العنصر '{task.get('title', '')}' للتكرار ({repeat_mode}) في {datetime.fromtimestamp(next_ts).isoformat(sep=' ')}"
+                )
+        will_retry_via_anti_detect = False
+        if not success and not cancelled_by_user and is_queue_worker:
+            if anti_detection_engine.on_error(msg):
+                retry_count = task.get("retry_count", 0)
+                if retry_count < 5:
+                    self.window._append_log(f"[Anti-Detect] Re-queueing task {task.get('title')} after rate-limit. Retry #{retry_count + 1}")
+                    task["retry_count"] = retry_count + 1
+                    task["status"] = "pending"
+                    task["next_retry_at"] = 0
+                    will_retry_via_anti_detect = True
+                else:
+                    self.window._append_log(f"[Anti-Detect] Max retries for {task.get('title')} reached. Won't re-queue.")
+        if not will_retry_via_anti_detect:
+            self.append_history(success, msg, data, task)
+        self.window._append_log(msg)
+        self.window._save_session()
+        self.window._refresh_downloads_list()
+        if status == "success":
+            completed_title = str(task.get("title", "") or "").strip() or "Download"
+            self.window._show_tray_message(
+                "SnapDownloader",
+                f"اكتمل التحميل: {completed_title[:64]}",
+                QSystemTrayIcon.MessageIcon.Information,
+                2500,
+            )
+        if not success and data.get("error") != "cancelled":
+            try:
+                self.window.error_dashboard.report_error(
+                    url=task.get("url", ""),
+                    error_text=data.get("error", msg),
+                    title=task.get("title", ""),
+                )
+                if proxy_manager.is_enabled():
+                    proxy_manager.on_failure(proxy_manager.get_current_proxy() or "")
+            except Exception as exc:
+                logger.warning(f"تعذر تسجيل الخطأ في Error Dashboard: {exc}")
+        if self.window.queue_running and not self.window.queue_paused:
+            QTimer.singleShot(200, self.process_parallel_queue)
+        if self.window.queue_manager.is_running and not self.window.queue_running:
+            self.window.queue_manager._process_next()
+            return
+        if running_others <= 0 and not self.window.queue_running:
+            self.window._set_status("جاهز")
+            self.window._set_controls_enabled(True)
+            self.window._tray_progress_bucket = -1
+            try:
+                # C-05: wire confirm_callback so destructive actions require user approval via dialog
+                def _confirm_action(label: str) -> bool:
+                    try:
+                        from PySide6.QtWidgets import QMessageBox
+                    except ImportError:
+                        from PyQt6.QtWidgets import QMessageBox
+                    resp = QMessageBox.question(
+                        self.window,
+                        "تأكيد الإجراء",
+                        f"\u0647\u0644 \u062a\u0631\u064a\u062f \u062a\u0646\u0641\u064a\u0630: {label}?\n\u0647\u0630\u0627 \u0627\u0644\u0625\u062c\u0631\u0627\u0621 \u0633\u064a\u062a\u0645 \u0628\u0639\u062f {sustainability.delay_seconds} \u062b\u0627\u0646\u064a\u0629.",
+                        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                        QMessageBox.StandardButton.No,
+                    )
+                    return resp == QMessageBox.StandardButton.Yes
+                sustainability.confirm_callback = _confirm_action
+                sustainability.on_queue_complete(notify_callback=self.window._info)
+            except Exception as exc:
+                logger.warning(f"\u062a\u0639\u0630\u0631 \u062a\u0646\u0641\u064a\u0630 \u0625\u062c\u0631\u0627\u0621 \u0627\u0644\u0627\u0633\u062a\u062f\u0627\u0645\u0629 \u0628\u0639\u062f \u0627\u0643\u062a\u0645\u0627\u0644 \u0627\u0644\u0637\u0627\u0628\u0648\u0631: {exc}")
+        if success:
+            self.window._info(msg)
+        elif data.get("error") != "cancelled":
+            self.window._warn(msg)
+
+
+
+
+====================================================================================================
+FILE: core\workers.py
+====================================================================================================
+
+
+import json
+import os
+import subprocess
+import sys
+import time
+import urllib.request
+from datetime import datetime
+
+try:
+    from PySide6.QtCore import QThread, Signal
+except ImportError:
+    from PyQt6.QtCore import QThread, pyqtSignal as Signal
+
+class AnalyzeWorker(QThread):
+    finished = Signal(bool, str, dict, list)
+
+    def __init__(self, url: str):
+        super().__init__()
+        self.url = str(url or "").strip()
+
+    def _run_json(self, command, timeout_seconds: float = 120):
+        creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+        try:
+            process = subprocess.Popen(
+                command,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                creationflags=creationflags,
+            )
+            deadline = time.monotonic() + max(1.0, float(timeout_seconds or 120))
+            while True:
+                if self.isInterruptionRequested():
+                    try:
+                        process.terminate()
+                        process.wait(timeout=2)
+                    except Exception:
+                        try:
+                            process.kill()
+                        except Exception:
+                            pass
+                    class _InterruptedResult:
+                        returncode = 130
+                        stdout = ""
+                        stderr = "تم إلغاء تحليل الرابط."
+                    return _InterruptedResult()
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    try:
+                        process.terminate()
+                        process.wait(timeout=2)
+                    except Exception:
+                        try:
+                            process.kill()
+                        except Exception:
+                            pass
+                    class _TimeoutResult:
+                        returncode = 124
+                        stdout = ""
+                        stderr = "انتهت مهلة تحليل الرابط. حاول مرة أخرى أو جرّب رابط أقصر."
+                    return _TimeoutResult()
+                try:
+                    stdout, stderr = process.communicate(timeout=min(0.5, max(0.05, remaining)))
+                    class _ProcessResult:
+                        def __init__(self, returncode, stdout_text, stderr_text):
+                            self.returncode = returncode
+                            self.stdout = stdout_text
+                            self.stderr = stderr_text
+                    return _ProcessResult(process.returncode, stdout, stderr)
+                except subprocess.TimeoutExpired:
+                    continue
+        except Exception:
+            class _TimeoutResult:
+                returncode = 124
+                stdout = ""
+                stderr = "انتهت مهلة تحليل الرابط. حاول مرة أخرى أو جرّب رابط أقصر."
+            return _TimeoutResult()
+
+    def _is_playlist(self, data: dict):
+        has_entries = isinstance(data.get("entries"), list) and len(data.get("entries", [])) > 0
+        data_type = str(data.get("_type", "")).lower()
+        extractor_key = str(data.get("extractor_key", "")).lower()
+        extractor_name = str(data.get("extractor", "")).lower()
+        has_playlist_fields = any(k in data for k in ["playlist_count", "playlist_id", "playlist_title"])
+        return (
+            data_type in {"playlist", "multi_video"}
+            or has_entries
+            or has_playlist_fields
+            or ("playlist" in extractor_key)
+            or ("playlist" in extractor_name)
+        )
+
+    def _normalize_playlist(self, data: dict):
+        normalized = []
+        entries = data.get("entries", []) if isinstance(data, dict) else []
+        for index, entry in enumerate(entries, start=1):
+            if not isinstance(entry, dict):
+                continue
+            video_id = entry.get("id") or entry.get("url") or ""
+            webpage_url = entry.get("webpage_url") or ""
+            if webpage_url:
+                actual_url = webpage_url
+            elif isinstance(video_id, str) and video_id.startswith("http"):
+                actual_url = video_id
+            else:
+                actual_url = f"https://www.youtube.com/watch?v={video_id}" if video_id else ""
+            if not actual_url:
+                continue
+            thumb = entry.get("thumbnail") or ""
+            if not thumb and isinstance(video_id, str) and video_id and "http" not in video_id:
+                thumb = f"https://i.ytimg.com/vi/{video_id}/hqdefault.jpg"
+            normalized.append(
+                {
+                    "index": index,
+                    "title": entry.get("title") or f"Item {index}",
+                    "url": actual_url,
+                    "thumbnail": thumb,
+                    "duration_seconds": int(entry.get("duration") or 0),
+                }
+            )
+        return normalized
+
+    def run(self):
+        if not self.url:
+            self.finished.emit(False, "الرابط مطلوب", {}, [])
+            return
+        is_playlist_url = "list=" in self.url or "/playlist" in self.url
+        if is_playlist_url:
+            command = [sys.executable, "-m", "yt_dlp", "--flat-playlist", "--dump-single-json", "--no-warnings", self.url]
+        else:
+            command = [sys.executable, "-m", "yt_dlp", "-J", "--no-warnings", self.url]
+        timeout_seconds = 120 if is_playlist_url else 45
+        result = self._run_json(command, timeout_seconds=timeout_seconds)
+        if self.isInterruptionRequested() or result.returncode == 130:
+            self.finished.emit(False, "تم إلغاء تحليل الرابط.", {}, [])
+            return
+        if result.returncode != 0:

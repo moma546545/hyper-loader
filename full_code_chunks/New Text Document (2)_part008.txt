@@ -1,0 +1,1126 @@
+﻿        self.settings_storage_min_free_gb.setPrefix(_("الحد الأدنى للمساحة الحرة: "))
+        self.settings_storage_min_free_gb.setSuffix(" GB")
+        _disable_wheel_scroll(self.settings_storage_min_free_gb)
+        
+        self.settings_system_theme_sync = QCheckBox(_("مزامنة الثيم مع إعدادات ويندوز"))
+        self.settings_bandwidth_scheduler = QCheckBox(_("تفعيل جدول تحديد السرعة"))
+        self.settings_bandwidth_scheduler_summary = QLabel("")
+        self.settings_bandwidth_scheduler_summary.setObjectName("single_sub")
+        
+        self.settings_bandwidth_rule_list = QListWidget()
+        self.settings_bandwidth_rule_list.setMinimumHeight(110)
+        self.settings_bandwidth_rule_list.currentRowChanged.connect(self.bandwidth_rule_selected.emit)
+
+        self.settings_bandwidth_rule_start = QTimeEdit()
+        self.settings_bandwidth_rule_start.setDisplayFormat("HH:mm")
+        self.settings_bandwidth_rule_start.setTime(QTime(8, 0))
+        _disable_wheel_scroll(self.settings_bandwidth_rule_start)
+
+        self.settings_bandwidth_rule_end = QTimeEdit()
+        self.settings_bandwidth_rule_end.setDisplayFormat("HH:mm")
+        self.settings_bandwidth_rule_end.setTime(QTime(12, 0))
+        _disable_wheel_scroll(self.settings_bandwidth_rule_end)
+
+        self.settings_bandwidth_rule_limit = QSpinBox()
+        self.settings_bandwidth_rule_limit.setRange(0, 1024 * 1024)
+        self.settings_bandwidth_rule_limit.setSuffix(" KB/s")
+        self.settings_bandwidth_rule_limit.setSpecialValueText(_("0 KB/s (غير محدود)"))
+        _disable_wheel_scroll(self.settings_bandwidth_rule_limit)
+
+        self.settings_bandwidth_rule_label = QLineEdit()
+        self.settings_bandwidth_rule_label.setPlaceholderText(_("اسم القاعدة (اختياري)"))
+
+        bandwidth_rule_form = QGridLayout()
+        bandwidth_rule_form.addWidget(QLabel(_("من")), 0, 0)
+        bandwidth_rule_form.addWidget(self.settings_bandwidth_rule_start, 0, 1)
+        bandwidth_rule_form.addWidget(QLabel(_("إلى")), 0, 2)
+        bandwidth_rule_form.addWidget(self.settings_bandwidth_rule_end, 0, 3)
+        bandwidth_rule_form.addWidget(QLabel(_("الحد")), 1, 0)
+        bandwidth_rule_form.addWidget(self.settings_bandwidth_rule_limit, 1, 1)
+        bandwidth_rule_form.addWidget(QLabel(_("الاسم")), 1, 2)
+        bandwidth_rule_form.addWidget(self.settings_bandwidth_rule_label, 1, 3)
+
+        new_bandwidth_rule_btn = QPushButton(_("قاعدة جديدة"))
+        new_bandwidth_rule_btn.setObjectName("action_trim")
+        new_bandwidth_rule_btn.clicked.connect(self.bandwidth_new_rule_requested.emit)
+
+        save_bandwidth_rule_btn = QPushButton(_("حفظ داخل المحرر"))
+        save_bandwidth_rule_btn.setObjectName("action_schedule")
+        save_bandwidth_rule_btn.clicked.connect(self.bandwidth_save_rule_requested.emit)
+
+        remove_bandwidth_rule_btn = QPushButton(_("حذف المحددة"))
+        remove_bandwidth_rule_btn.setObjectName("action_trim")
+        remove_bandwidth_rule_btn.clicked.connect(self.bandwidth_remove_rule_requested.emit)
+
+        bandwidth_rule_actions = QHBoxLayout()
+        bandwidth_rule_actions.addWidget(new_bandwidth_rule_btn)
+        bandwidth_rule_actions.addWidget(save_bandwidth_rule_btn)
+        bandwidth_rule_actions.addWidget(remove_bandwidth_rule_btn)
+
+        self.settings_bandwidth_schedule_editor = QTextEdit()
+        self.settings_bandwidth_schedule_editor.setPlaceholderText(
+            '[{"start": "08:00", "end": "12:00", "limit_kbps": 2048, "label": "Morning"}]'
+        )
+        self.settings_bandwidth_schedule_editor.setMinimumHeight(150)
+        self.settings_bandwidth_schedule_editor.textChanged.connect(self.bandwidth_editor_changed.emit)
+
+        self.settings_bandwidth_schedule_status = QLabel("")
+        self.settings_bandwidth_schedule_status.setObjectName("single_sub")
+
+        apply_bandwidth_schedule_btn = QPushButton(_("تطبيق جدول السرعة"))
+        apply_bandwidth_schedule_btn.setObjectName("action_schedule")
+        apply_bandwidth_schedule_btn.clicked.connect(self.bandwidth_apply_schedule_requested.emit)
+
+        reset_bandwidth_schedule_btn = QPushButton(_("استعادة الجدول الافتراضي"))
+        reset_bandwidth_schedule_btn.setObjectName("action_trim")
+        reset_bandwidth_schedule_btn.clicked.connect(self.bandwidth_reset_schedule_requested.emit)
+
+        bandwidth_schedule_actions = QHBoxLayout()
+        bandwidth_schedule_actions.addWidget(apply_bandwidth_schedule_btn)
+        bandwidth_schedule_actions.addWidget(reset_bandwidth_schedule_btn)
+        
+        self.settings_cookies = QLineEdit()
+        self.settings_cookies.setPlaceholderText(_("Path to cookies.txt (optional)"))
+        pick_cookies_btn = QPushButton(_("Browse Cookies"))
+        pick_cookies_btn.setObjectName("icon_btn")
+        pick_cookies_btn.setFixedWidth(100)
+        pick_cookies_btn.clicked.connect(self.cookie_picker_requested.emit)
+        
+        browsers_available = get_available_browsers()
+        auto_cookie_btn = QPushButton(
+            _("🍪 Auto-Import Cookies ({browsers})").format(browsers=", ".join(browsers_available) or _("None found"))
+        )
+        auto_cookie_btn.setObjectName("action_trim")
+        auto_cookie_btn.setEnabled(bool(browsers_available))
+        auto_cookie_btn.clicked.connect(self.auto_cookie_requested.emit)
+
+        self.settings_embed_subs = QCheckBox(_("Embed Subtitles in Video"))
+        self.settings_embed_subs.setChecked(True)
+        self.settings_split_chapters = QCheckBox(_("Split Videos by Chapters (YouTube)"))
+        self.settings_verify_checksum = QCheckBox(_("Verify File Integrity (SHA-256) after Download"))
+
+        self.merge_group = QGroupBox(_("Advanced Merging"))
+        self.merge_group.setCheckable(True)
+        self.merge_group.setChecked(False)
+        merge_layout = QGridLayout(self.merge_group)
+
+        self.settings_video_codec = QComboBox()
+        self.settings_video_codec.addItems(["copy", "h264", "h265"])
+        self.settings_video_crf = QSpinBox()
+        self.settings_video_crf.setRange(0, 51)
+        self.settings_video_crf.setValue(23)
+        self.settings_audio_codec = QComboBox()
+        self.settings_audio_codec.addItems(["copy", "aac", "opus"])
+        self.settings_audio_bitrate = QLineEdit("192k")
+
+        merge_layout.addWidget(QLabel(_("Video Codec:")), 0, 0)
+        merge_layout.addWidget(self.settings_video_codec, 0, 1)
+        merge_layout.addWidget(QLabel(_("Video CRF (Quality):")), 1, 0)
+        merge_layout.addWidget(self.settings_video_crf, 1, 1)
+        merge_layout.addWidget(QLabel(_("Audio Codec:")), 2, 0)
+        merge_layout.addWidget(self.settings_audio_codec, 2, 1)
+        merge_layout.addWidget(QLabel(_("Audio Bitrate:")), 3, 0)
+        merge_layout.addWidget(self.settings_audio_bitrate, 3, 1)
+
+
+        self.proxy_enabled_cb = QCheckBox(_("Enable Proxy"))
+        self.proxy_enabled_cb.setChecked(proxy_manager.is_enabled())
+        self.proxy_enabled_cb.toggled.connect(lambda v: proxy_manager.set_enabled(v))
+        self.proxy_input = QLineEdit()
+        self.proxy_input.setPlaceholderText(_("http://1.2.3.4:8080 or socks5://user:pass@host:port"))
+        self.proxy_input.setText(proxy_manager.get_current_proxy() or "")
+        add_proxy_btn = QPushButton(_("Add Proxy"))
+        add_proxy_btn.setObjectName("action_trim")
+        add_proxy_btn.clicked.connect(self.proxy_add_requested.emit)
+        test_proxy_btn = QPushButton(_("Test Proxy"))
+        test_proxy_btn.setObjectName("action_schedule")
+        test_proxy_btn.clicked.connect(self.proxy_test_requested.emit)
+        proxy_row = QHBoxLayout()
+        proxy_row.addWidget(self.proxy_input)
+        proxy_row.addWidget(add_proxy_btn)
+        proxy_row.addWidget(test_proxy_btn)
+
+        self.sustainability_combo = QComboBox()
+        self.sustainability_combo.addItems([f"{k} — {v}" for k, v in SUSTAINABILITY_ACTIONS.items()])
+        _disable_wheel_scroll(self.sustainability_combo)
+        self.sustainability_spin = QSpinBox()
+        self.sustainability_spin.setRange(0, 3600)
+        self.sustainability_spin.setPrefix(_("Delay: "))
+        self.sustainability_spin.setSuffix(" s")
+        _disable_wheel_scroll(self.sustainability_spin)
+        apply_sustainability_btn = QPushButton(_("Apply After-Queue Action"))
+        apply_sustainability_btn.setObjectName("action_trim")
+        apply_sustainability_btn.clicked.connect(self.sustainability_apply_requested.emit)
+
+        normalize_btn = QPushButton(_("🎧 Normalize All Audio in Downloads Folder"))
+        normalize_btn.setObjectName("action_schedule")
+        normalize_btn.clicked.connect(self.normalize_requested.emit)
+
+        export_btn = QPushButton(_("Export Settings"))
+        export_btn.setObjectName("action_trim")
+        export_btn.clicked.connect(self.export_settings_requested.emit)
+        import_btn = QPushButton(_("Import Settings"))
+        import_btn.setObjectName("action_schedule")
+        import_btn.clicked.connect(self.import_settings_requested.emit)
+
+        apply_btn = QPushButton(_("تطبيق الإعدادات"))
+        apply_btn.setObjectName("action_download")
+        apply_btn.clicked.connect(self.apply_requested.emit)
+
+        update_ytdlp_btn = QPushButton(_("Check for yt-dlp Updates"))
+        update_ytdlp_btn.setObjectName("action_trim")
+        update_ytdlp_btn.clicked.connect(self.update_ytdlp_requested.emit)
+
+        update_app_btn = QPushButton(_("Check for App Updates"))
+        update_app_btn.setObjectName("action_download")
+        update_app_btn.clicked.connect(self.check_app_updates_requested.emit)
+        
+        mini_btn = QPushButton(_("🪟 Toggle Mini Mode"))
+        mini_btn.setObjectName("action_schedule")
+        mini_btn.clicked.connect(self.mini_mode_requested.emit)
+
+        # Add to layout
+        col.addWidget(title)
+        col.addWidget(QLabel(_("Download Path:")))
+        col.addWidget(self.settings_out_dir)
+        col.addWidget(pick_dir_btn)
+        col.addWidget(QLabel(_("File Naming Template:")))
+        col.addWidget(self.settings_rename_template)
+        col.addWidget(QLabel(_("UI Language:")))
+        col.addWidget(self.settings_language_combo)
+        col.addWidget(QLabel(_("Download Logic:")))
+        col.addWidget(self.settings_retries)
+        col.addWidget(self.settings_retry_delay)
+        col.addWidget(self.settings_queue_retry_limit)
+        col.addWidget(self.settings_queue_priority)
+        col.addWidget(self.settings_concurrent)
+        col.addWidget(self.settings_search_history_limit)
+        col.addWidget(self.settings_search_history_ttl_days)
+        col.addWidget(self.settings_thumbnail_cache_max)
+        col.addWidget(self.settings_storage_guard)
+        col.addWidget(self.settings_storage_min_free_gb)
+        col.addWidget(self.settings_system_theme_sync)
+        col.addWidget(self.settings_bandwidth_scheduler)
+        col.addWidget(self.settings_bandwidth_scheduler_summary)
+        bandwidth_editor_hint = QLabel(_("اختر قاعدة من القائمة لتعديلها أو اترك التحديد فارغًا لإضافة قاعدة جديدة."))
+        bandwidth_editor_hint.setObjectName("single_sub")
+        col.addWidget(bandwidth_editor_hint)
+        col.addWidget(self.settings_bandwidth_rule_list)
+        col.addLayout(bandwidth_rule_form)
+        col.addLayout(bandwidth_rule_actions)
+        col.addWidget(QLabel(_("قواعد جدول السرعة (JSON):")))
+        col.addWidget(self.settings_bandwidth_schedule_editor)
+        col.addWidget(self.settings_bandwidth_schedule_status)
+        col.addLayout(bandwidth_schedule_actions)
+        col.addWidget(self.settings_aria2)
+        col.addWidget(self.settings_use_ytdlp_api)
+        col.addWidget(self.settings_embed_subs)
+        col.addWidget(self.settings_split_chapters)
+        col.addWidget(self.settings_verify_checksum)
+        col.addWidget(self.merge_group)
+
+        col.addWidget(QLabel(_("Cookies File (Netscape format):")))
+        cr = QHBoxLayout()
+        cr.addWidget(self.settings_cookies)
+        cr.addWidget(pick_cookies_btn)
+        col.addLayout(cr)
+        col.addWidget(auto_cookie_btn)
+        col.addWidget(QLabel(_("🔐 Proxy Manager:")))
+        col.addWidget(self.proxy_enabled_cb)
+        col.addLayout(proxy_row)
+        col.addWidget(QLabel(_("🔋 After-Queue Power Action:")))
+        col.addWidget(self.sustainability_combo)
+        col.addWidget(self.sustainability_spin)
+        col.addWidget(apply_sustainability_btn)
+        col.addWidget(normalize_btn)
+        col.addWidget(export_btn)
+        col.addWidget(import_btn)
+        col.addWidget(update_ytdlp_btn)
+        col.addWidget(update_app_btn)
+        col.addWidget(mini_btn)
+        col.addWidget(apply_btn)
+        col.addStretch(1)
+
+        scroll_area.setWidget(inner_widget)
+
+    def set_bandwidth_scheduler_checked(self, checked: bool):
+        if hasattr(self, "settings_bandwidth_scheduler"):
+            self.settings_bandwidth_scheduler.setChecked(bool(checked))
+
+    def set_bandwidth_scheduler_summary(self, text: str):
+        if hasattr(self, "settings_bandwidth_scheduler_summary"):
+            self.settings_bandwidth_scheduler_summary.setText(str(text or ""))
+
+    def set_bandwidth_schedule_status(self, text: str):
+        if hasattr(self, "settings_bandwidth_schedule_status"):
+            self.settings_bandwidth_schedule_status.setText(str(text or ""))
+
+    def get_bandwidth_schedule_editor_text(self) -> str:
+        if not hasattr(self, "settings_bandwidth_schedule_editor"):
+            return ""
+        return str(self.settings_bandwidth_schedule_editor.toPlainText() or "")
+
+    def set_bandwidth_schedule_editor_text(self, text: str, block_signals: bool = True):
+        if not hasattr(self, "settings_bandwidth_schedule_editor"):
+            return
+        if block_signals:
+            self.settings_bandwidth_schedule_editor.blockSignals(True)
+        self.settings_bandwidth_schedule_editor.setPlainText(str(text or ""))
+        if block_signals:
+            self.settings_bandwidth_schedule_editor.blockSignals(False)
+
+    def set_bandwidth_rule_list_items(self, items: list[str], selected_index: int | None = None, block_signals: bool = True):
+        if not hasattr(self, "settings_bandwidth_rule_list"):
+            return
+        if block_signals:
+            self.settings_bandwidth_rule_list.blockSignals(True)
+        self.settings_bandwidth_rule_list.clear()
+        for item in items or []:
+            self.settings_bandwidth_rule_list.addItem(str(item))
+        if block_signals:
+            self.settings_bandwidth_rule_list.blockSignals(False)
+        if selected_index is None or selected_index < 0:
+            return
+        try:
+            self.settings_bandwidth_rule_list.setCurrentRow(int(selected_index))
+        except Exception:
+            return
+
+    def clear_bandwidth_rule_selection(self, block_signals: bool = True):
+        if not hasattr(self, "settings_bandwidth_rule_list"):
+            return
+        if block_signals:
+            self.settings_bandwidth_rule_list.blockSignals(True)
+        self.settings_bandwidth_rule_list.clearSelection()
+        if block_signals:
+            self.settings_bandwidth_rule_list.blockSignals(False)
+
+    def get_bandwidth_rule_form(self) -> dict:
+        if not hasattr(self, "settings_bandwidth_rule_start"):
+            return {"start": "08:00", "end": "12:00", "limit_kbps": 0, "label": ""}
+        return {
+            "start": self.settings_bandwidth_rule_start.time().toString("HH:mm"),
+            "end": self.settings_bandwidth_rule_end.time().toString("HH:mm") if hasattr(self, "settings_bandwidth_rule_end") else "12:00",
+            "limit_kbps": int(self.settings_bandwidth_rule_limit.value()) if hasattr(self, "settings_bandwidth_rule_limit") else 0,
+            "label": str(self.settings_bandwidth_rule_label.text() if hasattr(self, "settings_bandwidth_rule_label") else "").strip(),
+        }
+
+    def set_bandwidth_rule_form(self, rule: dict | None = None):
+        if not hasattr(self, "settings_bandwidth_rule_start"):
+            return
+        value = rule or {"start": "08:00", "end": "12:00", "limit_kbps": 0, "label": ""}
+        start_time = QTime.fromString(str(value.get("start", "08:00")), "HH:mm")
+        end_time = QTime.fromString(str(value.get("end", "12:00")), "HH:mm")
+        if not start_time.isValid():
+            start_time = QTime(8, 0)
+        if not end_time.isValid():
+            end_time = QTime(12, 0)
+        self.settings_bandwidth_rule_start.setTime(start_time)
+        if hasattr(self, "settings_bandwidth_rule_end"):
+            self.settings_bandwidth_rule_end.setTime(end_time)
+        if hasattr(self, "settings_bandwidth_rule_limit"):
+            self.settings_bandwidth_rule_limit.setValue(max(0, int(value.get("limit_kbps", 0) or 0)))
+        if hasattr(self, "settings_bandwidth_rule_label"):
+            self.settings_bandwidth_rule_label.setText(str(value.get("label", "") or ""))
+
+    def autosave_controls(self) -> list:
+        controls = []
+        for name in (
+            "settings_out_dir",
+            "settings_retries",
+            "settings_retry_delay",
+            "settings_queue_retry_limit",
+            "settings_queue_priority",
+            "settings_concurrent",
+            "settings_search_history_limit",
+            "settings_search_history_ttl_days",
+            "settings_thumbnail_cache_max",
+            "settings_storage_guard",
+            "settings_storage_min_free_gb",
+            "settings_system_theme_sync",
+            "settings_bandwidth_scheduler",
+            "settings_aria2",
+            "settings_cookies",
+            "settings_embed_subs",
+            "settings_rename_template",
+            "settings_split_chapters",
+            "settings_verify_checksum",
+            "settings_use_ytdlp_api",
+            "proxy_enabled_cb",
+            "proxy_input",
+            "sustainability_combo",
+            "sustainability_spin",
+            "merge_group",
+            "settings_video_codec",
+            "settings_video_crf",
+            "settings_audio_codec",
+            "settings_audio_bitrate",
+        ):
+            if hasattr(self, name):
+                controls.append(getattr(self, name))
+        return controls
+
+    def get_out_dir(self) -> str:
+        if not hasattr(self, "settings_out_dir"):
+            return ""
+        return str(self.settings_out_dir.text() or "").strip()
+
+    def set_out_dir(self, path: str):
+        if hasattr(self, "settings_out_dir"):
+            self.settings_out_dir.setText(str(path or "").strip())
+
+    def get_proxy_text(self) -> str:
+        if not hasattr(self, "proxy_input"):
+            return ""
+        return str(self.proxy_input.text() or "").strip()
+
+    def get_sustainability_config(self) -> dict:
+        action = ""
+        if hasattr(self, "sustainability_combo"):
+            action = str(self.sustainability_combo.currentText() or "").split(" — ")[0].strip()
+        delay_seconds = 60
+        if hasattr(self, "sustainability_spin"):
+            delay_seconds = int(self.sustainability_spin.value())
+        return {
+            "action": action,
+            "delay_seconds": delay_seconds,
+        }
+
+    def get_form_settings(self) -> dict:
+        queue_priority = "fifo"
+        if hasattr(self, "settings_queue_priority"):
+            queue_priority = str(self.settings_queue_priority.currentData() or "fifo")
+
+        rename_template = "Default"
+        if hasattr(self, "settings_rename_template"):
+            rename_template = str(self.settings_rename_template.currentText() or "Default")
+
+        ui_language = ""
+        if hasattr(self, "settings_language_combo"):
+            ui_language = str(self.settings_language_combo.currentData() or "")
+
+        return {
+            "out_dir": str(self.settings_out_dir.text() if hasattr(self, "settings_out_dir") else "").strip(),
+            "retries": int(self.settings_retries.value()) if hasattr(self, "settings_retries") else int(DEFAULT_SETTINGS.get("retries", 3)),
+            "auto_retry_delay_seconds": int(self.settings_retry_delay.value()) if hasattr(self, "settings_retry_delay") else int(DEFAULT_SETTINGS.get("auto_retry_delay_seconds", 5)),
+            "queue_auto_retry_limit": int(self.settings_queue_retry_limit.value()) if hasattr(self, "settings_queue_retry_limit") else int(DEFAULT_SETTINGS.get("queue_auto_retry_limit", 0)),
+            "queue_priority": queue_priority,
+            "max_concurrent": int(self.settings_concurrent.value()) if hasattr(self, "settings_concurrent") else int(DEFAULT_SETTINGS.get("max_concurrent", 1)),
+            "search_history_limit": int(self.settings_search_history_limit.value()) if hasattr(self, "settings_search_history_limit") else int(DEFAULT_SETTINGS.get("search_history_limit", 50)),
+            "search_history_ttl_days": int(self.settings_search_history_ttl_days.value()) if hasattr(self, "settings_search_history_ttl_days") else int(DEFAULT_SETTINGS.get("search_history_ttl_days", 30)),
+            "thumbnail_cache_max": int(self.settings_thumbnail_cache_max.value()) if hasattr(self, "settings_thumbnail_cache_max") else int(DEFAULT_SETTINGS.get("thumbnail_cache_max", 200)),
+            "storage_guard_enabled": bool(self.settings_storage_guard.isChecked()) if hasattr(self, "settings_storage_guard") else bool(DEFAULT_SETTINGS.get("storage_guard_enabled", False)),
+            "storage_min_free_gb": int(self.settings_storage_min_free_gb.value()) if hasattr(self, "settings_storage_min_free_gb") else int(DEFAULT_SETTINGS.get("storage_min_free_gb", 2)),
+            "system_theme_sync_enabled": bool(self.settings_system_theme_sync.isChecked()) if hasattr(self, "settings_system_theme_sync") else True,
+            "bandwidth_scheduler_enabled": bool(self.settings_bandwidth_scheduler.isChecked()) if hasattr(self, "settings_bandwidth_scheduler") else False,
+            "cookies_path": str(self.settings_cookies.text() if hasattr(self, "settings_cookies") else "").strip(),
+            "embed_subs": bool(self.settings_embed_subs.isChecked()) if hasattr(self, "settings_embed_subs") else True,
+            "split_chapters": bool(self.settings_split_chapters.isChecked()) if hasattr(self, "settings_split_chapters") else False,
+            "verify_checksum": bool(self.settings_verify_checksum.isChecked()) if hasattr(self, "settings_verify_checksum") else False,
+            "rename_template": rename_template,
+            "use_ytdlp_api": bool(self.settings_use_ytdlp_api.isChecked()) if hasattr(self, "settings_use_ytdlp_api") else bool(DEFAULT_SETTINGS.get("use_ytdlp_api", False)),
+            "use_aria2": bool(self.settings_aria2.isChecked()) if hasattr(self, "settings_aria2") else True,
+            "proxy_enabled": bool(self.proxy_enabled_cb.isChecked()) if hasattr(self, "proxy_enabled_cb") else False,
+            "proxy": str(self.proxy_input.text() if hasattr(self, "proxy_input") else "").strip(),
+            "sustainability_action": str(self.sustainability_combo.currentText() if hasattr(self, "sustainability_combo") else "").split(" — ")[0].strip(),
+            "sustainability_delay_seconds": int(self.sustainability_spin.value()) if hasattr(self, "sustainability_spin") else 60,
+            "ui_language": ui_language,
+            "custom_merge_enabled": bool(self.merge_group.isChecked()) if hasattr(self, "merge_group") else False,
+            "custom_merge_video_codec": str(self.settings_video_codec.currentText()) if hasattr(self, "settings_video_codec") else "copy",
+            "custom_merge_video_crf": int(self.settings_video_crf.value()) if hasattr(self, "settings_video_crf") else 23,
+            "custom_merge_audio_codec": str(self.settings_audio_codec.currentText()) if hasattr(self, "settings_audio_codec") else "aac",
+            "custom_merge_audio_bitrate": str(self.settings_audio_bitrate.text() if hasattr(self, "settings_audio_bitrate") else "192k").strip(),
+        }
+
+    def apply_form_settings(self, settings: dict, block_signals: bool = True):
+        if not isinstance(settings, dict):
+            return
+
+        def _maybe_block(widget, flag: bool):
+            if widget is None:
+                return
+            try:
+                widget.blockSignals(bool(flag))
+            except Exception:
+                return
+
+        out_dir = str(settings.get("out_dir", "") or "")
+        if hasattr(self, "settings_out_dir"):
+            _maybe_block(self.settings_out_dir, block_signals)
+            self.settings_out_dir.setText(out_dir)
+            _maybe_block(self.settings_out_dir, False)
+
+        if hasattr(self, "settings_retries"):
+            _maybe_block(self.settings_retries, block_signals)
+            self.settings_retries.setValue(max(1, int(settings.get("retries", self.settings_retries.value()) or self.settings_retries.value())))
+            _maybe_block(self.settings_retries, False)
+
+        if hasattr(self, "settings_retry_delay"):
+            _maybe_block(self.settings_retry_delay, block_signals)
+            self.settings_retry_delay.setValue(max(1, int(settings.get("auto_retry_delay_seconds", self.settings_retry_delay.value()) or self.settings_retry_delay.value())))
+            _maybe_block(self.settings_retry_delay, False)
+
+        if hasattr(self, "settings_queue_retry_limit"):
+            _maybe_block(self.settings_queue_retry_limit, block_signals)
+            self.settings_queue_retry_limit.setValue(max(0, int(settings.get("queue_auto_retry_limit", self.settings_queue_retry_limit.value()) or self.settings_queue_retry_limit.value())))
+            _maybe_block(self.settings_queue_retry_limit, False)
+
+        if hasattr(self, "settings_queue_priority"):
+            _maybe_block(self.settings_queue_priority, block_signals)
+            desired = str(settings.get("queue_priority", "") or "")
+            idx = self.settings_queue_priority.findData(desired)
+            if idx >= 0:
+                self.settings_queue_priority.setCurrentIndex(idx)
+            _maybe_block(self.settings_queue_priority, False)
+
+        if hasattr(self, "settings_concurrent"):
+            _maybe_block(self.settings_concurrent, block_signals)
+            self.settings_concurrent.setValue(max(1, int(settings.get("max_concurrent", self.settings_concurrent.value()) or self.settings_concurrent.value())))
+            _maybe_block(self.settings_concurrent, False)
+
+        if hasattr(self, "settings_search_history_limit"):
+            _maybe_block(self.settings_search_history_limit, block_signals)
+            self.settings_search_history_limit.setValue(max(5, int(settings.get("search_history_limit", self.settings_search_history_limit.value()) or self.settings_search_history_limit.value())))
+            _maybe_block(self.settings_search_history_limit, False)
+
+        if hasattr(self, "settings_search_history_ttl_days"):
+            _maybe_block(self.settings_search_history_ttl_days, block_signals)
+            self.settings_search_history_ttl_days.setValue(max(1, int(settings.get("search_history_ttl_days", self.settings_search_history_ttl_days.value()) or self.settings_search_history_ttl_days.value())))
+            _maybe_block(self.settings_search_history_ttl_days, False)
+
+        if hasattr(self, "settings_thumbnail_cache_max"):
+            _maybe_block(self.settings_thumbnail_cache_max, block_signals)
+            self.settings_thumbnail_cache_max.setValue(max(50, int(settings.get("thumbnail_cache_max", self.settings_thumbnail_cache_max.value()) or self.settings_thumbnail_cache_max.value())))
+            _maybe_block(self.settings_thumbnail_cache_max, False)
+
+        if hasattr(self, "settings_storage_guard"):
+            _maybe_block(self.settings_storage_guard, block_signals)
+            self.settings_storage_guard.setChecked(bool(settings.get("storage_guard_enabled", self.settings_storage_guard.isChecked())))
+            _maybe_block(self.settings_storage_guard, False)
+
+        if hasattr(self, "settings_storage_min_free_gb"):
+            _maybe_block(self.settings_storage_min_free_gb, block_signals)
+            self.settings_storage_min_free_gb.setValue(max(1, int(settings.get("storage_min_free_gb", self.settings_storage_min_free_gb.value()) or self.settings_storage_min_free_gb.value())))
+            _maybe_block(self.settings_storage_min_free_gb, False)
+
+        if hasattr(self, "settings_system_theme_sync"):
+            _maybe_block(self.settings_system_theme_sync, block_signals)
+            self.settings_system_theme_sync.setChecked(bool(settings.get("system_theme_sync_enabled", self.settings_system_theme_sync.isChecked())))
+            _maybe_block(self.settings_system_theme_sync, False)
+
+        if hasattr(self, "settings_bandwidth_scheduler"):
+            _maybe_block(self.settings_bandwidth_scheduler, block_signals)
+            self.settings_bandwidth_scheduler.setChecked(bool(settings.get("bandwidth_scheduler_enabled", self.settings_bandwidth_scheduler.isChecked())))
+            _maybe_block(self.settings_bandwidth_scheduler, False)
+
+        if hasattr(self, "settings_cookies"):
+            _maybe_block(self.settings_cookies, block_signals)
+            self.settings_cookies.setText(str(settings.get("cookies_path", self.settings_cookies.text()) or "").strip())
+            _maybe_block(self.settings_cookies, False)
+
+        if hasattr(self, "settings_embed_subs"):
+            _maybe_block(self.settings_embed_subs, block_signals)
+            self.settings_embed_subs.setChecked(bool(settings.get("embed_subs", self.settings_embed_subs.isChecked())))
+            _maybe_block(self.settings_embed_subs, False)
+
+        if hasattr(self, "settings_split_chapters"):
+            _maybe_block(self.settings_split_chapters, block_signals)
+            self.settings_split_chapters.setChecked(bool(settings.get("split_chapters", self.settings_split_chapters.isChecked())))
+            _maybe_block(self.settings_split_chapters, False)
+
+        if hasattr(self, "settings_verify_checksum"):
+            _maybe_block(self.settings_verify_checksum, block_signals)
+            self.settings_verify_checksum.setChecked(bool(settings.get("verify_checksum", self.settings_verify_checksum.isChecked())))
+            _maybe_block(self.settings_verify_checksum, False)
+
+        if hasattr(self, "settings_rename_template"):
+            _maybe_block(self.settings_rename_template, block_signals)
+            desired = str(settings.get("rename_template", "") or "")
+            idx = self.settings_rename_template.findText(desired)
+            if idx >= 0:
+                self.settings_rename_template.setCurrentIndex(idx)
+            _maybe_block(self.settings_rename_template, False)
+
+        if hasattr(self, "settings_use_ytdlp_api"):
+            _maybe_block(self.settings_use_ytdlp_api, block_signals)
+            self.settings_use_ytdlp_api.setChecked(bool(settings.get("use_ytdlp_api", self.settings_use_ytdlp_api.isChecked())))
+            _maybe_block(self.settings_use_ytdlp_api, False)
+
+        if hasattr(self, "settings_aria2"):
+            _maybe_block(self.settings_aria2, block_signals)
+            self.settings_aria2.setChecked(bool(settings.get("use_aria2", self.settings_aria2.isChecked())))
+            _maybe_block(self.settings_aria2, False)
+
+        if hasattr(self, "proxy_enabled_cb"):
+            _maybe_block(self.proxy_enabled_cb, block_signals)
+            self.proxy_enabled_cb.setChecked(bool(settings.get("proxy_enabled", self.proxy_enabled_cb.isChecked())))
+            _maybe_block(self.proxy_enabled_cb, False)
+
+        if hasattr(self, "proxy_input"):
+            _maybe_block(self.proxy_input, block_signals)
+            self.proxy_input.setText(str(settings.get("proxy", self.proxy_input.text()) or "").strip())
+            _maybe_block(self.proxy_input, False)
+
+        if hasattr(self, "sustainability_spin"):
+            _maybe_block(self.sustainability_spin, block_signals)
+            self.sustainability_spin.setValue(max(0, int(settings.get("sustainability_delay_seconds", self.sustainability_spin.value()) or self.sustainability_spin.value())))
+            _maybe_block(self.sustainability_spin, False)
+
+        if hasattr(self, "merge_group"):
+            _maybe_block(self.merge_group, block_signals)
+            self.merge_group.setChecked(bool(settings.get("custom_merge_enabled", self.merge_group.isChecked())))
+            _maybe_block(self.merge_group, False)
+
+        if hasattr(self, "settings_video_codec"):
+            desired = str(settings.get("custom_merge_video_codec", "") or "")
+            idx = self.settings_video_codec.findText(desired)
+            if idx >= 0:
+                self.settings_video_codec.setCurrentIndex(idx)
+
+        if hasattr(self, "settings_video_crf"):
+            self.settings_video_crf.setValue(max(0, min(51, int(settings.get("custom_merge_video_crf", self.settings_video_crf.value()) or self.settings_video_crf.value()))))
+
+        if hasattr(self, "settings_audio_codec"):
+            desired = str(settings.get("custom_merge_audio_codec", "") or "")
+            idx = self.settings_audio_codec.findText(desired)
+            if idx >= 0:
+                self.settings_audio_codec.setCurrentIndex(idx)
+
+        if hasattr(self, "settings_audio_bitrate"):
+            self.settings_audio_bitrate.setText(str(settings.get("custom_merge_audio_bitrate", self.settings_audio_bitrate.text()) or "").strip())
+
+        if hasattr(self, "settings_language_combo"):
+            desired = str(settings.get("ui_language", "") or "")
+            if desired:
+                _maybe_block(self.settings_language_combo, block_signals)
+                idx = self.settings_language_combo.findData(desired)
+                if idx >= 0:
+                    self.settings_language_combo.setCurrentIndex(idx)
+                _maybe_block(self.settings_language_combo, False)
+
+
+
+
+====================================================================================================
+FILE: ui\views\title_bar.py
+====================================================================================================
+
+
+try:
+    from PySide6.QtCore import Qt
+    from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QPushButton
+except ImportError:
+    from PyQt6.QtCore import Qt
+    from PyQt6.QtWidgets import QFrame, QHBoxLayout, QLabel, QPushButton
+
+from core.i18n import _
+from ui.themes import get_theme
+
+
+def build_title_bar(window):
+    theme = get_theme(getattr(window, "theme", None))
+    frame = QFrame()
+    frame.setObjectName("title_bar")
+    frame.setFixedHeight(40)
+
+    row = QHBoxLayout(frame)
+    row.setContentsMargins(16, 0, 16, 0)
+    row.setSpacing(10)
+
+    title_label = QLabel("SnapDownloader")
+    title_label.setObjectName("title_label")
+    row.addWidget(title_label)
+    row.addStretch(1)
+
+    theme_btn = QPushButton(_("Theme"))
+    theme_btn.setObjectName("title_btn")
+    theme_btn.setFixedSize(56, 30)
+    theme_btn.setToolTip(_("Toggle Theme"))
+    theme_btn.clicked.connect(window._toggle_theme)
+
+    mode_btn = QPushButton(_("Mode"))
+    mode_btn.setObjectName("title_btn")
+    mode_btn.setFixedSize(56, 30)
+    mode_btn.setToolTip(_("Toggle Dark/Light"))
+    mode_btn.clicked.connect(window._toggle_dark_light_mode)
+
+    min_btn = QPushButton("—")
+    min_btn.setObjectName("title_btn")
+    min_btn.setFixedSize(30, 30)
+    min_btn.clicked.connect(window.showMinimized)
+
+    close_btn = QPushButton("X")
+    close_btn.setObjectName("title_btn_close")
+    close_btn.setFixedSize(30, 30)
+    close_btn.clicked.connect(window._close_window)
+
+    row.addWidget(mode_btn)
+    row.addWidget(theme_btn)
+    row.addWidget(min_btn)
+    row.addWidget(close_btn)
+
+    window._is_tracking = False
+    window._start_pos = None
+
+    def mousePressEvent(event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            window._is_tracking = True
+            window._start_pos = event.globalPosition().toPoint() - window.pos()
+            event.accept()
+
+    def mouseMoveEvent(event):
+        if window._is_tracking:
+            window.move(event.globalPosition().toPoint() - window._start_pos)
+            event.accept()
+
+    def mouseReleaseEvent(event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            window._is_tracking = False
+            event.accept()
+
+    def mouseDoubleClickEvent(event):
+        pass
+
+    frame.mousePressEvent = mousePressEvent
+    frame.mouseMoveEvent = mouseMoveEvent
+    frame.mouseReleaseEvent = mouseReleaseEvent
+    frame.mouseDoubleClickEvent = mouseDoubleClickEvent
+    return frame
+
+
+
+
+====================================================================================================
+FILE: ui\views\tools_view.py
+====================================================================================================
+
+
+import os
+import subprocess
+import logging
+from PySide6.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QFrame, QLineEdit, QPushButton,
+    QLabel, QComboBox, QFileDialog, QTextEdit
+)
+from PySide6.QtCore import Qt, Signal
+
+logger = logging.getLogger("ToolsView")
+
+from ui.views.base_view import BaseView
+from core.i18n import _
+from core.error_handler import ErrorHandler
+from core.smart_rename import TEMPLATES as RENAME_TEMPLATES, build_filename
+
+class ToolsView(BaseView):
+    fetch_channel_requested = Signal(str)
+    export_queue_requested = Signal()
+    import_queue_requested = Signal()
+    retry_failed_requested = Signal()
+    export_queue_requested = Signal()
+    import_queue_requested = Signal()
+
+    def __init__(self, main_window=None, parent=None):
+        super().__init__(main_window, parent)
+        self.setup_ui()
+
+    def setup_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(15)
+
+        title = QLabel(_("Advanced Tools"))
+        title.setObjectName("single_title")
+        
+        # Converter Section
+        conv_frame = QFrame()
+        conv_frame.setObjectName("playlist_row")
+        conv_layout = QVBoxLayout(conv_frame)
+        
+        conv_title = QLabel(_("Video/Audio Converter"))
+        conv_title.setObjectName("playlist_title")
+        
+        self.conv_input = QLineEdit()
+        self.conv_input.setPlaceholderText(_("Select file to convert..."))
+        browse_btn = QPushButton(_("Browse"))
+        browse_btn.clicked.connect(self._pick_conv_file)
+        
+        input_row = QHBoxLayout()
+        input_row.addWidget(self.conv_input)
+        input_row.addWidget(browse_btn)
+        
+        self.conv_fmt = QComboBox()
+        self.conv_fmt.addItems(["MP3", "MP4", "MKV", "AVI", "GIF"])
+        
+        start_conv = QPushButton(_("Start Conversion"))
+        start_conv.setObjectName("action_download")
+        start_conv.clicked.connect(self._start_conversion)
+        
+        conv_layout.addWidget(conv_title)
+        conv_layout.addLayout(input_row)
+        conv_layout.addWidget(QLabel(_("Output Format:")))
+        conv_layout.addWidget(self.conv_fmt)
+        conv_layout.addWidget(start_conv)
+        
+        # Channel Downloader Section
+        chan_frame = QFrame()
+        chan_frame.setObjectName("playlist_row")
+        chan_layout = QVBoxLayout(chan_frame)
+        
+        chan_title = QLabel(_("Channel Downloader"))
+        chan_title.setObjectName("playlist_title")
+        
+        self.chan_url = QLineEdit()
+        self.chan_url.setPlaceholderText(_("Enter Channel or Playlist URL..."))
+        
+        start_chan = QPushButton(_("Fetch Channel Videos"))
+        start_chan.setObjectName("action_schedule")
+        start_chan.clicked.connect(self._fetch_channel)
+        
+        chan_layout.addWidget(chan_title)
+        chan_layout.addWidget(self.chan_url)
+        chan_layout.addWidget(start_chan)
+
+        sub_frame = QFrame()
+        sub_frame.setObjectName("playlist_row")
+        sub_layout = QVBoxLayout(sub_frame)
+
+        sub_title = QLabel(_("Subtitle Editor"))
+        sub_title.setObjectName("playlist_title")
+
+        self.sub_input = QLineEdit()
+        self.sub_input.setPlaceholderText(_("Select subtitle file (.srt, .vtt)..."))
+        sub_browse = QPushButton(_("Browse"))
+        sub_browse.clicked.connect(self._pick_sub_file)
+
+        sub_row = QHBoxLayout()
+        sub_row.addWidget(self.sub_input)
+        sub_row.addWidget(sub_browse)
+
+        self.sub_text = QTextEdit()
+
+        sub_actions = QHBoxLayout()
+        load_btn = QPushButton(_("Load"))
+        save_btn = QPushButton(_("Save"))
+        load_btn.clicked.connect(self._load_subtitle)
+        save_btn.clicked.connect(self._save_subtitle)
+        sub_actions.addWidget(load_btn)
+        sub_actions.addWidget(save_btn)
+        sub_actions.addStretch(1)
+
+        sub_layout.addWidget(sub_title)
+        sub_layout.addLayout(sub_row)
+        sub_layout.addWidget(self.sub_text)
+        sub_layout.addLayout(sub_actions)
+
+        rename_frame = QFrame()
+        rename_frame.setObjectName("playlist_row")
+        rename_layout = QVBoxLayout(rename_frame)
+
+        rename_title = QLabel(_("Bulk Rename Downloads"))
+        rename_title.setObjectName("playlist_title")
+
+        self.rename_folder_input = QLineEdit()
+        self.rename_folder_input.setPlaceholderText(_("Select folder containing downloads..."))
+        rename_browse = QPushButton(_("Browse"))
+        rename_browse.clicked.connect(self._pick_rename_folder)
+
+        rename_row = QHBoxLayout()
+        rename_row.addWidget(self.rename_folder_input)
+        rename_row.addWidget(rename_browse)
+
+        self.rename_template_combo = QComboBox()
+        self.rename_template_combo.addItems(list(RENAME_TEMPLATES.keys()))
+
+        apply_rename = QPushButton(_("Apply Rename"))
+        apply_rename.setObjectName("action_schedule")
+        apply_rename.clicked.connect(self._apply_bulk_rename)
+
+        rename_layout.addWidget(rename_title)
+        rename_layout.addLayout(rename_row)
+        rename_layout.addWidget(QLabel(_("Template:")))
+        rename_layout.addWidget(self.rename_template_combo)
+        rename_layout.addWidget(apply_rename)
+
+        queue_frame = QFrame()
+        queue_frame.setObjectName("playlist_row")
+        queue_layout = QVBoxLayout(queue_frame)
+
+        queue_title = QLabel(_("Queue Tools"))
+        queue_title.setObjectName("playlist_title")
+
+        queue_buttons = QHBoxLayout()
+        export_queue_btn = QPushButton(_("Export Queue"))
+        export_queue_btn.setObjectName("action_trim")
+        export_queue_btn.clicked.connect(self.export_queue_requested.emit)
+        import_queue_btn = QPushButton(_("Import Queue"))
+        import_queue_btn.setObjectName("action_schedule")
+        import_queue_btn.clicked.connect(self.import_queue_requested.emit)
+        retry_failed_btn = QPushButton(_("Retry Failed"))
+        retry_failed_btn.setObjectName("action_download")
+        retry_failed_btn.clicked.connect(self.retry_failed_requested.emit)
+        queue_buttons.addWidget(export_queue_btn)
+        queue_buttons.addWidget(import_queue_btn)
+        queue_buttons.addWidget(retry_failed_btn)
+        queue_buttons.addStretch(1)
+
+        queue_layout.addWidget(queue_title)
+        queue_layout.addLayout(queue_buttons)
+
+        thumb_frame = QFrame()
+        thumb_frame.setObjectName("playlist_row")
+        thumb_layout = QVBoxLayout(thumb_frame)
+
+        thumb_title = QLabel(_("Thumbnail Extractor"))
+        thumb_title.setObjectName("playlist_title")
+
+        self.thumb_input = QLineEdit()
+        self.thumb_input.setPlaceholderText(_("Select video file..."))
+        thumb_browse = QPushButton(_("Browse"))
+        thumb_browse.clicked.connect(self._pick_thumb_file)
+
+        thumb_row = QHBoxLayout()
+        thumb_row.addWidget(self.thumb_input)
+        thumb_row.addWidget(thumb_browse)
+
+        time_row = QHBoxLayout()
+        self.thumb_time_input = QLineEdit("00:10")
+        self.thumb_time_input.setPlaceholderText(_("Time (HH:MM:SS)"))
+        time_row.addWidget(QLabel(_("Capture at:"), alignment=Qt.AlignmentFlag.AlignVCenter))
+        time_row.addWidget(self.thumb_time_input)
+        time_row.addStretch(1)
+
+        extract_btn = QPushButton(_("Extract Thumbnail"))
+        extract_btn.setObjectName("action_download")
+        extract_btn.clicked.connect(self._extract_thumbnail)
+
+        thumb_layout.addWidget(thumb_title)
+        thumb_layout.addLayout(thumb_row)
+        thumb_layout.addLayout(time_row)
+        thumb_layout.addWidget(extract_btn)
+        
+        layout.addWidget(title)
+        layout.addWidget(conv_frame)
+        layout.addWidget(chan_frame)
+        layout.addWidget(sub_frame)
+        layout.addWidget(rename_frame)
+        layout.addWidget(queue_frame)
+        layout.addWidget(thumb_frame)
+        layout.addStretch(1)
+
+    def _pick_conv_file(self):
+        path, _ = QFileDialog.getOpenFileName(
+            self,
+            _("Select Media File"),
+            "",
+            _("Media Files (*.mp4 *.mkv *.avi *.mp3 *.wav);;All Files (*)"),
+        )
+        if path:
+            self.conv_input.setText(path)
+
+    def _start_conversion(self):
+        input_path = self.conv_input.text()
+        if not input_path or not os.path.exists(input_path):
+            ErrorHandler.show_warning(self, _("Error"), _("Please select a valid file."))
+            return
+        
+        fmt = self.conv_fmt.currentText().lower()
+        output_path = os.path.splitext(input_path)[0] + f"_converted.{fmt}"
+        
+        # Simple ffmpeg call
+        cmd = ["ffmpeg", "-y", "-i", input_path, output_path]
+        try:
+            subprocess.Popen(cmd, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+            ErrorHandler.show_info(
+                self,
+                _("Started"),
+                _("Conversion started! Output: {path}").format(path=output_path),
+            )
+            logger.info(f"Conversion started: {input_path} -> {output_path}")
+        except Exception as e:
+            ErrorHandler.show_error(
+                self,
+                _("Error"),
+                _("Failed to start FFmpeg: {err}").format(err=str(e)),
+                exc=e,
+            )
+
+    def _fetch_channel(self):
+        url = self.chan_url.text().strip()
+        if not url: return
+        self.fetch_channel_requested.emit(url)
+
+    def _pick_sub_file(self):
+        path, _ = QFileDialog.getOpenFileName(
+            self,
+            _("Select Subtitle File"),
+            "",
+            _("Subtitle Files (*.srt *.vtt);;All Files (*)"),
+        )
+        if path:
+            self.sub_input.setText(path)
+
+    def _load_subtitle(self):
+        path = self.sub_input.text().strip()
+        if not path or not os.path.exists(path):
+            ErrorHandler.show_warning(self, _("Error"), _("Please select a valid subtitle file."))
+            return
+        try:
+            with open(path, "r", encoding="utf-8", errors="replace") as f:
+                self.sub_text.setPlainText(f.read())
+        except Exception as exc:
+            ErrorHandler.show_error(self, _("Error"), _("Failed to load subtitle: {err}").format(err=str(exc)), exc=exc)
+
+    def _save_subtitle(self):
+        path = self.sub_input.text().strip()
+        if not path:
+            ErrorHandler.show_warning(self, _("Error"), _("Please select a valid subtitle file."))
+            return
+        try:
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(self.sub_text.toPlainText())
+            ErrorHandler.show_info(self, _("Success"), _("Subtitle saved: {path}").format(path=path))
+        except Exception as exc:
+            ErrorHandler.show_error(self, _("Error"), _("Failed to save subtitle: {err}").format(err=str(exc)), exc=exc)
+
+    def _pick_rename_folder(self):
+        path = QFileDialog.getExistingDirectory(self, _("Select Folder"), "")
+        if path:
+            self.rename_folder_input.setText(path)
+
+    def _apply_bulk_rename(self):
+        folder = self.rename_folder_input.text().strip()
+        if not folder or not os.path.isdir(folder):
+            ErrorHandler.show_warning(self, _("Error"), _("Please select a valid folder."))
+            return
+        template = self.rename_template_combo.currentText().strip()
+        count = 0
+        for root, _, files in os.walk(folder):
+            for name in files:
+                full = os.path.join(root, name)
+                if not os.path.isfile(full):
+                    continue
+                base, ext = os.path.splitext(name)
+                if not ext:
+                    continue
+                new_rel = build_filename(template, title=base, ext=ext.lstrip("."), channel="", quality="")
+                new_full = os.path.join(root, new_rel)
+                if os.path.abspath(full) == os.path.abspath(new_full):
+                    continue
+                os.makedirs(os.path.dirname(new_full), exist_ok=True)
+                try:
+                    os.rename(full, new_full)
+                    count += 1
+                except Exception as exc:
+                    logger.warning(f"Bulk rename failed for {full}: {exc}")
+        if count > 0:
+            ErrorHandler.show_info(self, _("Success"), _("Renamed {count} files.").format(count=count))
+        else:
+            ErrorHandler.show_warning(self, _("Info"), _("No files were renamed."))
+
+    def _pick_thumb_file(self):
+        path, _ = QFileDialog.getOpenFileName(
+            self,
+            _("Select Video File"),
+            "",
+            _("Video Files (*.mp4 *.mkv *.avi *.mov);;All Files (*)"),
+        )
+        if path:
+            self.thumb_input.setText(path)
+
+    def _extract_thumbnail(self):
+        input_path = self.thumb_input.text().strip()
+        if not input_path or not os.path.exists(input_path):
+            ErrorHandler.show_warning(self, _("Error"), _("Please select a valid video file."))
+            return
+        time_value = self.thumb_time_input.text().strip() or "00:10"
+        base, _ = os.path.splitext(input_path)
+        output_path = base + "_thumb.jpg"
+        cmd = ["ffmpeg", "-y", "-ss", time_value, "-i", input_path, "-frames:v", "1", output_path]
+        try:
+            subprocess.Popen(cmd, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+            ErrorHandler.show_info(
+                self,
+                _("Started"),
+                _("Thumbnail extraction started: {path}").format(path=output_path),
+            )
+            logger.info(f"Thumbnail extraction started: {input_path} -> {output_path}")
+        except Exception as exc:
+            ErrorHandler.show_error(
+                self,
+                _("Error"),
+                _("Failed to start FFmpeg: {err}").format(err=str(exc)),
+                exc=exc,
+            )
+
+
+
+
+====================================================================================================
+FILE: ui\widgets.py
+====================================================================================================
+
+from core.qt_compat import QColor, QEvent, QObject, QPainter, QPainterPath, QPen, QSize, QWidget
+
+
+class WheelEventFilter(QObject):
+    def eventFilter(self, obj, event):
+        if event.type() == QEvent.Type.Wheel:
+            return True
+        return super().eventFilter(obj, event)
+
+
+class SpeedGraphWidget(QWidget):
+    def __init__(self, accent_color: str, background_color: str, parent=None):
+        super().__init__(parent)
+        self._values = []
+        self._max_value = 1.0
+        self._accent = QColor(accent_color)
+        self._background = QColor(background_color)
+
+    def set_values(self, values, max_value: float):
+        self._values = list(values or [])
+        try:
+            mv = float(max_value)
+        except Exception:
+            mv = 1.0
+        self._max_value = mv if mv > 0 else 1.0
+        self.update()
+
+    def sizeHint(self):
+        return QSize(120, 28)
+
+    def minimumSizeHint(self):
+        return QSize(80, 20)
+
+    def paintEvent(self, event):
+        if not self._values:
+            return
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        rect = self.rect()
+        painter.fillRect(rect, self._background)
+        count = len(self._values)
+        if count <= 1:
+            return
+        width = max(1, rect.width())
+        height = max(1, rect.height())
+        step_x = width / float(count - 1)
+        path = QPainterPath()
+        for idx, raw in enumerate(self._values):
+            try:
+                value = float(raw)
+            except Exception:
+                value = 0.0
+            value = min(max(value, 0.0), self._max_value)
+            ratio = value / self._max_value if self._max_value > 0 else 0.0
+            x = rect.left() + idx * step_x
+            y = rect.bottom() - ratio * height
+            if idx == 0:
+                path.moveTo(x, y)
+            else:
+                path.lineTo(x, y)
+        pen = QPen(self._accent)
+        pen.setWidth(2)
+        painter.setPen(pen)
+        painter.drawPath(path)
+

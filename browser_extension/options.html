@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>VidDownloader Settings</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      padding: 16px;
+      background: #0f172a;
+      color: #e5e7eb;
+    }
+    h1 {
+      font-size: 18px;
+      margin-bottom: 12px;
+    }
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 13px;
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 6px 8px;
+      border-radius: 4px;
+      border: 1px solid #334155;
+      background: #020617;
+      color: #e5e7eb;
+      font-size: 13px;
+      box-sizing: border-box;
+    }
+    button {
+      margin-top: 10px;
+      padding: 6px 14px;
+      border-radius: 4px;
+      border: none;
+      background: #2563eb;
+      color: white;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #1d4ed8;
+    }
+    .status {
+      margin-top: 8px;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <h1>VidDownloader Extension Settings</h1>
+  <label for="token-input">Desktop App Token (SNAPDOWNLOADER_EXTENSION_TOKEN)</label>
+  <input type="text" id="token-input" placeholder="Enter the token used by the desktop app" />
+  <button id="save-btn">Save</button>
+  <div id="status" class="status"></div>
+
+  <script src="options.js"></script>
+</body>
+</html>

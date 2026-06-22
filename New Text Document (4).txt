@@ -1,0 +1,717 @@
+2.md 3.md 4.md 5.md 6.md 7.md 8.md 9.md 10.md HyperLoader_Engine_Audit_Report.md SnapDownloader_Review_Summary.md عاوزك تعمل فحص عميق للتقارير دى كلها بالتفصيل الممل كل حرف فيها وتقارن بالبرنامج تعمله فحص وتشوف ايه تم تنفيذه وايه لسه وابدا اعمل خطة شاملة فيها كل التفاصيل الباقية مش تسيب نقطة وله تتخطى اى حاجه
+
+Builder
+
+11 context(s) used
+
+هراجع التقارير المذكورة كلها وأطابق كل ملاحظة مع حالة الكود الحالية في المشروع، ثم أطلع لك بجرد كامل: ما تم إصلاحه، ما زال مفتوحًا، وخطة تنفيذ شاملة مرتبة بالأولوية.
+
+0/4 done
+
+قراءة جميع تقارير المراجعة وتجميع جميع الملاحظات والمخاطر والتوصيات في قائمة موحدة
+
+فحص ملفات المشروع المرتبطة بالملاحظات ومقارنة الحالة الحالية مع ما ورد في التقارير
+
+تحديد ما تم تنفيذه وما لم يتم تنفيذه لكل نقطة مع أدلة من الكود
+
+إعداد خطة شاملة مفصلة بكل الأعمال المتبقية مرتبة حسب الأولوية والتبعيات
+
+Thought
+
+2.md
+
+3.md
+
+4.md
+
+5.md
+
+6.md
+
+7.md
+
+8.md
+
+9.md
+
+10.md
+
+HyperLoader_Engine_Audit_Report.md
+
+SnapDownloader_Review_Summary.md
+
+Thought
+
+بدأت أجمع الملاحظات من كل تقرير، والخطوة الحالية هي ربطها بملفات الكود الفعلية في المشروع لمعرفة أي نقاط ما زالت موجودة فعلاً وأيها تم إصلاحه لاحقًا.
+
+viddownloader
+
+Search codebase for '**/*.py'
+
+Search codebase for '**/download_providers_oop/*.py'
+
+Search codebase for '**/*controller*.py'
+
+Thought
+
+أنا الآن داخل الكود نفسه أتحقق من العلامات الفارقة لكل ملاحظة حرجة: الكتابة الذرية، أقفال التزامن، الترحيلات، الـ fallback، وإصلاحات الاختبارات، لأن ده أسرع طريق لإخراج حالة تنفيذ دقيقة بدل إعادة سرد التقارير فقط.
+
+Search codebase for 'BEGIN IMMEDIATE|_last_queue_save_signature|_ensure_advanced_columns|migrate_from_json|LIKE .*ESCAPE|escape_like'
+
+Search codebase for 'NamedTemporaryFile|mkstemp|os\.replace|save_config|chmod|0o600|0600'
+
+Search codebase for 'estimate_file_size_bytes|petabyte|1024\s*\*\s*1024\s*\*\s*1024\s*\*\s*1024\s*\*\s*1024|None|TypeError|ValueError'
+
+Search codebase for 'Signal|Lock|RLock|translations|run_on_qt_main_thread|QMetaObject|thread'
+
+Search codebase for 'SystemExit|app\.exec|sys\.exit|return app\.exec'
+
+Search codebase for 'PyInstaller|_MEIPASS|get_resource_path|abspath|realpath'
+
+Thought
+
+Search codebase for 'realpath|output_path|mkstemp|Exported by SnapDownloader|expired|VirtualLock|memset|icacls|USERNAME|DPAPI|warning|logger'
+
+Search codebase for 'is_safe_host|resolve_tcp_host_ips|socket\.getaddrinfo|pin|rebind|allow_private|\.local|default resolver|resolver is None'
+
+Search codebase for 'is_safe_host|download_direct_file|Session\(|session\.close|response\.close|proxy|TransportCancelled|validate|network_safety|chunk_size|HEAD|iter_content|256 \* 1024'
+
+Search codebase for 'RLock|Lock|anti_detection_engine|BROWSER_PROFILES|chrome147|chrome124|lognorm|subprocess\.run|--list-impersonate-targets|_impersonation_support_cache|Sec-CH-UA'
+
+Search codebase for 'kill|enabled = False|current_index|keyring|proxy_.*hostname|socks5h|httpbin|test_url|weighted|random\.choices|RLock|test_proxy|save\(|0o600|chmod'
+
+Thought
+
+core\network_safety.py
+
+core\tls_transport.py
+
+core\proxy_manager.py
+
+core\download_providers_oop\base.py
+
+core\download_providers_oop\ytdlp_provider.py
+
+Search codebase for '_emit_progress|with self\._lock|on_progress|checkpoint|resume|os\.replace|cancel_futures|simple download|fallback|Range|truncate|Content-Disposition|sha1|bandwidth_limit_kbps|future\.cancel|ThreadPoolExecutor|suppress_exc'
+
+Search codebase for '_run_ytdlp_once|safe_execute|wait\(|terminate\(|_parse_safe_extra_args|_cached_extra_args|_reader_thread|weakref|progress_hook|_UserCancelledDownload|wait\(timeout|native segmented'
+
+Search codebase for 'QThread\.terminate|terminate\(|current_process|process_mutex|retry_delay|format fallback|current_index|RLock|plan_parallel_start|deepcopy|get_download_entries_page|current_index'
+
+Search codebase for '_DataclassDictModel|deepcopy|pop\(|__delitem__|TaskStatus|normalize_task_status|ResumeSnapshot'
+
+Search codebase for '_safe_cookies_path|_PreparedCookieFile|__deepcopy__|capture_output=True|_sanitize_worker_extra_args|_run_json_with_retries|join\(|cleanup\(|TimeoutExpired'
+
+Search codebase for '_is_retryable|retry|check_production_safety|os\.environ|hash|signature|capture_output|chunk_size|256\*1024|KeyboardInterrupt'
+
+Thought
+
+core\download_providers_oop\segmented_provider.py
+
+core\downloader.py
+
+core\downloader.py
+
+core\queue_manager.py
+
+core\task_types.py
+
+core\workers.py
+
+Thought
+
+Search codebase for 'socket_timeout|extractor_retries|formats\]|vcodec|acodec|is_live|live_status|http://|https://'
+
+Search codebase for 'avc1|vp09|dynamic_range|DV|-abr,-asr|abr,asr|min_height|height<=|height>=|preferred_video_codec|preferred_audio_codec'
+
+Search codebase for '-c:v|copy|sample_rate|48000|-vn|capture_output=True|timeout='
+
+Search codebase for 'QNetworkRequest|finished|http|https|loadFromData|pending|QPixmap|QImageReader|cacheLimit'
+
+Search codebase for 'requestInterruption|wait\(2000\)|no audio|audio stream|playlist|cache analysis|timeout'
+
+Search codebase for '_normalize_folder_running|done_callback|os\.path\.exists|os\.path\.isfile|output_format|ALLOWED_FORMATS|ConversionWorker'
+
+Search codebase for 'validate|allowlist|flac|ogg|wav|max_bitrate_kbps|allow_recode|target_container|preferred_audio_codec'
+
+Thought
+
+core\format_engine.py
+
+core\media_profile.py
+
+core\thumbnail_manager.py
+
+core\window_controllers\media_tools_controller.py
+
+Thought
+
+core\media_engine\format_decision_engine.py
+
+core\media_engine\media_profile.py
+
+Search codebase for 'run_on_qt_main_thread|invokeMethod|fn\(\)|weakref|_is_closing|unhook_all|_hotkeys.clear'
+
+Search codebase for 'deleteLater|_ui_animations|windowOpacity|pulse_widget|QGraphicsOpacityEffect|_prune_anim|_active_animations'
+
+Search codebase for 'deleteLater|active_workers|worker.deleteLater|WindowState|ProgressiveBootstrapper|MiniModeWindow|singleShot\(|_start_auxiliary_windows_and_shortcuts'
+
+Search codebase for '_pause_downloads_for_storage_guard|threading.Thread|run_on_qt_main_thread|worker.stop\(|_append_log'
+
+Search codebase for 'file size|os\.path\.getsize|50\*1024\*1024|is_allowed_bulk_url|startswith\(\("http://", "https://"\)\)|progress'
+
+Search codebase for 'cache_enabled = False|setIndexWidget\(|thumbnail|abort|QNetworkReply'
+
+Search codebase for 'queue_running|queue_paused|set_runtime_state|SELECT status, COUNT\(\*\)|duplicate|background thread|WorkerPool'
+
+Thought
+
+Search codebase for 'atomic|mkstemp|os\.replace|backup|xml|return False|logger\.warning|downloaded_at'
+
+Search codebase for 'rollback|shutil\.move|os\.replace|temp_primary|_unique_destination|realpath|sidecar'
+
+Search codebase for 'csv|writerow|20000|count_history|transaction|os\.path\.exists|missing|status'
+
+Search codebase for 'ThreadPoolExecutor|max_workers|resolve_history_item_path_async|find_best_file_path|cancel\(|_current_resolve_future|cache'
+
+Search codebase for 'safe_execute|sys\.excepthook|threading\.excepthook|ShowNotificationEvent|confirm\(|15|None'
+
+Search codebase for 'warn_mb|critical_mb|virtual_memory|event_bus|MemoryCriticalEvent|pause|0\.0|warning'
+
+Search codebase for 'systemd-inhibit|caffeinate|SetThreadExecutionState|warning|platform|darwin|linux'
+
+Search codebase for 'hibernatemode|pmset|check=False|confirm_callback|notify_callback'
+
+Thought
+
+جمّعت بالفعل دلائل قوية على إن جزءًا محترمًا من الملاحظات القديمة اتصلح فعلاً، لكن في نفس الوقت ظهرت مجموعات كاملة ما زالت مفتوحة كما هي تقريبًا، خصوصًا في بعض طبقات الـ UI، الإعدادات، والـ anti-detection.
+
+Search codebase for 'keyring|plaintext|DPAPI|protect_text|unprotect_text|False sentinel|_windows_protector'
+
+Search codebase for 'ALLOW_ANY_EXTENSION_ORIGIN|ALLOW_PRIVATE_TARGETS|TOKEN|compare_digest|os\.replace|mkstemp|keyring|plaintext'
+
+Search codebase for 'import_settings|apply_session_payload|reset.*default|DEFAULT_SETTINGS|schema|post_download_script|cookies|autosave_timer'
+
+Search codebase for 'debounce|1200|180|join\(timeout=2\.0\)|SIGTERM|signal|md5|sha256'
+
+Search codebase failed
+
+Search codebase for 'datetime\.now|trial_started_at|hardware|server|monotonic|banner_text|days_remaining'
+
+Search codebase for 'subprocess\.run|timeout=120|startswith\(\("http://", "https://"\)\)|add\(|yt-dlp|url validation'
+
+Search codebase for 'https://|signature|signed|public_key|mktemp|PowerShell|robocopy|tempfile|gettempdir|stdin'
+
+Search codebase for '**/tray_manager.py'
+
+Search codebase for 'SIGTERM|SIGHUP|WM_QUERYENDSESSION|cleanup\(|_quit_application|session_service|hide\('
+
+core\window_controllers\import_controller.py
+
+core\nfo_writer.py
+
+core\download_organizer.py
+
+core\hotkeys.py
+
+core\ui_controller.py
+
+core\window_controllers\update_controller.py
+
+Thought
+
+tests\test_config_manager_i18n.py
+
+tests\test_network_safety.py
+
+tests\test_segmented_provider_simple_resume.py
+
+tests\test_security_regressions.py
+
+tests\test_downloader_resilience.py
+
+Compact
+
+Thought
+
+بكمل دلوقتي مرحلة الربط النهائي بين التقارير والكود الحالي، وهسحب هيكل الملاحظات مباشرة من ملفات الـ .md عشان أتأكد إن مفيش finding واحدة بتفلت من الجرد النهائي.
+
+Search codebase for '^(#|##|###|\*\*Finding|Finding|[A-Z]-\d+|[A-Z]{1,3}-\d+)'
+
+Search codebase for '^(#|##|###|\*\*Finding|Finding|[A-Z]-\d+|[A-Z]{1,3}-\d+)'
+
+Search codebase for '^(#|##|###|\*\*Finding|Finding|[A-Z]-\d+|[A-Z]{1,3}-\d+)'
+
+Search codebase for '^(#|##|###|\*\*Finding|Finding|[A-Z]-\d+|[A-Z]{1,3}-\d+)'
+
+سحبت هيكل أول أربع تقارير، وفيه توافق كبير مع اللي اتراجع قبل كده؛ هكمل آخر دفعة عشان أطلع الجرد النهائي مقسوم حسب الملفات والمخاطر والأولوية.
+
+Search codebase for '^(#|##|###|####)'
+
+Search codebase for '^(#|##|###|####)'
+
+Search codebase for '^(#|##|###|####)'
+
+Search codebase for '^(#|##|###|####)'
+
+Search codebase for '^(#|##|###|####)'
+
+Search codebase for '^(#|##|###|####)'
+
+Search codebase for '^(#|##|###|####)'
+
+Thought
+
+الصورة النهائية بقت مكتملة تقريبًا: هيكل كل التقارير اتسحب واتقارن مع الأدلة اللي كانت متجمعة من الكود والاختبارات، وهثبتها دلوقتي في جرد نهائي وخطة تنفيذ مرتبة من P0 لحد الدين التقني.
+
+2/8 done
+
+قراءة جميع تقارير المراجعة وتجميع جميع الملاحظات والمخاطر والتوصيات في قائمة موحدة
+
+فحص ملفات المشروع المرتبطة بالملاحظات ومقارنة الحالة الحالية مع ما ورد في التقارير
+
+تحديد ما تم تنفيذه وما لم يتم تنفيذه لكل نقطة مع أدلة من الكود
+
+قراءة جميع تقارير المراجعة وتجميع جميع الملاحظات والمخاطر والتوصيات في قائمة موحدة
+
+إعداد خطة شاملة مفصلة بكل الأعمال المتبقية مرتبة حسب الأولوية والتبعيات
+
+فحص ملفات المشروع المرتبطة بالملاحظات ومقارنة الحالة الحالية مع ما ورد في التقارير
+
+تحديد ما تم تنفيذه وما لم يتم تنفيذه لكل نقطة مع أدلة من الكود
+
+إعداد خطة شاملة مفصلة بكل الأعمال المتبقية مرتبة حسب الأولوية والتبعيات
+
+Thought
+
+النتيجة
+
+- عملت مطابقة فعلية بين كل التقارير المطلوبة وبين حالة الكود الحالية في المشروع، وطلعت بجرد تنفيذي واضح: في جزء كبير من الملاحظات القديمة اتقفل فعلًا، وفي جزء مهم ما زال مفتوح أو متقفل جزئيًا.
+- المراجعة دي كانت على الكود الحالي والاختبارات الحالية، بدون تعديل ملفات حتى الآن؛ يعني ده audit reconciliation + implementation gap analysis + خطة تنفيذ كاملة.
+- أقوى دليل إن بعض البنود اتنفذت فعلًا موجود في الاختبارات الحالية مثل test_config_manager_i18n.py ، test_network_safety.py ، test_segmented_provider_simple_resume.py ، test_security_regressions.py ، test_downloader_resilience.py .
+تم تنفيذه
+
+- الأساسيات الحرجة من الملخص القديم : تم إصلاح الكتابة الذرية وصلاحيات الملفات في config_manager.py ، وتحسن التعامل مع overflow/type errors في config.py ، وتم إصلاح دعم PyInstaller في utils.py ، وتم تحويل bootstrap لإرجاع exit code بدل SystemExit في bootstrap.py .
+- سلامة قاعدة البيانات والترجمة : ظهر تنفيذ BEGIN IMMEDIATE و LIKE ESCAPE في database.py ، وتم إدخال RLock مع dispatch للـ main thread في i18n.py .
+- محرك التحميل : تم إصلاح قفل registry في base.py ، وتم تنفيذ resume artifacts فعليًا وإصلاح lock-during-callback في segmented_provider.py ، وتم إصلاح إلغاء yt-dlp ومنع terminate() الخطير في downloader.py .
+- الشبكات والنقل : تم إدخال DNS consistency helpers وsnapshot pinning في network_safety.py ، وتم إغلاق تسريب الجلسات بإغلاق response/session في tls_transport.py .
+- الميديا والتخزين الآمن : تم إصلاح -c:v copy في audio_normalizer.py ، وتمت الكتابة الذرية في nfo_writer.py ، وتمت إضافة rollback في download_organizer.py ، وتم إدخال CSV formula mitigation في history_data_controller.py .
+- الأمان والـ UX : تم إزالة direct UI fallback الخطر واستخدام weakref في hotkeys.py ، وتم تحسين secure storage عبر keyring في secure_storage.py ، وتم تقوية token persistence في extension_server.py .
+مفتوح أو جزئي
+
+- الشبكات والأمن من 2.md : anti_detection.py ما زال يعتمد على fingerprints ثابتة وقديمة وغير متسقة مع transport impersonation؛ proxy_manager.py ما زال عنده keyring key مبني على index، و httpbin.org كـ test URL، و --proxy فقط بدون معالجة socks5h ؛ network_safety.py اتحسن لكنه ما زال جزئي في resolver defaults وسياسات host الداخلية؛ cookie_importer.py اتحسن لكن ما زالت فيه ملاحظات hardening غير مقفولة بالكامل.
+- محرك التحميل من 3.md و HyperLoader : segmented_provider.py ما زال بدون fallback تلقائي كامل من segmented إلى simple عند فشل المسار المجزأ، وما زال فيه retry/jitter و Content-Disposition parsing بدائي و truncate(total_bytes) محتاج مراجعة؛ ytdlp_provider.py ما زال leaky abstraction و pause/resume فيهما no-op فعلي؛ tls_transport.py ما زال محتاج preflight validation أفضل، proxy validation، وسياسة chunking أذكى؛ downloader.py ما زال God object وفيه duplicate retry/args parsing debt.
+- الـ orchestration من 4.md : task_types.py ما زال نموذج hybrid بين dict وdataclass؛ queue_manager.py ما زال عنده current_index وTOCTOU patterns؛ workers.py تحسن أمنيًا لكن لا يزال فيه تكرار منطق مع downloader؛ background_workers.py ما زال جزء من منطق retries والـ orchestration موزع.
+- الميديا من 5.md : thumbnail_manager.py ما زال غير مكتمل فعليًا لأن _on_finished() فارغة ومسار network fetch غير منفذ؛ media_tools_controller.py ما زال محتاج validation أقوى وcompletion flow أنظف؛ media_profile.py و format_decision_engine.py اتحسنوا لكن لسه validation/business guards ناقصين؛ analyze_controller.py ما زال cancellation/join behavior محدود.
+- الـ UI من 6.md : ui_controller.py ما زال عنده animation lifecycle ناقص وغياب deleteLater() ؛ window_bootstrap.py ما زال God window واضح مع eager initialization وتسريب state على window ; window_mixins.py فيه heavy stop/pause paths على thread الواجهة؛ qt_compat.py ما زال محتاج lazy split لتحسين cold start.
+- الـ controllers/data flow من 7.md : download_controller.py ما زال عنده dual source of truth لحالة الـ queue/runtime؛ downloads_render_controller.py ما زال cache disabled و setIndexWidget() متكرر؛ import_controller.py اتحسن في file-size guard لكنه ما زال prefix-based URL validation؛ queue_transfer_controller.py و queue_optimization_controller.py محتاجين توحيد state ownership مع queue manager.
+- التخزين والإدارة من 8.md : history_playback_controller.py ما زال محتاج bounded pool واضح؛ nfo_writer.py اتحسن لكن ما زال بدون verify/read-back أو backup strategy؛ download_organizer.py أفضل بوضوح لكن لسه مش transaction manager كامل؛ duplicate_finder.py و file_integrity_watcher.py ما زالوا محتاجين scale/perf policies.
+- الاستقرار من 9.md : error_handler.py ما زال عنده safe_execute يبلع exceptions بشكل واسع؛ memory_guard.py ما زال monitor-only بعتبات ثابتة و return 0.0 fallback؛ system_keepalive.py عمليًا Windows-only؛ sustainability.py أصلح مشكلة hibernatemode لكن ما زال check=False محتاج tightening؛ update_controller.py ما زال عنده temp script/update staging risks؛ lifecycle_controller.py محتاج shutdown sequencing أقوى.
+- الإعدادات والإضافات والترايل من 10.md : settings_controller.py ما زال يطبق payload مستورد مباشرة بدون schema gate كفاية؛ session_service.py عنده debounce جيد لكن shutdown flush وMD5 signature ما زالا محتاجين تحسين؛ tray_manager.py cleanup فيه ما زال مجرد hide بدون OS shutdown hooks كافية؛ trial_manager.py ما زال أضعف ملف تقريبًا لأن الاعتماد على local clock وstate قابل للتعديل؛ channel_subscriptions.py ما زال يحتاج URL validation أوضح وتقليل subprocess surface.
+حكم نهائي لكل تقرير
+
+- SnapDownloader_Review_Summary.md : أغلب الـ P0 القديمة اتقفلت أو اتحسنت بقوة، لكن database.py ما زال فيه global mutable state، و config_manager.py و i18n.py و bootstrap.py واضح إنهم اتصلحوا.
+- 2.md : متقفل جزئيًا؛ safety layer اتحسنت، لكن anti-detection/proxy/cookie hardening ما زال بعيد عن الاكتمال.
+- 3.md + HyperLoader_Engine_Audit_Report.md : نسبة معتبرة اتنفذت، خصوصًا resume وstop/join وhook safety وsession close، لكن معماريًا provider layer ما زال محتاج إعادة شغل جدية.
+- 4.md : المشاكل المعمارية الأساسية ما زالت موجودة في task_types/downloader/queue_manager .
+- 5.md : فيه إصلاحات ملحوظة في analyzer/audio/format decisions، لكن thumbnail path ما زال ناقص بوضوح.
+- 6.md : التحسينات موجودة في hotkeys وبعض thread dispatch، لكن God window وanimation lifecycle لسه مفتوحين.
+- 7.md : الطبقة دي usable لكنها ما زالت تعاني من state fragmentation وrender inefficiencies.
+- 8.md : data-loss risk انخفض بوضوح بعد atomic write وrollback وCSV sanitization، لكن playback/NFO/organizer ما زالوا محتاجين hardening.
+- 9.md : resilience layer اتحسن جزئيًا فقط؛ أخطر نقطة ما زالت safe_execute وupdate/shutdown behavior.
+- 10.md : secure storage وextension auth اتحسنوا، لكن trial/tray/settings import ما زالوا من أعلى المخاطر.
+أعلى المخاطر الحالية
+
+- P0 أمني/تشغيلي : trial_manager.py ، anti_detection.py ، error_handler.py ، update_controller.py ، tray_manager.py .
+- P1 استقرار/نزاهة بيانات : segmented_provider.py ، download_controller.py ، queue_manager.py ، thumbnail_manager.py .
+- P2 معمارية ودين تقني : window_bootstrap.py ، task_types.py ، ytdlp_provider.py ، ui_controller.py .
+الخطة الشاملة
+
+- المرحلة 1: قفل المخاطر الحرجة قبل أي إصدار
+- إعادة بناء trial_manager.py بحيث يعتمد على signed state أو server-validated receipt أو على الأقل tamper-evident local record بدل datetime.now() + settings mutable state.
+- تقوية update_controller.py بإلزام HTTPS/signature verification، ونقل temp scripts لمجلد خاص بصلاحيات مضيقة، ومسح staging cleanup، ومنع shared-temp abuse.
+- إزالة swallowing في error_handler.py عبر استبدال safe_execute بواجهة ترجع Result أو تعيد رمي الاستثناءات المتوقعة وتبلغ غير المتوقعة.
+- استكمال shutdown integrity في tray_manager.py و lifecycle_controller.py بإضافة hooks صريحة للإنهاء وflush كامل للـ session/download state.
+- إعادة ضبط anti_detection.py لتوليد profiles متسقة مع transport actual impersonation أو تقليل هذه الطبقة تمامًا لو كانت تسبب detection mismatch.
+- المرحلة 2: تثبيت الـ download engine
+- إضافة fallback رسمي داخل segmented_provider.py من segmented إلى simple عند failure patterns المعروفة، مع تمييز error classes بدل False, message فقط.
+- توحيد retry policy في downloader.py ، workers.py ، و background_workers.py في module واحد reusable.
+- إصلاح ytdlp_provider.py ليكون provider مستقل بعقد واضح، ودعم pause/resume/cancel semantics حقيقية.
+- تحسين tls_transport.py بإضافة preflight host validation وproxy scheme handling وadaptive chunk sizes وtimeout classes.
+- مراجعة proxy_manager.py لتغيير keyring key إلى identifier ثابت مستقل عن index، وإصلاح remove_proxy/current_index ودعم socks5h .
+- المرحلة 3: توحيد الحالة والـ controllers
+- جعل download_controller.py مجرد façade، ونقل source of truth الوحيد إلى queue_manager.py أو runtime state store واحد.
+- إزالة hybrid model من task_types.py واستبداله إما dataclass immutable أو typed model واضح.
+- تقوية import_controller.py باستخدام shared URL validator بدل prefix checks.
+- تقليل rendering overhead في downloads_render_controller.py بإلغاء التكرار، وتمكين caching مضبوط، وإضافة off-screen thumbnail cancellation.
+- مراجعة queue_transfer_controller.py و queue_optimization_controller.py لتصبح عملياتهما transaction-like على queue snapshot ثابت.
+- المرحلة 4: إكمال ملفات الميديا والتخزين
+- تنفيذ network path كامل في thumbnail_manager.py مع caching وsize limits وreply cleanup وcancellation.
+- إضافة schema validation في settings_controller.py قبل apply_session_payload() ودعم restore-defaults واضح وآمن.
+- تقوية session_service.py عبر shutdown flush موثوق واستبدال MD5 لو التوقيع له دور beyond dedup.
+- إضافة bounded executor إلى history_playback_controller.py .
+- استكمال verify/write-back strategy في nfo_writer.py وchecksum/consistency strategy في download_organizer.py .
+- المرحلة 5: تنظيف المعمارية والواجهة
+- تفكيك window_bootstrap.py إلى services تدريجية: startup orchestration، worker registry، secondary windows، tray/session wiring.
+- إصلاح lifecycle للأنيميشنات في ui_controller.py مع deleteLater() أو ownership واضح.
+- مراجعة window_mixins.py لعزل العمليات الثقيلة عن UI thread.
+- تقسيم qt_compat.py إلى lazy-loaded modules لتقليل cold-start.
+- تقوية memory_guard.py ، system_keepalive.py ، sustainability.py كطبقة تشغيل موحدة بدل أدوات منفصلة.
+ترتيب التنفيذ المقترح
+
+- Sprint 1 : trial_manager + error_handler + tray_manager/lifecycle_controller + update_controller .
+- Sprint 2 : segmented_provider + ytdlp_provider + retry unification + proxy_manager/tls_transport .
+- Sprint 3 : download_controller + queue_manager + task_types + downloads_render_controller/import_controller .
+- Sprint 4 : thumbnail_manager + settings_controller + session_service + history_playback_controller + nfo_writer/download_organizer .
+- Sprint 5 : window_bootstrap + ui_controller + window_mixins + qt_compat + resilience polishing.
+الخلاصة
+
+- المشروع حالته الحالية أفضل بوضوح من التقارير الأصلية؛ فيه إصلاحات حقيقية ومثبتة باختبارات، خصوصًا في config/database/i18n/downloader/segmented_provider/tls_transport/secure_storage .
+- لكن ما زال فيه مجموعة ملفات لو اتسابوا كده هيبقوا مصدر مشاكل إنتاجية أو أمنية أو bypass واضح: trial_manager , anti_detection , error_handler , update_controller , tray_manager , segmented_provider , download_controller , task_types , thumbnail_manager , window_bootstrap .
+- لو تحب، الخطوة اللي بعدها أقدر أطلع لك جدول ملف-بملف بصيغة صارمة جدًا: التقرير > الملف > الملاحظة الأصلية > الحالة الحالية > الدليل من الكود/الاختبار > أولوية التنفيذ > الإجراء المطلوب ، وبعدها أبدأ تنفيذ الـ P0 واحدة واحدة داخل الكود.
+
+16:39
+user2997662449884
+
+نفذ
+
+Builder
+
+Thought process
+
+هبدأ بأول دفعة تنفيذ من أعلى الأولويات: error_handler و tray/lifecycle shutdown و update_controller ، وبعدها أحدد إذا كان trial_manager محتاج refactor كبير مستقل ولا ينفع يدخل في نفس الجولة.
+
+3/10 done
+
+قراءة جميع تقارير المراجعة وتجميع جميع الملاحظات والمخاطر والتوصيات في قائمة موحدة
+
+فحص ملفات المشروع المرتبطة بالملاحظات ومقارنة الحالة الحالية مع ما ورد في التقارير
+
+تحديد ما تم تنفيذه وما لم يتم تنفيذه لكل نقطة مع أدلة من الكود
+
+إعداد خطة شاملة مفصلة بكل الأعمال المتبقية مرتبة حسب الأولوية والتبعيات
+
+تنفيذ أول دفعة من إصلاحات P0: error_handler و tray/lifecycle shutdown و update_controller
+
+قراءة جميع تقارير المراجعة وتجميع جميع الملاحظات والمخاطر والتوصيات في قائمة موحدة
+
+تقييم وتنفيذ إصلاحات trial_manager أو فصلها كمرحلة مستقلة إذا كانت تتطلب إعادة تصميم كبيرة
+
+فحص ملفات المشروع المرتبطة بالملاحظات ومقارنة الحالة الحالية مع ما ورد في التقارير
+
+تحديد ما تم تنفيذه وما لم يتم تنفيذه لكل نقطة مع أدلة من الكود
+
+إعداد خطة شاملة مفصلة بكل الأعمال المتبقية مرتبة حسب الأولوية والتبعيات
+
+core\error_handler.py
+
+core\window_controllers\tray_manager.py
+
+core\window_controllers\lifecycle_controller.py
+
+core\window_controllers\update_controller.py
+
+Search codebase for 'safe_execute|cleanup\(|aboutToQuit|WM_QUERYENDSESSION|shutdown|closeEvent|save_session|flush|signal|SIGTERM|SIGHUP'
+
+Thought
+
+براجع دلوقتي مسار الإغلاق الكامل وربطه بالـ tray والـ session save، لأن أي تعديل هنا لازم يبقى متماسك ومش يسبب hang أو فقدان state وقت الخروج.
+
+core\window_mixins.py
+
+core\session_service.py
+
+core\background_workers.py
+
+Search codebase for 'class AppUpdateCheckWorker|class AppUpdateDownloadWorker|manifest|sha256|requests|get\(|https?|allow_redirects|verify'
+
+Thought
+
+واضح إن جزء من تحديثات الأمان في الـ update workers موجود أصلًا، فهركز التعديل على الثغرات المتبقية فعلًا: staging path، script permissions/cleanup، ومسار shutdown الموثوق.
+
+Search codebase for 'UpdateController|TrayManager|LifecycleController|safe_execute|install_app_update|close_event|closeEvent'
+
+Search codebase for 'class AppUpdateCheckWorker|class AppUpdateDownloadWorker'
+
+Search codebase for 'def _show_tray_message|def _save_session|def _set_queue_runtime_state|_quit_to_tray_bypass'
+
+tests\test_lifecycle_controller.py
+
+tests\test_update_controller.py
+
+Thought
+
+Search codebase for '@safe_execute|safe_execute\('
+
+Search codebase for 'def nativeEvent|WM_QUERYENDSESSION|aboutToQuit|commitDataRequest'
+
+Search codebase for 'def get_app_data_dir'
+
+Thought
+
+هعدل الآن مسار الإغلاق نفسه ليبقى idempotent ويعرف الفرق بين close to tray و app quitting ، ثم أأمّن مسار الـ update staging/script بدل الاعتماد على temp مشترك.
+
+lifecycle_controller.py
+core\window_controllers\lifecycle_controller.py
+
++ 5 - 0
+
+Open Diff
+
+window_mixins.py
+core\window_mixins.py
+
++ 3 - 1
+
+Open Diff
+
+core\window_controllers\tray_manager.py
+
+Thought
+
+tray_manager.py
+core\window_controllers\tray_manager.py
+
++ 54 - 4
+
+Open Diff
+
+Thought
+
+error_handler.py
+core\error_handler.py
+
++ 28 - 10
+
+Open Diff
+
+Thought
+
+update_controller.py
+core\window_controllers\update_controller.py
+
++ 61 - 9
+
+Open Diff
+
+فيه شوية tightening صغير بعد التعديل الأخير في update_controller عشان مايبقاش فيه import أو fd handling زيادة؛ هظبطهم قبل ما أشغل الاختبارات.
+
+core\window_controllers\update_controller.py
+
+Thought
+
+update_controller.py
+core\window_controllers\update_controller.py
+
++ 6 - 13
+
+Open Diff
+
+هضيف دلوقتي اختبارين مركزين يثبتوا إن الإغلاق بقى idempotent وإن الـ update runtime بقى يشتغل من مسار خاص بالتطبيق بدل temp مشترك.
+
+test_lifecycle_controller.py
+tests\test_lifecycle_controller.py
+
++ 41 - 0
+
+Open Diff
+
+Thought
+
+test_update_controller.py
+tests\test_update_controller.py
+
++ 41 - 0
+
+Open Diff
+
+Thought
+
+Thought
+
+التشخيصات نظيفة بعد التعديلات، وهشغل الآن اختبارات مركزة على المسارات اللي اتغيرت للتأكد إن الإغلاق والـ update flow ما اتكسروش.
+
+viddownloader
+Allowlist
+View in terminal
+
+$ pytest tests/test_lifecycle_controller.py tests/test_update_controller.py
+
+============================= test session starts =============================
+platform win32 -- Python 3.13.7, pytest-9.0.2, pluggy-1.6.0
+rootdir: D:\شوية برامج\viddownloader
+plugins: anyio-4.11.0
+collected 19 items                                                             
+
+tests\test_lifecycle_controller.py ...                                   [ 15%]
+tests\test_update_controller.py ................                         [100%]
+
+============================= 19 passed in 3.25s ==============================
+
+Thought
+
+أول دفعة نجحت واختباراتها عدت. هبص سريعًا على trial_manager دلوقتي؛ لو الإصلاح هناك ينفع يدخل بأمان في نفس الجولة هننفذه، ولو محتاج إعادة تصميم أوسع هفصله كدفعة تانية واضحة.
+
+core\trial_manager.py
+
+Search codebase for 'trial_manager|trial_started_at|trial|premium'
+
+Search codebase for 'trial_started_at|trial_days|premium|is_trial|remaining|days_left'
+
+Thought
+
+tests\test_settings_and_download_controller.py
+
+tests\test_layout_manager.py
+
+core\window_controllers\settings_controller.py
+
+core\window_bootstrap.py
+
+Thought
+
+Search codebase for 'trial_total_days|trial_started_at|trial_'
+
+Thought
+
+5/10 done
+
+قراءة جميع تقارير المراجعة وتجميع جميع الملاحظات والمخاطر والتوصيات في قائمة موحدة
+
+فحص ملفات المشروع المرتبطة بالملاحظات ومقارنة الحالة الحالية مع ما ورد في التقارير
+
+تحديد ما تم تنفيذه وما لم يتم تنفيذه لكل نقطة مع أدلة من الكود
+
+إعداد خطة شاملة مفصلة بكل الأعمال المتبقية مرتبة حسب الأولوية والتبعيات
+
+تنفيذ أول دفعة من إصلاحات P0: error_handler و tray/lifecycle shutdown و update_controller
+
+تقييم وتنفيذ إصلاحات trial_manager أو فصلها كمرحلة مستقلة إذا كانت تتطلب إعادة تصميم كبيرة
+
+قراءة جميع تقارير المراجعة وتجميع جميع الملاحظات والمخاطر والتوصيات في قائمة موحدة
+
+فحص ملفات المشروع المرتبطة بالملاحظات ومقارنة الحالة الحالية مع ما ورد في التقارير
+
+تحديد ما تم تنفيذه وما لم يتم تنفيذه لكل نقطة مع أدلة من الكود
+
+إعداد خطة شاملة مفصلة بكل الأعمال المتبقية مرتبة حسب الأولوية والتبعيات
+
+Thought
+
+core\window_controllers\lifecycle_controller.py
+
+core\window_mixins.py
+
+core\window_controllers\tray_manager.py
+
+core\error_handler.py
+
+core\window_controllers\update_controller.py
+
+tests\test_lifecycle_controller.py
+
+tests\test_update_controller.py
+
+tests\test_update_controller.py
+
+Thought
+
+تم التنفيذ
+
+- نفذت أول دفعة فعلية من إصلاحات P0 على مسارات الإغلاق والـ tray والـ update flow، مع tightening لسلوك safe_execute .
+- الاختبارات المركزة عدّت بالكامل: pytest tests/test_lifecycle_controller.py tests/test_update_controller.py .
+التعديلات
+
+- إغلاق التطبيق صار idempotent في lifecycle_controller.py بحيث close_event() لا يكرر shutdown لو اتنادى أكثر من مرة.
+- close to tray لم يعد يعطل الإغلاق الحقيقي أثناء quit/shutdown في window_mixins.py عبر علم _app_is_quitting .
+- الـ tray صار مربوطًا بـ aboutToQuit مع cleanup آمن وفصل الإشارات وتحرير الموارد في tray_manager.py و tray_manager.py و tray_manager.py .
+- safe_execute لم يعد يبلع الاستثناءات بشكل أعمى في error_handler.py : الافتراضي الآن log + re-raise، مع دعم opt-in فقط للاستثناءات المتوقعة.
+- مسار التحديثات لم يعد يعتمد على temp مشترك في update_controller.py و update_controller.py ، وتم نقل staging إلى app data/update_runtime مع تنظيف artifacts قديمة واسم ملف sanitized.
+- سكريبت التحديث أصبح يُكتب داخل runtime dir خاص بالتطبيق بدل shared temp، وباستدعاء PowerShell غير تفاعلي في update_controller.py .
+الاختبارات
+
+- أضفت اختبار idempotency للإغلاق في test_lifecycle_controller.py .
+- أضفت اختبار يثبت أن تنزيل التحديث يستخدم private runtime dir واسمًا sanitized في test_update_controller.py .
+- نتيجة التشغيل: 19 passed in 3.25s .
+التالي
+
+- راجعت trial_manager وواضح أنه ما زال يحتاج إعادة تصميم أوسع من مجرد patch صغير، لأنه مرتبط بصيغة الحفظ في الإعدادات وليس ملفًا منفصلًا فقط.
+- الخطوة المنطقية التالية: تنفيذ دفعة P0/P1 الثانية على trial_manager مع schema tamper-evident + rollback/clock tamper checks، أو البدء بدلًا منها في segmented_provider fallback لو عاوز تثبيت محرك التحميل أولًا.
+- لو موافق، أكمل مباشرة على trial_manager في نفس الأسلوب وأطلع الجولة التالية كاملة.
+
+Builder
+
+هكمل على أقوى فجوة متبقية دلوقتي: trial_manager . هراجع نقاط الربط كلها في التحميل والحفظ والواجهة، ثم أنفذ نسخة tamper-evident تقلل التلاعب بالساعة والإعدادات بدل الاعتماد على settings فقط.
+
+5/11 done
+
+قراءة جميع تقارير المراجعة وتجميع جميع الملاحظات والمخاطر والتوصيات في قائمة موحدة
+
+فحص ملفات المشروع المرتبطة بالملاحظات ومقارنة الحالة الحالية مع ما ورد في التقارير
+
+تحديد ما تم تنفيذه وما لم يتم تنفيذه لكل نقطة مع أدلة من الكود
+
+إعداد خطة شاملة مفصلة بكل الأعمال المتبقية مرتبة حسب الأولوية والتبعيات
+
+تنفيذ أول دفعة من إصلاحات P0: error_handler و tray/lifecycle shutdown و update_controller
+
+تنفيذ إعادة بناء قوية لـ trial_manager مع حماية ضد العبث بالإعدادات والرجوع بالساعة وربطها بالتحميل والحفظ
+
+قراءة جميع تقارير المراجعة وتجميع جميع الملاحظات والمخاطر والتوصيات في قائمة موحدة
+
+تنفيذ الدفعة التالية من إصلاحات محرك التحميل: segmented fallback وتوحيد retry contracts
+
+فحص ملفات المشروع المرتبطة بالملاحظات ومقارنة الحالة الحالية مع ما ورد في التقارير
+
+تحديد ما تم تنفيذه وما لم يتم تنفيذه لكل نقطة مع أدلة من الكود
+
+إعداد خطة شاملة مفصلة بكل الأعمال المتبقية مرتبة حسب الأولوية والتبعيات
+
+Usage Limit Reached
+
+Your remaining usage is not sufficient to complete this request. To maintain a smooth experience, we recommend adding more usage. When you retry, previously generated usage will not be charged again. View Usage Details
+
+Upgrade plan
+
+Abnormally stopped
+
+35%
+
+قراءة جميع تقارير المراجعة وتجميع جميع الملاحظات والمخاطر والتوصيات في قائمة موحدة
+
+فحص ملفات المشروع المرتبطة بالملاحظات ومقارنة الحالة الحالية مع ما ورد في التقارير
+
+تحديد ما تم تنفيذه وما لم يتم تنفيذه لكل نقطة مع أدلة من الكود
+
+إعداد خطة شاملة مفصلة بكل الأعمال المتبقية مرتبة حسب الأولوية والتبعيات
+
+تنفيذ أول دفعة من إصلاحات P0: error_handler و tray/lifecycle shutdown و update_controller
+
+تنفيذ إعادة بناء قوية لـ trial_manager مع حماية ضد العبث بالإعدادات والرجوع بالساعة وربطها بالتحميل والحفظ
+
+قراءة جميع تقارير المراجعة وتجميع جميع الملاحظات والمخاطر والتوصيات في قائمة موحدة
+
+تنفيذ الدفعة التالية من إصلاحات محرك التحميل: segmented fallback وتوحيد retry contracts
+
+فحص ملفات المشروع المرتبطة بالملاحظات ومقارنة الحالة الحالية مع ما ورد في التقارير
+
+تحديد ما تم تنفيذه وما لم يتم تنفيذه لكل نقطة مع أدلة من الكود
+
+إعداد خطة شاملة مفصلة بكل الأعمال المتبقية مرتبة حسب الأولوية والتبعيات
+
+5/11
+ Tasks done
+
+0 files need review
+
+Undo All Keep All
+
+Waiting to send...
+
+0 background command(s) running
+
+Open Terminal
+
+@ Builder
+
+You are chatting with Builder now

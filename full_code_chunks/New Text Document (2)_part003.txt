@@ -1,0 +1,2548 @@
+﻿        raise ValueError(f"invalid time format: {value}")
+    hour = int(parts[0])
+    minute = int(parts[1])
+    if hour == 24 and minute == 0:
+        return "24:00"
+    if not (0 <= hour <= 23 and 0 <= minute <= 59):
+        raise ValueError(f"invalid time: {value}")
+    return f"{hour:02d}:{minute:02d}"
+
+
+def _time_in_range(start: time, end: time, now: time) -> bool:
+    if start <= end:
+        return start <= now < end
+    return now >= start or now < end  # handles midnight wrap
+
+
+# Singleton instance
+scheduler = BandwidthScheduler()
+
+
+
+
+====================================================================================================
+FILE: core\bootstrap.py
+====================================================================================================
+
+import sys
+
+from core.qt_compat import QApplication
+
+
+def start_app(window_cls):
+    """Create QApplication, show the main window, and enter event loop."""
+    app = QApplication.instance() or QApplication(sys.argv)
+    window = window_cls()
+    window.show()
+    raise SystemExit(app.exec())
+
+====================================================================================================
+FILE: core\channel_subscriptions.py
+====================================================================================================
+
+
+"""
+core/channel_subscriptions.py — Smart Channel Subscription Engine
+Monitor YouTube channels/playlists every 24 hours and auto-download new videos.
+Runs in a background daemon thread — never blocks the UI.
+"""
+import json
+import os
+import sys
+import threading
+import time
+import logging
+import subprocess
+from datetime import datetime, timedelta
+from typing import Callable, Optional
+
+logger = logging.getLogger("SnapDownloader.Subscriptions")
+SUBS_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "subscriptions.json")
+
+
+class ChannelSubscription:
+    """Represents a single subscribed channel or playlist."""
+
+    def __init__(self, data: dict):
+        self.url: str          = data.get("url", "")
+        self.name: str         = data.get("name", self.url[:50])
+        self.out_dir: str      = data.get("out_dir", "downloads")
+        self.format: str       = data.get("format", "mp4")
+        self.quality: str      = data.get("quality", "1080p")
+        self.check_interval_h: int = int(data.get("check_interval_h", 24))
+        self.last_check: float = float(data.get("last_check", 0))
+        self.known_ids: list   = list(data.get("known_ids", []))
+        self.enabled: bool     = bool(data.get("enabled", True))
+        self.max_downloads: int = int(data.get("max_downloads", 5))
+
+    def to_dict(self) -> dict:
+        return {
+            "url":              self.url,
+            "name":             self.name,
+            "out_dir":          self.out_dir,
+            "format":           self.format,
+            "quality":          self.quality,
+            "check_interval_h": self.check_interval_h,
+            "last_check":       self.last_check,
+            "known_ids":        self.known_ids[-500:],   # keep last 500 IDs max
+            "enabled":          self.enabled,
+            "max_downloads":    self.max_downloads,
+        }
+
+    def is_due(self) -> bool:
+        if not self.enabled:
+            return False
+        elapsed_hours = (time.time() - self.last_check) / 3600
+        return elapsed_hours >= self.check_interval_h
+
+
+class SubscriptionManager:
+    def __init__(self):
+        self.subscriptions: list[ChannelSubscription] = []
+        self._lock = threading.Lock()
+        self._thread: Optional[threading.Thread] = None
+        self._running = False
+        self._on_new_video: Optional[Callable] = None
+        self.load()
+
+    # ── Persistence ──────────────────────────────────────────────────────────
+
+    def load(self):
+        if not os.path.exists(SUBS_PATH):
+            return
+        try:
+            with open(SUBS_PATH, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            with self._lock:
+                self.subscriptions = [ChannelSubscription(s) for s in data.get("subscriptions", [])]
+            logger.info(f"[Subs] Loaded {len(self.subscriptions)} subscriptions")
+        except Exception as exc:
+            logger.warning(f"[Subs] Load failed: {exc}")
+
+    def save(self):
+        try:
+            with self._lock:
+                subs_data = [s.to_dict() for s in self.subscriptions]
+            with open(SUBS_PATH, "w", encoding="utf-8") as f:
+                json.dump({"subscriptions": subs_data}, f, indent=2, ensure_ascii=False)
+        except Exception as exc:
+            logger.warning(f"[Subs] Save failed: {exc}")
+
+    # ── Subscription CRUD ─────────────────────────────────────────────────────
+
+    def add(self, url: str, name: str = "", out_dir: str = "downloads",
+            fmt: str = "mp4", quality: str = "1080p",
+            check_interval_h: int = 24, max_downloads: int = 5) -> ChannelSubscription:
+        sub = ChannelSubscription({
+            "url": url.strip(),
+            "name": name or url[:50],
+            "out_dir": out_dir,
+            "format": fmt,
+            "quality": quality,
+            "check_interval_h": check_interval_h,
+            "max_downloads": max_downloads,
+        })
+        with self._lock:
+            # Prevent duplicates
+            existing_urls = {s.url for s in self.subscriptions}
+            if sub.url not in existing_urls:
+                self.subscriptions.append(sub)
+        self.save()
+        logger.info(f"[Subs] Added: {sub.name}")
+        return sub
+
+    def remove(self, url: str):
+        with self._lock:
+            self.subscriptions = [s for s in self.subscriptions if s.url != url]
+        self.save()
+
+    def get_all(self) -> list[ChannelSubscription]:
+        with self._lock:
+            return list(self.subscriptions)
+
+    def get_due(self) -> list[ChannelSubscription]:
+        with self._lock:
+            return [s for s in self.subscriptions if s.is_due()]
+
+    # ── Background Daemon ─────────────────────────────────────────────────────
+
+    def set_callback(self, callback: Callable):
+        """callback(sub: ChannelSubscription, new_urls: list[str])"""
+        self._on_new_video = callback
+
+    def start(self):
+        if self._running:
+            return
+        self._running = True
+        self._thread = threading.Thread(target=self._loop, daemon=True, name="SubsWatcher")
+        self._thread.start()
+        logger.info("[Subs] Background watcher started")
+
+    def stop(self):
+        self._running = False
+
+    def check_now(self, sub: ChannelSubscription):
+        """Manually trigger a check for one subscription."""
+        threading.Thread(target=self._check_subscription, args=(sub,), daemon=True).start()
+
+    def _loop(self):
+        """Background loop: check every 30 minutes if any sub is due."""
+        while self._running:
+            try:
+                due = self.get_due()
+                for sub in due:
+                    if not self._running:
+                        break
+                    self._check_subscription(sub)
+            except Exception as exc:
+                logger.exception(f"[Subs] Loop error: {exc}")
+            # Sleep 30 minutes between loop iterations
+            for _ in range(1800):
+                if not self._running:
+                    return
+                time.sleep(1)
+
+    def _check_subscription(self, sub: ChannelSubscription):
+        """Fetch the latest video IDs from the channel and find new ones."""
+        logger.info(f"[Subs] Checking: {sub.name}")
+        try:
+            cmd = [
+                sys.executable, "-m", "yt_dlp",
+                "--flat-playlist",
+                "--print", "id",
+                "--playlist-end", str(sub.max_downloads * 3),
+                "--no-warnings",
+                sub.url,
+            ]
+            proc = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=120,
+            )
+            sub.last_check = time.time()
+
+            if proc.returncode != 0:
+                logger.warning(f"[Subs] yt-dlp failed for {sub.name}: {proc.stderr[:200]}")
+                self.save()
+                return
+
+            fetched_ids = [line.strip() for line in proc.stdout.splitlines() if line.strip()]
+            known = set(sub.known_ids)
+            new_ids = [vid for vid in fetched_ids if vid not in known]
+
+            if new_ids:
+                logger.info(f"[Subs] {len(new_ids)} new videos in {sub.name}")
+                new_urls = [f"https://www.youtube.com/watch?v={vid}" for vid in new_ids]
+                sub.known_ids.extend(new_ids)
+                self.save()
+                if self._on_new_video:
+                    try:
+                        self._on_new_video(sub, new_urls)
+                    except Exception as cb_exc:
+                        logger.warning(f"[Subs] Callback error: {cb_exc}")
+            else:
+                logger.info(f"[Subs] No new videos in {sub.name}")
+                self.save()
+
+        except subprocess.TimeoutExpired:
+            logger.warning(f"[Subs] Timeout checking {sub.name}")
+        except Exception as exc:
+            logger.exception(f"[Subs] Check failed for {sub.name}: {exc}")
+
+
+# Singleton
+subscription_manager = SubscriptionManager()
+
+
+
+
+====================================================================================================
+FILE: core\config.py
+====================================================================================================
+
+
+from .constants import (
+    QUALITY_HEIGHT_ALIASES,
+    MAX_RETRY_DELAY_SECONDS,
+    POLL_INTERVAL_SECONDS,
+    PROCESS_TERMINATION_TIMEOUT,
+    PROCESS_KILL_TIMEOUT,
+)
+import os
+
+DEFAULT_SETTINGS = {
+    "retries": 3,
+    "auto_retry_delay_seconds": 4,
+    "queue_auto_retry_limit": 2,
+    "queue_priority": "fifo",
+    "max_concurrent": 3,
+    "storage_guard_enabled": True,
+    "storage_min_free_gb": 5,
+    "trial_total_days": 14,
+    "search_history_limit": 40,
+    "search_history_ttl_days": 30,
+    "thumbnail_cache_max": 200,
+    "use_ytdlp_api": False,
+}
+
+THEME_MODE_MAP = {
+    "dark": "Modern Dark",
+    "light": "Elegant Light",
+}
+
+
+def normalize_video_quality_label(value: str, default: str = "1080p") -> str:
+    text = str(value or "").replace("p", "").split("(")[0].strip().upper()
+    if not text:
+        return default
+    if text in {"8K", "4320"}:
+        return "8K"
+    if text in {"4K", "2160"}:
+        return "4K"
+    digits = "".join(ch for ch in text if ch.isdigit())
+    return f"{digits}p" if digits else default
+
+
+def video_quality_to_height(value: str, default: str = "1080") -> str:
+    text = str(value or "").replace("p", "").split("(")[0].strip().upper()
+    if not text:
+        return default
+    if text in QUALITY_HEIGHT_ALIASES:
+        return QUALITY_HEIGHT_ALIASES[text]
+    digits = "".join(ch for ch in text if ch.isdigit())
+    return digits or default
+
+
+def default_download_dir() -> str:
+    home = os.path.expanduser("~")
+    for candidate in [os.path.join(home, "Downloads"), os.path.join(home, "downloads")]:
+        if os.path.isdir(candidate):
+            return candidate
+    return os.path.join(os.getcwd(), "downloads")
+
+
+
+
+====================================================================================================
+FILE: core\constants.py
+====================================================================================================
+
+
+"""
+core/constants.py — Centralized constants for SnapDownloader
+Includes quality mappings, format lists, and magic numbers.
+"""
+
+# Video Quality Mappings
+VIDEO_QUALITIES = ["8K", "4K", "1440p", "1080p", "720p", "480p", "360p", "240p", "144p"]
+QUALITY_HEIGHT_ALIASES = {
+    "8K": "4320",
+    "4320": "4320",
+    "4K": "2160",
+    "2160": "2160",
+}
+
+# Format Lists
+VIDEO_FORMATS = ["MP4", "WEBM", "MKV", "AVI", "FLV", "MOV"]
+AUDIO_FORMATS = ["Original Audio", "MP3", "AAC", "M4A", "WAV", "AIFF", "WMA", "FLAC"]
+AUDIO_QUALITIES = ["320kbps", "256kbps", "192kbps", "160kbps", "128kbps", "96kbps"]
+SUBTITLE_OPTIONS = ["None", "Arabic", "Chinese", "English", "French", "German", "Italian", "Spanish", "Swedish"]
+
+DOWNLOAD_CATEGORIES = [
+    "General",
+    "Music",
+    "Movies",
+    "Education",
+    "Podcast",
+    "Other",
+]
+
+# Subtitle Mappings
+SUBTITLE_LANGUAGES = {
+    "Arabic": "ar",
+    "Chinese": "zh",
+    "English": "en",
+    "French": "fr",
+    "German": "de",
+    "Italian": "it",
+    "Spanish": "es",
+    "Swedish": "sv",
+}
+
+# Magic Numbers for Retry Logic
+MAX_RETRY_DELAY_SECONDS = 120
+POLL_INTERVAL_SECONDS = 0.1
+PROCESS_TERMINATION_TIMEOUT = 5
+PROCESS_KILL_TIMEOUT = 2
+
+# Storage Guard
+MIN_FREE_SPACE_GB = 5
+
+# Search History
+SEARCH_HISTORY_LIMIT = 40
+
+# UI/Performance Constants
+THUMBNAIL_CACHE_MAX = 200
+THUMBNAIL_FAILED_MAX = 2000
+MAX_CONCURRENT_THUMBNAILS = 4
+THUMBNAIL_CLEANUP_INTERVAL_MS = 30000
+THUMBNAIL_WAITER_TTL_SECONDS = 30
+LIQUID_TIMER_INTERVAL_MS = 120
+THUMBNAIL_VISIBLE_BATCH_PER_TICK = 6
+
+APP_VERSION = "3.0.0"
+
+
+
+
+====================================================================================================
+FILE: core\cookie_importer.py
+====================================================================================================
+
+
+"""
+core/cookie_importer.py — Automatic Browser Cookie Importer
+Extracts cookies from Chrome, Edge, and Firefox for authenticated downloads.
+
+H-05 FIX: Replaced tempfile.mktemp() with tempfile.mkstemp() for security.
+H-06 FIX: Added DPAPI decryption for Chrome/Edge/Brave encrypted cookie values.
+"""
+import os
+import sys
+import json
+import sqlite3
+import tempfile
+import platform
+import logging
+from typing import Optional
+
+logger = logging.getLogger("SnapDownloader.CookieImporter")
+
+SUPPORTED_BROWSERS = ["chrome", "edge", "firefox", "brave", "opera"]
+
+
+def _get_browser_cookie_paths() -> dict:
+    """Return known cookie database paths per browser per OS."""
+    home = os.path.expanduser("~")
+    system = platform.system()
+    paths = {}
+
+    if system == "Windows":
+        local_app = os.getenv("LOCALAPPDATA", os.path.join(home, "AppData", "Local"))
+        roaming = os.getenv("APPDATA", os.path.join(home, "AppData", "Roaming"))
+        paths = {
+            "chrome": os.path.join(local_app, "Google", "Chrome", "User Data", "Default", "Cookies"),
+            "edge":   os.path.join(local_app, "Microsoft", "Edge", "User Data", "Default", "Cookies"),
+            "brave":  os.path.join(local_app, "BraveSoftware", "Brave-Browser", "User Data", "Default", "Cookies"),
+            "opera":  os.path.join(roaming, "Opera Software", "Opera Stable", "Cookies"),
+            "firefox": _find_firefox_cookies_win(roaming),
+        }
+    elif system == "Darwin":
+        paths = {
+            "chrome":  os.path.join(home, "Library", "Application Support", "Google", "Chrome", "Default", "Cookies"),
+            "edge":    os.path.join(home, "Library", "Application Support", "Microsoft Edge", "Default", "Cookies"),
+            "brave":   os.path.join(home, "Library", "Application Support", "BraveSoftware", "Brave-Browser", "Default", "Cookies"),
+            "firefox": _find_firefox_cookies_mac(home),
+        }
+    else:  # Linux
+        paths = {
+            "chrome":  os.path.join(home, ".config", "google-chrome", "Default", "Cookies"),
+            "chromium": os.path.join(home, ".config", "chromium", "Default", "Cookies"),
+            "edge":    os.path.join(home, ".config", "microsoft-edge", "Default", "Cookies"),
+            "brave":   os.path.join(home, ".config", "BraveSoftware", "Brave-Browser", "Default", "Cookies"),
+            "firefox": _find_firefox_cookies_linux(home),
+        }
+
+    return {k: v for k, v in paths.items() if v and os.path.exists(v)}
+
+
+def _find_firefox_cookies_win(roaming: str) -> Optional[str]:
+    profiles_dir = os.path.join(roaming, "Mozilla", "Firefox", "Profiles")
+    return _find_firefox_cookies_in(profiles_dir)
+
+
+def _find_firefox_cookies_mac(home: str) -> Optional[str]:
+    profiles_dir = os.path.join(home, "Library", "Application Support", "Firefox", "Profiles")
+    return _find_firefox_cookies_in(profiles_dir)
+
+
+def _find_firefox_cookies_linux(home: str) -> Optional[str]:
+    profiles_dir = os.path.join(home, ".mozilla", "firefox")
+    return _find_firefox_cookies_in(profiles_dir)
+
+
+def _find_firefox_cookies_in(profiles_dir: str) -> Optional[str]:
+    if not os.path.isdir(profiles_dir):
+        return None
+    for name in os.listdir(profiles_dir):
+        if name.endswith(".default-release") or name.endswith(".default"):
+            candidate = os.path.join(profiles_dir, name, "cookies.sqlite")
+            if os.path.exists(candidate):
+                return candidate
+    return None
+
+
+def get_available_browsers() -> list:
+    """Return list of browsers with accessible cookie files."""
+    return list(_get_browser_cookie_paths().keys())
+
+
+def _copy_sqlite_database(src_path: str, dst_path: str):
+    src_conn = None
+    dst_conn = None
+    try:
+        src_conn = sqlite3.connect(f"file:{src_path}?mode=ro", uri=True)
+        dst_conn = sqlite3.connect(dst_path)
+        src_conn.backup(dst_conn)
+    finally:
+        if dst_conn is not None:
+            dst_conn.close()
+        if src_conn is not None:
+            src_conn.close()
+
+
+def export_cookies_to_netscape(browser: str, output_path: str, domain_filter: str = "") -> int:
+    """
+    Export cookies from a browser to Netscape cookie format (compatible with yt-dlp).
+    Returns number of cookies exported.
+    """
+    paths = _get_browser_cookie_paths()
+    cookie_db = paths.get(browser.lower())
+    is_chromium = browser.lower() in ("chrome", "edge", "brave", "opera", "chromium")
+    encryption_key = None
+
+    if not cookie_db:
+        raise FileNotFoundError(f"Cookie database not found for browser: {browser}")
+
+    # H-05: Use mkstemp instead of mktemp (TOCTOU vulnerability fix)
+    fd, tmp = tempfile.mkstemp(suffix=".db")
+    os.close(fd)  # Close the file descriptor so shutil can copy to it
+    _copy_sqlite_database(cookie_db, tmp)
+
+    try:
+        conn = sqlite3.connect(tmp)
+        conn.row_factory = sqlite3.Row
+
+        # Chrome/Edge/Brave schema
+        is_chromium_db = True
+        try:
+            rows = conn.execute(
+                "SELECT host_key, name, value, encrypted_value, path, expires_utc, is_secure, is_httponly FROM cookies"
+            ).fetchall()
+            # H-06: Try to extract Chrome encryption key for DPAPI decryption
+            if is_chromium:
+                encryption_key = _get_chrome_encryption_key(browser)
+        except sqlite3.OperationalError:
+            is_chromium_db = False
+            # Firefox schema
+            rows = conn.execute(
+                "SELECT host, name, value, path, expiry, isSecure, isHttpOnly FROM moz_cookies"
+            ).fetchall()
+        conn.close()
+        # Use the DB schema detection to update is_chromium
+        is_chromium = is_chromium and is_chromium_db
+
+        count = 0
+        with open(output_path, "w", encoding="utf-8") as f:
+            f.write("# Netscape HTTP Cookie File\n")
+            f.write("# Exported by SnapDownloader\n\n")
+            for row in rows:
+                row = dict(row)
+                host = str(row.get("host_key") or row.get("host", ""))
+                if domain_filter and domain_filter.lower() not in host.lower():
+                    continue
+                is_domain = host.startswith(".")
+                secure = "TRUE" if (row.get("is_secure") or row.get("isSecure")) else "FALSE"
+                http_only = row.get("is_httponly") or row.get("isHttpOnly", 0)
+                expires = int(row.get("expires_utc") or row.get("expiry") or 0)
+                # Chrome stores timestamps as microseconds since 1601-01-01
+                if expires > 13000000000000000:
+                    expires = (expires - 11644473600000000) // 1000000
+                name = str(row.get("name", ""))
+                # H-06: Try to get decrypted value, fall back to plain value
+                value = str(row.get("value", ""))
+                if not value and is_chromium:
+                    encrypted = row.get("encrypted_value")
+                    if encrypted:
+                        value = _decrypt_chrome_value(encrypted, encryption_key) or ""
+                path = str(row.get("path", "/"))
+                if not name or not value:
+                    continue  # Skip cookies with no name or value
+                fields = [
+                    host,
+                    "TRUE" if is_domain else "FALSE",
+                    path,
+                    secure,
+                    str(expires),
+                    name,
+                    value,
+                ]
+                f.write("\t".join(fields) + "\n")
+                count += 1
+        return count
+
+    except Exception as exc:
+        raise RuntimeError(f"Failed to export cookies: {exc}") from exc
+    finally:
+        try:
+            os.remove(tmp)
+        except Exception as exc:
+            logger.debug(f"[Cookie Importer] Failed to remove temp DB copy: {exc}")
+
+
+def auto_detect_and_export(output_path: str, domain: str = "youtube.com") -> tuple:
+    """
+    Automatically detect installed browsers and export cookies from the first available one.
+    Returns (browser_name, cookie_count) or raises RuntimeError.
+    """
+    available = get_available_browsers()
+    preferred = ["chrome", "edge", "brave", "firefox", "opera", "chromium"]
+
+    for browser in preferred:
+        if browser in available:
+            try:
+                count = export_cookies_to_netscape(browser, output_path, domain_filter=domain)
+                if count > 0:
+                    return browser, count
+            except Exception as exc:
+                logger.debug(f"[Cookie Importer] Auto-export failed for {browser}: {exc}")
+                continue
+
+    raise RuntimeError("No supported browsers found or all cookie exports failed.")
+
+
+# ── H-06: Chrome Cookie Decryption Helpers ────────────────────────────────────
+
+def _get_chrome_encryption_key(browser: str) -> bytes | None:
+    """Extract the AES encryption key from Chrome's Local State file."""
+    try:
+        import base64
+        home = os.path.expanduser("~")
+        local_app = os.getenv("LOCALAPPDATA", os.path.join(home, "AppData", "Local"))
+        
+        browser_paths = {
+            "chrome": os.path.join(local_app, "Google", "Chrome", "User Data", "Local State"),
+            "edge": os.path.join(local_app, "Microsoft", "Edge", "User Data", "Local State"),
+            "brave": os.path.join(local_app, "BraveSoftware", "Brave-Browser", "User Data", "Local State"),
+            "opera": os.path.join(os.getenv("APPDATA", ""), "Opera Software", "Opera Stable", "Local State"),
+        }
+        
+        local_state_path = browser_paths.get(browser.lower())
+        if not local_state_path or not os.path.exists(local_state_path):
+            return None
+            
+        import json
+        with open(local_state_path, "r", encoding="utf-8") as f:
+            local_state = json.load(f)
+        
+        encrypted_key_b64 = local_state.get("os_crypt", {}).get("encrypted_key")
+        if not encrypted_key_b64:
+            return None
+            
+        encrypted_key = base64.b64decode(encrypted_key_b64)
+        # Remove 'DPAPI' prefix (5 bytes)
+        encrypted_key = encrypted_key[5:]
+        
+        # Decrypt using Windows DPAPI
+        if os.name == "nt":
+            import ctypes
+            import ctypes.wintypes
+            
+            class DATA_BLOB(ctypes.Structure):
+                _fields_ = [
+                    ("cbData", ctypes.wintypes.DWORD),
+                    ("pbData", ctypes.POINTER(ctypes.c_ubyte)),
+                ]
+            
+            input_blob = DATA_BLOB(len(encrypted_key),
+                                   ctypes.cast(ctypes.create_string_buffer(encrypted_key, len(encrypted_key)),
+                                               ctypes.POINTER(ctypes.c_ubyte)))
+            output_blob = DATA_BLOB()
+            
+            if ctypes.windll.crypt32.CryptUnprotectData(
+                ctypes.byref(input_blob), None, None, None, None, 0, ctypes.byref(output_blob)
+            ):
+                try:
+                    key = ctypes.string_at(output_blob.pbData, output_blob.cbData)
+                    return key
+                finally:
+                    if output_blob.pbData:
+                        ctypes.windll.kernel32.LocalFree(output_blob.pbData)
+        
+        return None
+    except Exception as exc:
+        logger.debug(f"[Cookie Importer] Failed to get Chrome encryption key: {exc}")
+        return None
+
+
+def _decrypt_chrome_value(encrypted_value: bytes, key: bytes | None) -> str | None:
+    """Decrypt a Chrome encrypted cookie value using AES-256-GCM."""
+    if not encrypted_value or not key:
+        return None
+    try:
+        # Chrome v80+ uses AES-256-GCM with 'v10' or 'v11' prefix
+        prefix = encrypted_value[:3]
+        if prefix in (b"v10", b"v11"):
+            nonce = encrypted_value[3:15]       # 12 bytes nonce
+            ciphertext = encrypted_value[15:]    # Rest is ciphertext + 16 bytes tag
+            
+            try:
+                from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+                aesgcm = AESGCM(key)
+                decrypted = aesgcm.decrypt(nonce, ciphertext, None)
+                return decrypted.decode("utf-8", errors="replace")
+            except ImportError:
+                # Fallback: try with Windows DPAPI directly (older Chrome versions)
+                pass
+        
+        # Older Chrome: DPAPI encrypted directly (no v10/v11 prefix)
+        if os.name == "nt":
+            import ctypes
+            import ctypes.wintypes
+            
+            class DATA_BLOB(ctypes.Structure):
+                _fields_ = [
+                    ("cbData", ctypes.wintypes.DWORD),
+                    ("pbData", ctypes.POINTER(ctypes.c_ubyte)),
+                ]
+            
+            input_blob = DATA_BLOB(len(encrypted_value),
+                                   ctypes.cast(ctypes.create_string_buffer(encrypted_value, len(encrypted_value)),
+                                               ctypes.POINTER(ctypes.c_ubyte)))
+            output_blob = DATA_BLOB()
+            
+            if ctypes.windll.crypt32.CryptUnprotectData(
+                ctypes.byref(input_blob), None, None, None, None, 0, ctypes.byref(output_blob)
+            ):
+                try:
+                    result = ctypes.string_at(output_blob.pbData, output_blob.cbData)
+                    return result.decode("utf-8", errors="replace")
+                finally:
+                    if output_blob.pbData:
+                        ctypes.windll.kernel32.LocalFree(output_blob.pbData)
+        
+        return None
+    except Exception as exc:
+        logger.debug(f"[Cookie Importer] Failed to decrypt cookie value: {exc}")
+        return None
+
+
+
+
+====================================================================================================
+FILE: core\database.py
+====================================================================================================
+
+
+"""
+core/database.py — SQLite Database Engine for SnapDownloader
+Replaces slow JSON files with a high-performance embedded database.
+Supports: download history, queue persistence, stats, and duplicate detection.
+"""
+import os
+import sqlite3
+import json
+import threading
+import logging
+from datetime import datetime
+from contextlib import contextmanager
+
+import sys
+
+def _get_app_data_dir() -> str:
+    app_name = "VidDownloader"
+    if sys.platform == "win32":
+        base = os.getenv("APPDATA") or os.path.expanduser("~")
+        return os.path.join(base, app_name)
+    if sys.platform == "darwin":
+        return os.path.join(os.path.expanduser("~"), "Library", "Application Support", app_name)
+    base = os.getenv("XDG_DATA_HOME") or os.path.join(os.path.expanduser("~"), ".local", "share")
+    return os.path.join(base, app_name)
+
+_BASE_DIR = _get_app_data_dir()
+os.makedirs(_BASE_DIR, exist_ok=True)
+DB_PATH = os.path.join(_BASE_DIR, "snapdownloader.db")
+_local = threading.local()
+_write_lock = threading.RLock()  # C-03: Global write lock for thread-safe DB writes
+logger = logging.getLogger("SnapDownloader.DB")
+
+
+@contextmanager
+def _get_conn():
+    """Thread-safe connection context manager."""
+    if not hasattr(_local, "conn") or _local.conn is None:
+        _local.conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+        _local.conn.row_factory = sqlite3.Row
+        _local.conn.execute("PRAGMA journal_mode=WAL")
+        _local.conn.execute("PRAGMA synchronous=NORMAL")
+        _local.conn.execute("PRAGMA foreign_keys=ON")
+    try:
+        yield _local.conn
+    except Exception:
+        _local.conn.rollback()
+        raise
+
+def close_thread_connection():
+    conn = getattr(_local, "conn", None)
+    if conn is None:
+        return
+    try:
+        conn.close()
+    except Exception as exc:
+        logger.debug(f"Failed to close thread-local DB connection: {exc}")
+    finally:
+        _local.conn = None
+
+
+def init_db():
+    """Initialize all database tables. Safe to call multiple times."""
+    with _get_conn() as conn:
+        conn.executescript("""
+            CREATE TABLE IF NOT EXISTS download_history (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp   TEXT    NOT NULL,
+                title       TEXT    NOT NULL DEFAULT '',
+                url         TEXT    NOT NULL DEFAULT '',
+                mode        TEXT    NOT NULL DEFAULT 'video',
+                format      TEXT    NOT NULL DEFAULT 'mp4',
+                quality     TEXT    NOT NULL DEFAULT '',
+                size_text   TEXT    NOT NULL DEFAULT '--',
+                size_bytes  INTEGER NOT NULL DEFAULT 0,
+                status      TEXT    NOT NULL DEFAULT 'success',
+                message     TEXT    NOT NULL DEFAULT '',
+                attempts    INTEGER NOT NULL DEFAULT 1,
+                error       TEXT    NOT NULL DEFAULT '',
+                file_path   TEXT    NOT NULL DEFAULT '',
+                thumbnail   TEXT    NOT NULL DEFAULT '',
+                channel     TEXT    NOT NULL DEFAULT '',
+                created_at  TEXT    NOT NULL DEFAULT (datetime('now'))
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_history_status    ON download_history(status);
+            CREATE INDEX IF NOT EXISTS idx_history_url       ON download_history(url);
+            CREATE INDEX IF NOT EXISTS idx_history_timestamp ON download_history(timestamp DESC);
+
+            CREATE TABLE IF NOT EXISTS queue_items (
+                id                      INTEGER PRIMARY KEY AUTOINCREMENT,
+                url                     TEXT    NOT NULL,
+                title                   TEXT    NOT NULL DEFAULT '',
+                out_dir                 TEXT    NOT NULL DEFAULT '',
+                mode                    TEXT    NOT NULL DEFAULT 'video',
+                quality                 TEXT    NOT NULL DEFAULT '1080p',
+                format                  TEXT    NOT NULL DEFAULT 'mp4',
+                subtitle                TEXT    NOT NULL DEFAULT 'None',
+                start_time              TEXT    NOT NULL DEFAULT '',
+                end_time                TEXT    NOT NULL DEFAULT '',
+                retries                 INTEGER NOT NULL DEFAULT 3,
+                retry_count             INTEGER NOT NULL DEFAULT 0,
+                next_retry_at           REAL    NOT NULL DEFAULT 0,
+                scheduled_at            REAL    NOT NULL DEFAULT 0,
+                bandwidth_limit_kbps    INTEGER NOT NULL DEFAULT 0,
+                use_aria2               INTEGER NOT NULL DEFAULT 1,
+                status                  TEXT    NOT NULL DEFAULT 'pending',
+                thumbnail               TEXT    NOT NULL DEFAULT '',
+                progress                REAL    NOT NULL DEFAULT 0,
+                speed                   TEXT    NOT NULL DEFAULT '--',
+                eta                     TEXT    NOT NULL DEFAULT '--:--',
+                error_msg               TEXT    NOT NULL DEFAULT '',
+                last_output_path        TEXT    NOT NULL DEFAULT '',
+                resume_json             TEXT    NOT NULL DEFAULT '',
+                created_at              TEXT    NOT NULL DEFAULT (datetime('now'))
+            );
+            CREATE INDEX IF NOT EXISTS idx_queue_status        ON queue_items(status);
+            CREATE INDEX IF NOT EXISTS idx_queue_scheduled_at  ON queue_items(scheduled_at);
+            CREATE INDEX IF NOT EXISTS idx_queue_retry_next    ON queue_items(next_retry_at);
+
+            CREATE TABLE IF NOT EXISTS stats (
+                key     TEXT PRIMARY KEY,
+                value   TEXT NOT NULL DEFAULT '0'
+            );
+
+            INSERT OR IGNORE INTO stats(key, value) VALUES ('total_videos', '0');
+            INSERT OR IGNORE INTO stats(key, value) VALUES ('total_audios', '0');
+            INSERT OR IGNORE INTO stats(key, value) VALUES ('total_bytes',  '0');
+            INSERT OR IGNORE INTO stats(key, value) VALUES ('peak_speed_kbps', '0');
+            INSERT OR IGNORE INTO stats(key, value) VALUES ('app_version', '3.0.0');
+        """)
+        _ensure_queue_items_columns(conn)
+        conn.commit()
+
+def _ensure_queue_items_columns(conn: sqlite3.Connection):
+    cols = {row[1] for row in conn.execute("PRAGMA table_info(queue_items)").fetchall()}
+    if "last_output_path" not in cols:
+        conn.execute("ALTER TABLE queue_items ADD COLUMN last_output_path TEXT NOT NULL DEFAULT ''")
+    if "resume_json" not in cols:
+        conn.execute("ALTER TABLE queue_items ADD COLUMN resume_json TEXT NOT NULL DEFAULT ''")
+
+
+# ─────────────────────────── Download History ───────────────────────────────
+
+def insert_history(entry: dict) -> int:
+    """Insert a completed download record. Returns new row id."""
+    cols = [
+        "timestamp", "title", "url", "mode", "format", "quality",
+        "size_text", "size_bytes", "status", "message", "attempts",
+        "error", "file_path", "thumbnail", "channel",
+    ]
+    values = [entry.get(c) or entry.get(
+        {
+            "size_text": "size",
+            "size_bytes": "size_bytes",
+            "message": "message",
+            "error": "error",
+        }.get(c, c), ""
+    ) for c in cols]
+
+    placeholders = ", ".join("?" * len(cols))
+    sql = f"INSERT INTO download_history ({', '.join(cols)}) VALUES ({placeholders})"
+    with _write_lock:
+        with _get_conn() as conn:
+            cur = conn.execute(sql, values)
+            conn.commit()
+            return cur.lastrowid
+
+
+def fetch_history(status: str = None, limit: int = 250, offset: int = 0,
+                  search: str = None, sort: str = "timestamp DESC") -> list:
+    """Fetch download history with optional filtering."""
+    where_clauses = []
+    params = []
+
+    if status and status != "all":
+        where_clauses.append("status = ?")
+        params.append(status)
+    if search:
+        where_clauses.append("(title LIKE ? OR url LIKE ?)")
+        params.extend([f"%{search}%", f"%{search}%"])
+
+    where = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
+    valid_sorts = {
+        "timestamp DESC", "timestamp ASC", "title ASC", "title DESC",
+        "size_bytes DESC", "size_bytes ASC",
+    }
+    safe_sort = sort if sort in valid_sorts else "timestamp DESC"
+    sql = f"SELECT * FROM download_history {where} ORDER BY {safe_sort} LIMIT ? OFFSET ?"
+    params.extend([limit, offset])
+
+    with _get_conn() as conn:
+        rows = conn.execute(sql, params).fetchall()
+    return [dict(r) for r in rows]
+
+
+def count_history(status: str = None) -> int:
+    where = "WHERE status = ?" if status and status != "all" else ""
+    params = [status] if where else []
+    with _get_conn() as conn:
+        return conn.execute(f"SELECT COUNT(*) FROM download_history {where}", params).fetchone()[0]
+
+
+def delete_history(status: str = "success"):
+    with _write_lock:
+        with _get_conn() as conn:
+            conn.execute("DELETE FROM download_history WHERE status = ?", (status,))
+            conn.commit()
+
+
+def url_exists_in_history(url: str) -> dict | None:
+    """Return existing record if this URL was previously downloaded successfully."""
+    with _get_conn() as conn:
+        row = conn.execute(
+            "SELECT * FROM download_history WHERE url = ? AND status = 'success' ORDER BY timestamp DESC LIMIT 1",
+            (url,)
+        ).fetchone()
+    return dict(row) if row else None
+
+
+# ─────────────────────────── Statistics ─────────────────────────────────────
+
+def get_stat(key: str, default="0") -> str:
+    with _get_conn() as conn:
+        row = conn.execute("SELECT value FROM stats WHERE key = ?", (key,)).fetchone()
+    return row[0] if row else default
+
+
+def set_stat(key: str, value):
+    with _write_lock:
+        with _get_conn() as conn:
+            conn.execute(
+                "INSERT INTO stats(key, value) VALUES(?, ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                (key, str(value))
+            )
+            conn.commit()
+
+
+def increment_stat(key: str, amount: int = 1):
+    with _write_lock:
+        with _get_conn() as conn:
+            row = conn.execute("SELECT value FROM stats WHERE key = ?", (key,)).fetchone()
+            current = int(row[0]) if row else 0
+            conn.execute(
+                "INSERT INTO stats(key, value) VALUES(?, ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                (key, str(current + amount))
+            )
+            conn.commit()
+
+
+def get_all_stats() -> dict:
+    with _get_conn() as conn:
+        rows = conn.execute("SELECT key, value FROM stats").fetchall()
+    return {r[0]: r[1] for r in rows}
+
+def get_history_stats_snapshot(days: int = 7) -> dict:
+    days = max(1, int(days or 7))
+    with _get_conn() as conn:
+        total_count = int(conn.execute("SELECT COUNT(*) FROM download_history").fetchone()[0] or 0)
+        success_count = int(
+            conn.execute("SELECT COUNT(*) FROM download_history WHERE status = 'success'").fetchone()[0] or 0
+        )
+        total_bytes = int(
+            conn.execute("SELECT COALESCE(SUM(size_bytes), 0) FROM download_history WHERE status = 'success'").fetchone()[0]
+            or 0
+        )
+        rows = conn.execute(
+            """
+            SELECT substr(timestamp, 1, 10) AS day, COUNT(*) AS c
+            FROM download_history
+            WHERE status = 'success'
+            GROUP BY day
+            ORDER BY day DESC
+            LIMIT ?
+            """,
+            (days,),
+        ).fetchall()
+    day_counts = [(str(r[0] or ""), int(r[1] or 0)) for r in rows if str(r[0] or "").strip()]
+    day_counts.reverse()
+    counts = [c for _d, c in day_counts]
+    max_count = max(counts) if counts else 0
+    chart_data = [int((c / float(max_count or 1)) * 100.0) for c in counts] if counts else []
+    return {
+        "total_count": total_count,
+        "success_count": success_count,
+        "total_bytes": total_bytes,
+        "day_counts": day_counts,
+        "chart_data": chart_data,
+    }
+
+
+def record_peak_speed(kbps: float):
+    with _write_lock:
+        with _get_conn() as conn:
+            row = conn.execute("SELECT value FROM stats WHERE key = ?", ("peak_speed_kbps",)).fetchone()
+            current = float(row[0]) if row else 0.0
+            if kbps > current:
+                conn.execute(
+                    "INSERT INTO stats(key, value) VALUES(?, ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                    ("peak_speed_kbps", str(kbps))
+                )
+                conn.commit()
+
+
+def save_queue_items(items: list[dict]):
+    # C-02: Use explicit transaction so a crash between DELETE and INSERT
+    # won't lose all queue data. The write lock prevents concurrent writes.
+    with _write_lock:
+        with _get_conn() as conn:
+            try:
+                conn.execute("BEGIN IMMEDIATE")
+                conn.execute("DELETE FROM queue_items")
+                rows = [
+                    (
+                        str(item.get("url", "")),
+                        str(item.get("title", "")),
+                        str(item.get("out_dir", "")),
+                        str(item.get("mode", "video")),
+                        str(item.get("quality", "1080p")),
+                        str(item.get("format", "mp4")),
+                        str(item.get("subtitle", "None")),
+                        str(item.get("start_time", "")),
+                        str(item.get("end_time", "")),
+                        int(item.get("retries", 3) or 3),
+                        int(item.get("retry_count", 0) or 0),
+                        float(item.get("next_retry_at", 0) or 0),
+                        float(item.get("scheduled_at", 0) or 0),
+                        int(item.get("bandwidth_limit_kbps", 0) or 0),
+                        1 if bool(item.get("use_aria2", True)) else 0,
+                        str(item.get("status", "pending")),
+                        str(item.get("thumbnail", "")),
+                        float(item.get("progress", 0) or 0),
+                        str(item.get("speed", "--")),
+                        str(item.get("eta", "--:--")),
+                        str(item.get("error_msg", "")),
+                        str(item.get("last_output_path", "")),
+                        str(item.get("resume_json", "")),
+                    )
+                    for item in (items or [])
+                ]
+                if rows:
+                    conn.executemany(
+                        """
+                        INSERT INTO queue_items (
+                            url, title, out_dir, mode, quality, format, subtitle,
+                            start_time, end_time, retries, retry_count, next_retry_at,
+                            scheduled_at, bandwidth_limit_kbps, use_aria2, status,
+                            thumbnail, progress, speed, eta, error_msg, last_output_path, resume_json
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                        rows,
+                    )
+                conn.execute("COMMIT")
+            except Exception:
+                conn.execute("ROLLBACK")
+                raise
+
+
+def load_queue_items() -> list[dict]:
+    with _get_conn() as conn:
+        rows = conn.execute("SELECT * FROM queue_items ORDER BY id ASC").fetchall()
+    queue = []
+    for row in rows:
+        r = dict(row)
+        queue.append(
+            {
+                "url": r.get("url", ""),
+                "title": r.get("title", ""),
+                "out_dir": r.get("out_dir", ""),
+                "mode": r.get("mode", "video"),
+                "quality": r.get("quality", "1080p"),
+                "format": r.get("format", "mp4"),
+                "subtitle": r.get("subtitle", "None"),
+                "start_time": r.get("start_time", ""),
+                "end_time": r.get("end_time", ""),
+                "retries": int(r.get("retries", 3) or 3),
+                "retry_count": int(r.get("retry_count", 0) or 0),
+                "next_retry_at": float(r.get("next_retry_at", 0) or 0),
+                "scheduled_at": float(r.get("scheduled_at", 0) or 0),
+                "bandwidth_limit_kbps": int(r.get("bandwidth_limit_kbps", 0) or 0),
+                "use_aria2": bool(int(r.get("use_aria2", 1) or 1)),
+                "status": r.get("status", "pending"),
+                "thumbnail": r.get("thumbnail", ""),
+                "progress": float(r.get("progress", 0) or 0),
+                "speed": r.get("speed", "--"),
+                "eta": r.get("eta", "--:--"),
+                "error_msg": r.get("error_msg", ""),
+                "last_output_path": r.get("last_output_path", ""),
+                "resume_json": r.get("resume_json", ""),
+            }
+        )
+    return queue
+
+
+def save_session_settings(settings: dict):
+    payload = json.dumps(settings or {}, ensure_ascii=False)
+    with _write_lock:
+        set_stat("session_settings", payload)
+
+
+def load_session_settings() -> dict:
+    raw = get_stat("session_settings", "{}")
+    try:
+        value = json.loads(raw)
+        if isinstance(value, dict):
+            return value
+    except json.JSONDecodeError as exc:
+        logger.warning(f"[DB] Failed to parse session settings: {exc}")
+    return {}
+
+
+# ─────────────────────────── Migration ──────────────────────────────────────
+
+def migrate_from_json(json_path: str):
+    """One-time migration from the old xd_stats.json format."""
+    if not os.path.exists(json_path):
+        return 0
+    try:
+        with open(json_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        if not isinstance(data, dict):
+            return 0
+    except (json.JSONDecodeError, OSError, IOError) as exc:
+        logger.warning(f"[DB] Failed to read/parse migration file {json_path}: {exc}")
+        return 0
+
+    try:
+        history = data.get("download_history", [])
+        migrated = 0
+        for entry in history:
+            try:
+                insert_history({
+                    "timestamp": entry.get("timestamp", datetime.now().isoformat()),
+                    "title": entry.get("title", ""),
+                    "url": entry.get("url", ""),
+                    "mode": entry.get("mode", "video"),
+                    "format": entry.get("format", "mp4"),
+                    "quality": entry.get("quality", ""),
+                    "size_text": entry.get("size", "--"),
+                    "size_bytes": 0,
+                    "status": entry.get("status", "success"),
+                    "message": entry.get("message", ""),
+                    "attempts": entry.get("attempts", 1),
+                    "error": entry.get("error", ""),
+                    "file_path": entry.get("file_path", ""),
+                    "thumbnail": entry.get("thumbnail", ""),
+                    "channel": "",
+                })
+                migrated += 1
+            except Exception as exc:
+                logger.warning(f"[DB] Skipped one migrated history entry: {exc}")
+
+        set_stat("total_videos", data.get("total_videos", 0))
+        set_stat("total_audios", data.get("total_audios", 0))
+        os.rename(json_path, json_path + ".migrated")
+        return migrated
+    except Exception as exc:
+        logger.error(f"[DB] Migration failed: {exc}")
+        return 0
+
+
+# M-02: init_db() must be called explicitly from app.py, not at import time.
+# This allows unit tests to use a separate DB or mock the database.
+# Call init_db() from your application entry point before using any DB functions.
+
+
+
+
+====================================================================================================
+FILE: core\downloader.py
+====================================================================================================
+
+
+import os
+import re
+import glob
+import shutil
+import subprocess
+import sys
+import time
+import hashlib
+import logging
+from datetime import datetime
+from typing import Optional
+
+try:
+    from PySide6.QtCore import QThread, Signal, QMutex, QMutexLocker
+except ImportError:
+    from PyQt6.QtCore import QThread, pyqtSignal as Signal, QMutex, QMutexLocker
+
+from .event_bus import event_bus, DownloadFinishedEvent
+from .constants import (
+    SUBTITLE_LANGUAGES,
+    MAX_RETRY_DELAY_SECONDS,
+    POLL_INTERVAL_SECONDS,
+    PROCESS_TERMINATION_TIMEOUT,
+    PROCESS_KILL_TIMEOUT,
+)
+from .config import video_quality_to_height
+
+try:
+    from .smart_rename import build_filename as _build_rename_filename
+except ImportError:
+    _build_rename_filename = None
+
+logger = logging.getLogger("SnapDownloader.Downloader")
+
+try:
+    from yt_dlp import YoutubeDL
+    from yt_dlp.utils import DownloadError
+except Exception:
+    YoutubeDL = None
+    DownloadError = Exception
+
+
+class _UserCancelledDownload(Exception):
+    pass
+
+
+class DownloadWorker(QThread):
+    progress = Signal(int, float, str, str)
+    log = Signal(str)
+    state = Signal(str)
+    output_path_changed = Signal(str)
+    resume_snapshot = Signal(dict)
+
+    def __init__(
+        self,
+        target_url,
+        out_dir,
+        mode,
+        quality,
+        fmt,
+        subtitle_lang="None",
+        start_time="",
+        end_time="",
+        retries=3,
+        retry_delay_seconds=2,
+        use_aria2=True,
+        cookies_file="",
+        embed_subs=True,
+        split_chapters=False,
+        rename_template="Default",
+        channel="",
+        verify_checksum=False,
+        bandwidth_limit_kbps=0,
+        use_ytdlp_api: bool = False,
+        frozen_title: str = "",
+        merge_opts: dict = None,
+
+    ):
+        super().__init__()
+        self.url = target_url.strip()
+        self.out_dir = out_dir.strip()
+        self.mode = mode
+        self.quality = quality
+        self.fmt = fmt
+        self.subtitle_lang = subtitle_lang or "None"
+        self.start_time = (start_time or "").strip()
+        self.end_time = (end_time or "").strip()
+        self.retries = max(1, int(retries))
+        self.retry_delay_seconds = max(1, int(retry_delay_seconds or 2))
+        self.use_aria2 = use_aria2
+        self.cookies_file = cookies_file.strip()
+        self.embed_subs = embed_subs
+        self.split_chapters = split_chapters
+        self.rename_template = rename_template or "Default"
+        self.channel = channel or ""
+        self.verify_checksum = verify_checksum
+        self.bandwidth_limit_kbps = max(0, int(bandwidth_limit_kbps or 0))
+        self.use_ytdlp_api = bool(use_ytdlp_api)
+        self.frozen_title = str(frozen_title or "").strip()
+        self.merge_opts = merge_opts or {}
+        self.custom_merge = self.merge_opts.get("enabled", False)
+
+
+        self.cancel_requested = False
+        self._cancel_event = __import__('threading').Event()  # H-03: for instant cancellation
+        self.current_process = None
+        self.process_mutex = QMutex()
+        self.started_at = datetime.now().isoformat()
+        self.downloaded_file_path = ""
+        self.downloaded_separate_files = [] # Add this line
+        self.extra_args: list = []  # injected at runtime (e.g. proxy flags)
+        self._last_resume_emit_ts = 0.0
+        self._last_resume_payload: dict | None = None
+
+    def _set_downloaded_file_path(self, value: str):
+        path = str(value or "").strip().strip('\"')
+        if not path:
+            return
+        if path == self.downloaded_file_path:
+            return
+        self.downloaded_file_path = path
+        self.output_path_changed.emit(path)
+        self._maybe_emit_resume_snapshot(force=True)
+
+    def _collect_resume_snapshot(self) -> dict:
+        out_path = str(self.downloaded_file_path or "").strip()
+        files = []
+        if out_path:
+            base_no_ext, _ext = os.path.splitext(out_path)
+            candidates = [
+                out_path + ".part",
+                out_path + ".ytdl",
+                out_path + ".aria2",
+                base_no_ext + ".ytdl",
+                base_no_ext + ".aria2",
+            ]
+            for p in candidates:
+                try:
+                    if p and os.path.isfile(p):
+                        files.append(p)
+                except Exception:
+                    continue
+            try:
+                if base_no_ext:
+                    for p in glob.glob(base_no_ext + ".*"):
+                        if not p or not os.path.isfile(p):
+                            continue
+                        lower = p.lower()
+                        if lower.endswith((".part", ".ytdl", ".aria2", ".tmp", ".temp")):
+                            files.append(p)
+            except Exception:
+                pass
+        unique = []
+        seen = set()
+        total_bytes = 0
+        for p in files:
+            ap = os.path.abspath(p)
+            if ap in seen:
+                continue
+            seen.add(ap)
+            try:
+                size = int(os.path.getsize(ap))
+            except Exception:
+                size = 0
+            try:
+                mtime = float(os.path.getmtime(ap))
+            except Exception:
+                mtime = 0.0
+            total_bytes += max(0, size)
+            unique.append({"path": ap, "size": size, "mtime": mtime})
+        return {
+            "output_path": os.path.abspath(out_path) if out_path else "",
+            "partials_total_bytes": int(total_bytes),
+            "partials_count": int(len(unique)),
+            "partials": unique,
+            "updated_at": time.time(),
+        }
+
+    def _maybe_emit_resume_snapshot(self, force: bool = False):
+        now = time.time()
+        if not force and (now - self._last_resume_emit_ts) < 1.25:
+            return
+        if not self.downloaded_file_path:
+            return
+        payload = self._collect_resume_snapshot()
+        if not force and payload == (self._last_resume_payload or {}):
+            self._last_resume_emit_ts = now
+            return
+        self._last_resume_payload = payload
+        self._last_resume_emit_ts = now
+        self.resume_snapshot.emit(payload)
+
+    def _find_ffmpeg(self):
+        ffmpeg_path = shutil.which("ffmpeg")
+        if ffmpeg_path:
+            return os.path.dirname(ffmpeg_path)
+        return None
+
+    def _find_aria2(self):
+        aria2_path = shutil.which("aria2c")
+        if aria2_path:
+            return aria2_path
+        candidates = [
+            os.path.join(os.getcwd(), "aria2c.exe"),
+        ]
+        # L-06: Search for any aria2 version directory instead of hardcoded version
+        for pattern in [os.path.join(os.getcwd(), "aria2-*", "aria2c.exe"),
+                        os.path.join(os.path.dirname(os.path.dirname(__file__)), "aria2-*", "aria2c.exe")]:
+            candidates.extend(glob.glob(pattern))
+        for candidate in candidates:
+            if os.path.isfile(candidate):
+                return candidate
+        return None
+
+    def _quality_height(self):
+        return video_quality_to_height(self.quality)
+
+    def _subtitle_code(self):
+        return SUBTITLE_LANGUAGES.get(self.subtitle_lang)
+
+    def _safe_cookies_path(self) -> str:
+        path = str(self.cookies_file or "").strip()
+        if not path:
+            return ""
+        full = os.path.abspath(path)
+        if not os.path.isfile(full):
+            logger.warning("تم تجاهل cookies file غير صالح")
+            return ""
+        try:
+            if os.path.getsize(full) > 20 * 1024 * 1024:
+                logger.warning("تم تجاهل cookies file لأن حجمه كبير جداً")
+                return ""
+        except Exception as exc:
+            logger.warning(f"تعذر التحقق من حجم cookies file: {exc}")
+            return ""
+        return full
+
+    def _sanitize_title_fragment(self, text: str, max_len: int = 120) -> str:
+        value = str(text or "").strip()
+        if not value:
+            return ""
+        value = value.replace("/", "-").replace("\\", "-")
+        value = re.sub(r'[<>:"|?*\x00-\x1f]', "", value)
+        value = re.sub(r"[ \-]{2,}", " ", value).strip(" -.")
+        return value[:max_len] if len(value) > max_len else value
+
+    def _output_template(self) -> str:
+        if self.frozen_title:
+            title = self._sanitize_title_fragment(self.frozen_title)
+            if title:
+                return os.path.join(self.out_dir, f"{title} [%(id)s].%(ext)s")
+        return os.path.join(self.out_dir, "%(title)s [%(id)s].%(ext)s")
+
+    def _video_format_selector(self) -> str:
+        h = self._quality_height()
+        return f"bestvideo[height<={h}]+bestaudio/best[height<={h}]"
+
+    def _audio_preferred_quality(self) -> str:
+        quality = str(self.quality).replace("kbps", "")
+        try:
+            return str(int(float(quality)))
+        except Exception:
+            return "192"
+
+    def _should_embed_audio_metadata(self) -> bool:
+        return self.fmt in {"MP3", "M4A", "FLAC", "Original Audio"}
+
+    def _normalized_mode(self) -> str:
+        return str(self.mode).lower()
+
+    def _normalized_format(self) -> str:
+        return str(self.fmt).lower()
+
+    def _is_video_mode(self) -> bool:
+        return self._normalized_mode() == "video"
+
+    def _is_original_audio_format(self) -> bool:
+        return self.fmt == "Original Audio"
+
+    def _aria2_default_args(self) -> list[str]:
+        return [
+            "-x",
+            "8",
+            "-s",
+            "8",
+            "-j",
+            "4",
+            "-k",
+            "1M",
+            "-c",
+            "--allow-overwrite=true",
+            "--auto-file-renaming=false",
+            "--file-allocation=none",
+        ]
+
+    def _subtitle_lang_pattern(self) -> str:
+        subtitle_code = self._subtitle_code()
+        if not subtitle_code:
+            return ""
+        return f"{subtitle_code}.*"
+
+    def _build_command(self):
+        output_template = self._output_template()
+        cmd = [sys.executable, "-m", "yt_dlp", "-o", output_template, "--newline", "--no-warnings"]
+
+        safe_cookies = self._safe_cookies_path()
+        if safe_cookies:
+            cmd.extend(["--cookies", safe_cookies])
+            
+        ffmpeg_loc = self._find_ffmpeg()
+        if ffmpeg_loc:
+            cmd.extend(["--ffmpeg-location", ffmpeg_loc])
+        aria2_bin = self._find_aria2()
+        # M-07: Allow Aria2 for both video and audio downloads
+        if self.use_aria2 and aria2_bin:
+            aria_args = "aria2c:" + " ".join(self._aria2_default_args())
+            cmd.extend(["--downloader", "aria2c", "--downloader-args", aria_args])
+
+        if self._is_video_mode():
+            video_selector = self._video_format_selector()
+            fmt = self._normalized_format()
+            if self.custom_merge:
+                cmd.extend(["-f", video_selector, "-k", "--print", "filename"])
+            else:
+                cmd.extend(["-f", video_selector, "--merge-output-format", fmt])
+            subtitle_pattern = self._subtitle_lang_pattern()
+            if subtitle_pattern:
+                cmd.extend(["--write-sub", "--write-auto-sub", "--sub-langs", subtitle_pattern])
+                if self.embed_subs:
+                    cmd.extend(["--embed-subs", "--compat-options", "all"])
+        else:
+            if self._is_original_audio_format():
+                cmd.extend(["-f", "bestaudio"])
+            else:
+                aq = f"{self._audio_preferred_quality()}K"
+                cmd.extend(["-f", "bestaudio", "-x", "--audio-format", self._normalized_format(), "--audio-quality", aq])
+            if self._should_embed_audio_metadata():
+                cmd.extend(["--embed-thumbnail", "--embed-metadata"])
+
+        if self.start_time or self.end_time:
+            cmd.extend(["--download-sections", f"*{self.start_time or '00:00'}-{self.end_time or 'inf'}"])
+
+        if self.split_chapters:
+            cmd.extend(["--split-chapters", "--output", "chapter:%(title)s - %(section_title)s.%(ext)s"])
+
+        if self.bandwidth_limit_kbps > 0:
+            cmd.extend(["--limit-rate", f"{self.bandwidth_limit_kbps}K"])
+
+        # Runtime-injected args (e.g. proxy, experimental flags)
+        if self.extra_args:
+            cmd.extend(self._sanitize_extra_args())
+
+        cmd.extend(["--concurrent-fragments", "3", self.url])
+        return cmd
+
+    def _should_use_api(self) -> bool:
+        if YoutubeDL is None:
+            return False
+        if self.start_time or self.end_time:
+            return False
+        if self.split_chapters:
+            return False
+        if self.use_ytdlp_api:
+            return True
+        return str(os.getenv("SNAPDOWNLOADER_USE_YTDLP_API", "")).strip() in {"1", "true", "yes", "on"}
+
+    def _format_speed(self, speed_bytes_per_s: Optional[float]) -> str:
+        if not speed_bytes_per_s:
+            return "--"
+        try:
+            speed = float(speed_bytes_per_s)
+        except Exception:
+            return "--"
+        units = ["B/s", "KiB/s", "MiB/s", "GiB/s"]
+        idx = 0
+        while speed >= 1024 and idx < len(units) - 1:
+            speed /= 1024
+            idx += 1
+        if idx == 0:
+            return f"{int(speed)} {units[idx]}"
+        return f"{speed:.1f} {units[idx]}"
+
+    def _format_eta(self, eta_seconds: Optional[float]) -> str:
+        if eta_seconds is None:
+            return "--:--"
+        try:
+            total = int(max(0, float(eta_seconds)))
+        except Exception:
+            return "--:--"
+        mm, ss = divmod(total, 60)
+        hh, mm = divmod(mm, 60)
+        if hh > 0:
+            return f"{hh:02d}:{mm:02d}:{ss:02d}"
+        return f"{mm:02d}:{ss:02d}"
+
+    def _parse_safe_extra_args(self) -> tuple[list[str], dict]:
+        raw_args = [str(arg or "").strip() for arg in self.extra_args if str(arg or "").strip()]
+        allowed_flags = {"--no-check-certificate", "--geo-bypass"}
+        allowed_with_value = {
+            "--proxy",
+            "--user-agent",
+            "--referer",
+            "--add-header",
+            "--sleep-interval",
+            "--max-sleep-interval",
+        }
+        safe_args: list[str] = []
+        options: dict = {}
+        headers: dict[str, str] = {}
+        i = 0
+        while i < len(raw_args):
+            arg = raw_args[i]
+            if arg in allowed_flags:
+                safe_args.append(arg)
+                if arg == "--no-check-certificate":
+                    options["nocheckcertificate"] = True
+                elif arg == "--geo-bypass":
+                    options["geo_bypass"] = True
+                i += 1
+                continue
+            if arg in allowed_with_value:
+                if i + 1 >= len(raw_args):
+                    logger.warning(f"تم تجاهل وسيطة yt-dlp غير مكتملة: {arg}")
+                    i += 1
+                    continue
+                value = raw_args[i + 1]
+                if arg == "--proxy" and not re.match(r"^(https?|socks5h?)://", value, re.IGNORECASE):
+                    logger.warning(f"تم تجاهل قيمة proxy غير صالحة: {value}")
+                    i += 2
+                    continue
+                if arg == "--add-header" and ":" not in value:
+                    logger.warning(f"تم تجاهل header غير صالح: {value}")
+                    i += 2
+                    continue
+                if arg in {"--sleep-interval", "--max-sleep-interval"}:
+                    try:
+                        parsed = float(value)
+                    except Exception:
+                        logger.warning(f"تم تجاهل قيمة غير رقمية: {arg}={value}")
+                        i += 2
+                        continue
+                    if parsed < 0:
+                        logger.warning(f"تم تجاهل قيمة سالبة: {arg}={value}")
+                        i += 2
+                        continue
+                safe_args.extend([arg, value])
+                if arg == "--proxy":
+                    options["proxy"] = value
+                elif arg == "--user-agent":
+                    options["user_agent"] = value
+                elif arg == "--referer":
+                    options["referer"] = value
+                elif arg == "--add-header":
+                    if ":" in value:
+                        k, v = value.split(":", 1)
+                        headers[k.strip()] = v.strip()
+                elif arg == "--sleep-interval":
+                    options["sleep_interval"] = float(value)
+                elif arg == "--max-sleep-interval":
+                    options["max_sleep_interval"] = float(value)
+                i += 2
+                continue
+            if arg.startswith("--proxy="):
+                proxy_value = arg.split("=", 1)[1].strip()
+                if re.match(r"^(https?|socks5h?)://", proxy_value, re.IGNORECASE):
+                    safe_args.append(arg)
+                    options["proxy"] = proxy_value
+                else:
+                    logger.warning(f"تم تجاهل proxy غير صالح: {arg}")
+                i += 1
+                continue
+            if arg.startswith("--user-agent="):
+                safe_args.append(arg)
+                options["user_agent"] = arg.split("=", 1)[1]
+                i += 1
+                continue
+            if arg.startswith("--referer="):
+                safe_args.append(arg)
+                options["referer"] = arg.split("=", 1)[1]
+                i += 1
+                continue
+            if arg.startswith("--add-header="):
+                value = arg.split("=", 1)[1]
+                if ":" in value:
+                    safe_args.append(arg)
+                    k, v = value.split(":", 1)
+                    headers[k.strip()] = v.strip()
+                else:
+                    logger.warning(f"تم تجاهل add-header غير صالح: {arg}")
+                i += 1
+                continue
+            if arg.startswith("--sleep-interval="):
+                value = arg.split("=", 1)[1].strip()
+                try:
+                    parsed = float(value)
+                    if parsed < 0:
+                        raise ValueError("negative")
+                except Exception:
+                    logger.warning(f"تم تجاهل sleep-interval غير صالح: {arg}")
+                else:
+                    safe_args.append(arg)
+                    options["sleep_interval"] = parsed
+                i += 1
+                continue
+            if arg.startswith("--max-sleep-interval="):
+                value = arg.split("=", 1)[1].strip()
+                try:
+                    parsed = float(value)
+                    if parsed < 0:
+                        raise ValueError("negative")
+                except Exception:
+                    logger.warning(f"تم تجاهل max-sleep-interval غير صالح: {arg}")
+                else:
+                    safe_args.append(arg)
+                    options["max_sleep_interval"] = parsed
+                i += 1
+                continue
+            logger.warning(f"تم تجاهل وسيطة غير مسموح بها: {arg}")
+            i += 1
+        if headers:
+            options["http_headers"] = headers
+        return safe_args, options
+
+    def _extra_args_to_ytdlp_options(self) -> dict:
+        _safe_args, options = self._parse_safe_extra_args()
+        return options
+
+    def _build_ytdlp_options(self) -> dict:
+        output_template = self._output_template()
+        opts: dict = {
+            "outtmpl": output_template,
+            "quiet": True,
+            "no_warnings": True,
+            "retries": 0,
+            "fragment_retries": 0,
+            "continuedl": True,
+            "nopart": False,
+            "noprogress": True,
+        }
+
+        safe_cookies = self._safe_cookies_path()
+        if safe_cookies:
+            opts["cookiefile"] = safe_cookies
+
+        ffmpeg_loc = self._find_ffmpeg()
+        if ffmpeg_loc:
+            opts["ffmpeg_location"] = ffmpeg_loc
+
+        if self.bandwidth_limit_kbps > 0:
+            opts["ratelimit"] = int(self.bandwidth_limit_kbps) * 1024
+
+        if self._is_video_mode():
+            video_selector = self._video_format_selector()
+            fmt = self._normalized_format()
+            opts["format"] = video_selector
+            opts["merge_output_format"] = fmt
+        else:
+            if self._is_original_audio_format():
+                opts["format"] = "bestaudio"
+            else:
+                opts["format"] = "bestaudio"
+                codec = self._normalized_format()
+                opts["postprocessors"] = [
+                    {"key": "FFmpegExtractAudio", "preferredcodec": codec, "preferredquality": self._audio_preferred_quality()},
+                ]
+            if self._should_embed_audio_metadata():
+                opts.setdefault("postprocessors", [])
+                opts["postprocessors"].extend(
+                    [
+                        {"key": "EmbedThumbnail"},
+                        {"key": "FFmpegMetadata"},
+                    ]
+                )
+
+        subtitle_pattern = self._subtitle_lang_pattern()
+        if subtitle_pattern and self._is_video_mode():
+            opts["writesubtitles"] = True
+            opts["writeautomaticsub"] = True
+            opts["subtitleslangs"] = [subtitle_pattern]
+            if self.embed_subs:
+                opts["embedsubtitles"] = True
+
+        aria2_bin = self._find_aria2()
+        if self.use_aria2 and aria2_bin:
+            opts["external_downloader"] = "aria2c"
+            opts["external_downloader_args"] = {
+                "default": self._aria2_default_args()
+            }
+
+        opts.update(self._extra_args_to_ytdlp_options())
+        return opts
+
+    def _run_subprocess_once(self, cmd: list[str], proc_env: dict) -> tuple[bool, bool, str]:
+        cancelled = False
+        last_error = ""
+        process = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            universal_newlines=True,
+            encoding="utf-8",
+            errors="replace",
+            env=proc_env,
+            bufsize=1,
+        )
+        with QMutexLocker(self.process_mutex):
+            self.current_process = process
+        stdout = process.stdout
+        try:
+            if stdout is not None:
+                for line in stdout:
+                    if self.cancel_requested:
+                        cancelled = True
+                        break
+                    clean = line.strip()
+                    if not clean:
+                        continue
+                    self.log.emit(clean)
+                    if "error" in clean.lower() or "failed" in clean.lower() or "خطأ" in clean.lower():
+                        last_error = clean
+                    dest_match = re.search(
+                        r'\[(?:download|Merger)\]\s+(?:Destination:|Merging formats into ")(.+?)"?$',
+                        clean,
+                    )
+                    if dest_match:
+                        candidate_path = dest_match.group(1).strip().strip('\"')
+                        if candidate_path:
+                            self._set_downloaded_file_path(candidate_path)
+                    # M-16: Capture printed filenames for custom merge
+                    elif self.custom_merge and os.path.exists(clean) and os.path.isfile(clean):
+                        self.downloaded_separate_files.append(clean)
+                    self._parse_line(clean)
+        finally:
+            if self.cancel_requested:
+                cancelled = True
+                self._terminate_process(process, "تعذر إنهاء العملية")
+            if stdout is not None:
+                try:
+                    stdout.close()
+                except Exception:
+                    pass
+
+        ret = process.poll()
+        if ret is None:
+            ret = process.wait()
+        self._clear_current_process(process)
+        if cancelled:
+            return False, True, last_error
+        return ret == 0, False, last_error
+
+    def _run_ytdlp_once(self) -> tuple[bool, bool, str]:
+        if YoutubeDL is None:
+            return False, False, "yt-dlp غير متاح"
+        last_error = ""
+
+        def hook(d: dict):
+            if self.cancel_requested:
+                raise _UserCancelledDownload()
+            status = d.get("status")
+            if status == "downloading":
+                total = d.get("total_bytes") or d.get("total_bytes_estimate") or 0
+                downloaded = d.get("downloaded_bytes") or 0
+                pct = 0.0
+                if total:
+                    try:
+                        pct = max(0.0, min(100.0, (float(downloaded) / float(total)) * 100.0))
+                    except Exception:
+                        pct = 0.0
+                speed = self._format_speed(d.get("speed"))
+                eta = self._format_eta(d.get("eta"))
+                self.progress.emit(1, pct, speed, eta)
+                filename = d.get("filename")
+                if filename:
+                    self._set_downloaded_file_path(str(filename))
+            elif status == "finished":
+                filename = d.get("filename")
+                if filename:
+                    self._set_downloaded_file_path(str(filename))
+                self.log.emit("✅ اكتمل التحميل (yt-dlp API)")
+
+        opts = self._build_ytdlp_options()
+        opts["progress_hooks"] = [hook]
+        try:
+            with YoutubeDL(opts) as ydl:
+                rc = ydl.download([self.url])
+            return rc == 0, False, last_error
+        except _UserCancelledDownload:
+            return False, True, last_error
+        except DownloadError as exc:
+            last_error = str(exc)
+            self.log.emit(f"خطأ: {last_error}")
+            return False, False, last_error
+        except Exception as exc:
+            last_error = str(exc)
+            self.log.emit(f"خطأ: {last_error}")
+            return False, False, last_error
+
+    def _sanitize_extra_args(self) -> list[str]:
+        safe_args, _options = self._parse_safe_extra_args()
+        return safe_args
+
+    def _parse_line(self, clean):
+        pct = None
+        speed = "--"
+        eta = "--:--"
+        speed_pattern = r"(?:at\s+|DL:)([~0-9\.]+(?:[kKMGTP]i?)?B(?:/s)?)"
+        m_pct = re.search(r"\[download\]\s+(\d+(?:\.\d+)?)%", clean)
+        if m_pct:
+            pct = float(m_pct.group(1))
+            m_speed = re.search(speed_pattern, clean)
+            m_eta = re.search(r"ETA\s+([\d:]+)", clean)
+            speed = m_speed.group(1) if m_speed else "--"
+            if speed != "--" and not speed.endswith("/s"):
+                speed = f"{speed}/s"
+            eta = m_eta.group(1) if m_eta else "--:--"
+        else:
+            m_generic_pct = re.search(r"(\d+(?:\.\d+)?)%\s+of", clean)
+            if m_generic_pct:
+                pct = float(m_generic_pct.group(1))
+                m_speed = re.search(speed_pattern, clean)
+                m_eta = re.search(r"ETA\s+([\d:]+)", clean)
+                speed = m_speed.group(1) if m_speed else "--"
+                if speed != "--" and not speed.endswith("/s"):
+                    speed = f"{speed}/s"
+                eta = m_eta.group(1) if m_eta else "--:--"
+            else:
+                m_aria_pct = re.search(r"\((\d{1,3})%\)", clean)
+                if m_aria_pct and ("DL:" in clean or "ETA:" in clean):
+                    pct = float(m_aria_pct.group(1))
+                    m_aria_speed = re.search(speed_pattern, clean)
+                    m_aria_eta = re.search(r"ETA:([0-9a-zA-Z:]+)", clean)
+                    if m_aria_speed:
+                        speed = m_aria_speed.group(1)
+                        if not speed.endswith("/s"):
+                            speed = f"{speed}/s"
+                    if m_aria_eta:
+                        eta = m_aria_eta.group(1)
+        if pct is None:
+            return
+        self.progress.emit(1, pct, speed, eta)
+        self._maybe_emit_resume_snapshot(force=False)
+
+    def run(self):
+        os.makedirs(self.out_dir, exist_ok=True)
+        proc_env = os.environ.copy()
+        cmd = self._build_command()
+        aria2_bin = self._find_aria2() if self.use_aria2 else None
+        if aria2_bin:
+            aria_dir = os.path.dirname(aria2_bin)
+            current_path = proc_env.get("PATH", "")
+            if aria_dir and aria_dir not in current_path:
+                proc_env["PATH"] = aria_dir + os.pathsep + current_path
+        attempts = 0
+        success = False
+        cancelled = False
+        last_error = ""
+        self.state.emit("running")
+        try:
+            for attempt in range(1, self.retries + 1):
+                attempts = attempt
+                if self.cancel_requested:
+                    cancelled = True
+                    break
+                if attempt > 1:
+                    self.log.emit(f"إعادة المحاولة {attempt}/{self.retries}")
+                if self._should_use_api():
+                    ok, was_cancelled, err = self._run_ytdlp_once()
+                    last_error = err or last_error
+                    if was_cancelled or self.cancel_requested:
+                        cancelled = True
+                        break
+                    if ok:
+                        success = True
+                        break
+                else:
+                    ok, was_cancelled, err = self._run_subprocess_once(cmd, proc_env)
+                    last_error = err or last_error
+                    if was_cancelled or self.cancel_requested:
+                        cancelled = True
+                        break
+                    if ok:
+                        success = True
+                        break
+                if attempt < self.retries:
+                    wait_seconds = min(MAX_RETRY_DELAY_SECONDS, self.retry_delay_seconds * (2 ** (attempt - 1)))
+                    self.log.emit(f"فشل المحاولة، إعادة خلال {wait_seconds} ثانية...")
+                    # H-03: Use Event.wait() instead of sleep loop for instant cancel response
+                    self._cancel_event.wait(timeout=wait_seconds)
+                    if self.cancel_requested:
+                        cancelled = True
+                        break
+            if cancelled:
+                self._maybe_emit_resume_snapshot(force=True)
+                self.state.emit("cancelled")
+                payload = {
+                    "timestamp": self.started_at,
+                    "url": self.url,
+                    "mode": self.mode,
+                    "format": self.fmt,
+                    "attempts": attempts or 1,
+                    "error": "cancelled",
+                }
+                event_bus.publish(DownloadFinishedEvent(getattr(self, "worker_id", None), False, "تم إلغاء التحميل", payload))
+                return
+            if success:
+                self._maybe_emit_resume_snapshot(force=True)
+                self.state.emit("success")
+                # Try to find the downloaded file for renaming
+                self._try_rename_output()
+                payload = {
+                    "timestamp": self.started_at,
+                    "url": self.url,
+                    "mode": self.mode,
+                    "format": self.fmt,
+                    "attempts": attempts or 1,
+                    "error": "",
+                    "file_path": self.downloaded_file_path,
+                    "checksum": self._compute_checksum(),
+                }
+                event_bus.publish(DownloadFinishedEvent(getattr(self, "worker_id", None), True, "اكتمل التحميل بنجاح", payload))
+                return
+            self.state.emit("failed")
+            self._maybe_emit_resume_snapshot(force=True)
+            payload = {
+                "timestamp": self.started_at,
+                "url": self.url,
+                "mode": self.mode,
+                "format": self.fmt,
+                "attempts": attempts or 1,
+                "error": last_error or "فشل بعد إعادة المحاولة",
+            }
+            event_bus.publish(DownloadFinishedEvent(getattr(self, "worker_id", None), False, payload["error"], payload))
+        except (subprocess.SubprocessError, IOError, OSError, RuntimeError) as exc:
+            self.state.emit("failed")
+            self._maybe_emit_resume_snapshot(force=True)
+            payload = {
+                "timestamp": self.started_at,
+                "url": self.url,
+                "mode": self.mode,
+                "format": self.fmt,
+                "attempts": attempts or 1,
+                "error": str(exc),
+            }
+            self.log.emit(f"خطأ: {exc}")
+            event_bus.publish(DownloadFinishedEvent(getattr(self, "worker_id", None), False, str(exc), payload))
+        except Exception as exc:
+            self.state.emit("failed")
+            self._maybe_emit_resume_snapshot(force=True)
+            payload = {
+                "timestamp": self.started_at,
+                "url": self.url,
+                "mode": self.mode,
+                "format": self.fmt,
+                "attempts": attempts or 1,
+                "error": str(exc),
+            }
+            self.log.emit(f"خطأ غير متوقع: {exc}")
+            event_bus.publish(DownloadFinishedEvent(getattr(self, "worker_id", None), False, str(exc), payload))
+
+    def stop(self):
+        self.cancel_requested = True
+        self._cancel_event.set()  # H-03: wake up any waiting retry delay immediately
+        with QMutexLocker(self.process_mutex):
+            process = self.current_process
+        if process and process.poll() is None:
+            self._terminate_process(process, "تعذر إيقاف التحميل")
+
+    def _clear_current_process(self, process=None):
+        with QMutexLocker(self.process_mutex):
+            if process is None or self.current_process is process:
+                self.current_process = None
+
+    def _terminate_process(self, process, error_prefix: str):
+        if process is None:
+            return
+        if process.poll() is not None:
+            self._clear_current_process(process)
+            return
+        try:
+            process.terminate()
+            process.wait(timeout=PROCESS_TERMINATION_TIMEOUT)
+        except subprocess.TimeoutExpired:
+            try:
+                process.kill()
+                process.wait(timeout=PROCESS_KILL_TIMEOUT)
+            except Exception as exc:
+                self.log.emit(f"{error_prefix}: {exc}")
+        except Exception as exc:
+            self.log.emit(f"{error_prefix}: {exc}")
+        finally:
+            stdout = getattr(process, "stdout", None)
+            if stdout is not None:
+                try:
+                    stdout.close()
+                except Exception:
+                    pass
+            self._clear_current_process(process)
+
+    def _try_rename_output(self):
+        """Attempt to locate and optionally rename the freshly downloaded file."""
+        try:
+            # C-04: Use the path tracked from stdout if available
+            if self.downloaded_file_path and os.path.isfile(self.downloaded_file_path):
+                newest = self.downloaded_file_path
+            else:
+                # Fallback: find the most recently modified file in out_dir
+                candidates = []
+                for f in os.listdir(self.out_dir):
+                    full = os.path.join(self.out_dir, f)
+                    if os.path.isfile(full):
+                        candidates.append((os.path.getmtime(full), full))
+                if not candidates:
+                    return
+                candidates.sort(reverse=True)
+                newest = candidates[0][1]
+                self.downloaded_file_path = newest
+            if self.rename_template == "Default" or not self.channel:
+                return
+            # L-04: Use module-level import
+            if _build_rename_filename is None:
+                return
+            ext = os.path.splitext(newest)[1].lstrip(".")
+            # Guess title from filename
+            raw_title = os.path.splitext(os.path.basename(newest))[0]
+            new_rel = _build_rename_filename(
+                self.rename_template,
+                title=raw_title,
+                ext=ext,
+                channel=self.channel,
+                quality=self.quality,
+            )
+            new_full = os.path.join(self.out_dir, new_rel)
+            if newest != new_full:
+                os.makedirs(os.path.dirname(new_full), exist_ok=True)
+                os.rename(newest, new_full)
+                self.downloaded_file_path = new_full
+                self.log.emit(f"تم تنظيم الملف: {os.path.basename(new_full)}")
+        except Exception as exc:
+            self.log.emit(f"[Rename] {exc}")
+
+    def _compute_checksum(self) -> str:
+        """Compute SHA-256 of the downloaded file if enabled."""
+        if not self.verify_checksum or not self.downloaded_file_path:
+            return ""
+        if not os.path.isfile(self.downloaded_file_path):
+            return ""
+        sha = hashlib.sha256()
+        try:
+            with open(self.downloaded_file_path, "rb") as f:
+                for block in iter(lambda: f.read(65536), b""):
+                    sha.update(block)
+            digest = sha.hexdigest()[:16]  # Short version
+            self.log.emit(f"✅ SHA-256 (16-char): {digest}")
+            return digest
+        except Exception:
+            return ""
+
+
+
+
+====================================================================================================
+FILE: core\duplicate_finder.py
+====================================================================================================
+
+
+"""
+core/duplicate_finder.py — Smart Duplicate Detection Engine
+Checks if a URL has already been downloaded before starting a new download.
+Also scans local files to detect content-level duplicates by filename.
+"""
+import os
+import re
+import hashlib
+import sqlite3
+import logging
+from typing import Optional
+
+logger = logging.getLogger("SnapDownloader.DuplicateFinder")
+
+
+def check_url_duplicate(url: str) -> Optional[dict]:
+    """
+    Check if a URL was previously downloaded successfully.
+    Returns existing record dict or None.
+    """
+    try:
+        from core.database import url_exists_in_history
+        return url_exists_in_history(url.strip())
+    except (ImportError, sqlite3.Error) as exc:
+        logger.debug(f"[DuplicateFinder] URL duplicate check failed: {exc}")
+        return None
+
+
+def get_file_hash(file_path: str, block_size: int = 65536) -> Optional[str]:
+    """Compute SHA-256 hash of a file for content-level duplicate detection."""
+    if not file_path or not os.path.isfile(file_path):
+        return None
+    sha = hashlib.sha256()
+    try:
+        with open(file_path, "rb") as f:
+            for block in iter(lambda: f.read(block_size), b""):
+                sha.update(block)
+        return sha.hexdigest()
+    except (OSError, IOError) as exc:
+        logger.debug(f"[DuplicateFinder] File hash failed for {file_path}: {exc}")
+        return None
+
+
+def scan_for_local_duplicates(directory: str, title: str) -> list[str]:
+    """
+    Scan download directory for files with similar names.
+    Returns list of matching file paths.
+    """
+    if not os.path.isdir(directory):
+        return []
+
+    title_clean = _normalize(title)
+    matches = []
+    try:
+        for filename in os.listdir(directory):
+            if _normalize(os.path.splitext(filename)[0]) == title_clean:
+                matches.append(os.path.join(directory, filename))
+    except (OSError, PermissionError) as exc:
+        logger.debug(f"[DuplicateFinder] Local duplicate scan failed for {directory}: {exc}")
+    return matches
+
+
+def _normalize(text: str) -> str:
+    """Normalize text for fuzzy comparison."""
+    text = str(text or "").lower().strip()
+    # Remove common video ID patterns [abc123]
+    text = re.sub(r'\[.*?\]', '', text)
+    # Remove non-alphanumeric
+    text = re.sub(r'[^a-z0-9\u0600-\u06ff ]', '', text)
+    return " ".join(text.split())
+
+
+def build_duplicate_report(url: str, out_dir: str, title: str) -> dict:
+    """
+    Build a full duplicate detection report before starting a download.
+    Returns a dict with:
+        - url_duplicate: existing DB record or None
+        - local_files: list of matching local file paths
+        - is_duplicate: True if any duplicate found
+    """
+    url_dup = check_url_duplicate(url)
+    local_files = scan_for_local_duplicates(out_dir, title) if title else []
+
+    return {
+        "url_duplicate": url_dup,
+        "local_files": local_files,
+        "is_duplicate": url_dup is not None or len(local_files) > 0,
+    }
+
+
+
+
+====================================================================================================
+FILE: core\error_handler.py
+====================================================================================================
+
+
+import logging
+import traceback
+from PySide6.QtWidgets import QMessageBox
+
+logger = logging.getLogger("ErrorHandler")
+
+class ErrorHandler:
+    @staticmethod
+    def show_error(parent, title: str, message: str, exc: Exception = None):
+        """Show an error dialog with optional exception details."""
+        if exc:
+            logger.error(f"{title}: {message} - {exc}", exc_info=True)
+            details = traceback.format_exc()
+            msg = QMessageBox(parent)
+            msg.setIcon(QMessageBox.Icon.Critical)
+            msg.setWindowTitle(title)
+            msg.setText(message)
+            msg.setDetailedText(details)
+            msg.exec()
+        else:
+            logger.error(f"{title}: {message}")
+            QMessageBox.critical(parent, title, message)
+
+    @staticmethod
+    def show_warning(parent, title: str, message: str):
+        """Show a warning dialog."""
+        logger.warning(f"{title}: {message}")
+        QMessageBox.warning(parent, title, message)
+
+    @staticmethod
+    def show_info(parent, title: str, message: str):
+        """Show an info dialog."""
+        logger.info(f"{title}: {message}")
+        QMessageBox.information(parent, title, message)
+
+    @staticmethod
+    def confirm(parent, title: str, message: str) -> bool:
+        """Show a yes/no confirmation dialog and return True if user confirms."""
+        logger.info(f"{title}: {message}")
+        resp = QMessageBox.question(
+            parent,
+            title,
+            message,
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        return resp == QMessageBox.StandardButton.Yes
+
+
+
+
+====================================================================================================
+FILE: core\event_bus.py
+====================================================================================================
+
+
+"""
+core/event_bus.py — Decoupled Event Bus for SnapDownloader
+
+H-04 FIX: Added thread-safety awareness. The publish() method now warns when
+called from a non-main thread and documents the correct pattern for cross-thread
+communication (use Qt Signals to bridge to the main thread).
+"""
+import logging
+import threading
+from dataclasses import dataclass
+from typing import Callable, Any
+
+try:
+    from PySide6.QtCore import QObject, Signal
+except ImportError:
+    from PyQt6.QtCore import QObject, pyqtSignal as Signal
+
+logger = logging.getLogger("SnapDownloader.EventBus")
+
+
+# ── Event Data Classes ───────────────────────────────────────────────────────
+
+@dataclass
+class ShowNotificationEvent:
+    message: str
+    level: str = "info"
+    title: str = ""
+
+@dataclass
+class DownloadFinishedEvent:
+    worker_id: object
+    success: bool
+    message: str
+    data: dict
+
+@dataclass
+class ExtensionLinkReceivedEvent:
+    payload: dict
+
+
+class _EventDispatcher(QObject):
+    published = Signal(object)
+
+
+# ── Event Bus ────────────────────────────────────────────────────────────────
+
+class EventBus:
+    def __init__(self):
+        self._subscribers: dict[type, list[Callable]] = {}
+        self._lock = threading.Lock()
+        self._dispatcher = _EventDispatcher()
+        self._dispatcher.published.connect(self._deliver)
+
+    def subscribe(self, event_type: type, callback: Callable):
+        with self._lock:
+            self._subscribers.setdefault(event_type, []).append(callback)
+
+    def unsubscribe(self, event_type: type, callback: Callable):
+        with self._lock:
+            listeners = self._subscribers.get(event_type, [])
+            if callback in listeners:
+                listeners.remove(callback)
+
+    def publish(self, event: Any):
+        if threading.current_thread() is not threading.main_thread():
+            self._dispatcher.published.emit(event)
+            return
+        self._deliver(event)
+
+    def _deliver(self, event: Any):
+        event_type = type(event)
+        with self._lock:
+            listeners = list(self._subscribers.get(event_type, []))
+        for cb in listeners:
+            try:
+                cb(event)
+            except Exception as exc:
+                logger.error(f"[EventBus] Error in subscriber {cb}: {exc}")
+
+
+# Singleton
+event_bus = EventBus()
+
+
+
+
+====================================================================================================
+FILE: core\extension_server.py
+====================================================================================================
+
+
+"""
+core/extension_server.py — Local WebSocket Server for Browser Extension
+Allows the SnapDownloader browser extension to send links directly to the app.
+
+M-06 FIX: Added proper stop() mechanism using asyncio.Event to cleanly
+shut down the WebSocket server instead of relying on daemon thread death.
+"""
+import asyncio
+import ipaddress
+import json
+import logging
+import os
+import threading
+import urllib.parse
+from .event_bus import event_bus, ShowNotificationEvent, ExtensionLinkReceivedEvent
+
+logger = logging.getLogger("SnapDownloader.ExtensionServer")
+
+class ExtensionServer:
+    def __init__(self, host="127.0.0.1", port=8765):
+        self.host = host
+        self.port = port
+        self.server = None
+        self._loop = None
+        self._thread = None
+        self._stop_event = None  # M-06: asyncio.Event for clean shutdown
+        self.max_message_size = 65536
+        self.auth_token = str(os.getenv("SNAPDOWNLOADER_EXTENSION_TOKEN", "")).strip()
+        self.allow_private_targets = str(os.getenv("SNAPDOWNLOADER_ALLOW_PRIVATE_TARGETS", "")).strip().lower() in {"1", "true", "yes", "on"}
+        self.rate_limit_window_seconds = 2.0
+        self.rate_limit_max_messages = 20
+        self.max_links_per_connection = 100
+
+    def _is_safe_target_host(self, host: str) -> bool:
+        host = str(host or "").strip().lower()
+        if not host:
+            return False
+        if host in {"localhost", "127.0.0.1", "::1"}:
+            return self.allow_private_targets
+        try:
+            ip = ipaddress.ip_address(host)
+            if ip.is_loopback or ip.is_private or ip.is_link_local or ip.is_multicast or ip.is_reserved:
+                return self.allow_private_targets
+            return True
+        except ValueError:
+            return True
+
+    def _is_allowed_url(self, url: str) -> bool:
+        try:
+            parsed = urllib.parse.urlparse(str(url or "").strip())
+        except Exception:
+            return False
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+            return False
+        return self._is_safe_target_host(parsed.hostname or "")
+
+    def _is_allowed_origin(self, origin: str) -> bool:
+        origin = str(origin or "").strip().lower()
+        if not origin:
+            return True
+        return origin.startswith("chrome-extension://") or origin.startswith("moz-extension://") or origin.startswith("edge-extension://")
+
+    async def _handler(self, websocket):
+        try:
+            origin = ""
+            try:
+                origin = str(websocket.request_headers.get("Origin", "")).strip()
+            except Exception:
+                origin = ""
+            if not self._is_allowed_origin(origin):
+                logger.warning(f"Rejected extension websocket from untrusted origin: {origin}")
+                try:
+                    await websocket.close(code=1008, reason="untrusted origin")
+                except Exception:
+                    pass
+                return
+            loop = asyncio.get_running_loop()
+            window_start = loop.time()
+            window_messages = 0
+            links_sent = 0
+            invalid_payloads = 0
+            async for message in websocket:
+                if not isinstance(message, str):
+                    continue
+                now = loop.time()
+                if now - window_start >= self.rate_limit_window_seconds:
+                    window_start = now
+                    window_messages = 0
+                window_messages += 1
+                if window_messages > self.rate_limit_max_messages:
+                    logger.warning("Rejected extension message due to rate limit.")
+                    continue
+                if len(message.encode("utf-8", errors="ignore")) > self.max_message_size:
+                    logger.warning("Rejected oversized extension message.")
+                    continue
+                try:
+                    data = json.loads(message)
+                except Exception:
+                    invalid_payloads += 1
+                    logger.warning("Rejected extension message with invalid JSON.")
+                    if invalid_payloads > 10:
+                        try:
+                            await websocket.close(code=1008, reason="invalid payload")
+                        except Exception:
+                            pass
+                        return
+                    continue
+                if not isinstance(data, dict):
+                    invalid_payloads += 1
+                    logger.warning("Rejected extension message with invalid payload type.")
+                    if invalid_payloads > 10:
+                        try:
+                            await websocket.close(code=1008, reason="invalid payload")
+                        except Exception:
+                            pass
+                        return
+                    continue
+                if self.auth_token:
+                    token = str(data.get("token", "")).strip()
+                    if token != self.auth_token:
+                        logger.warning("Rejected extension message with invalid token.")
+                        continue
+                url = data.get("url")
+                if url and self._is_allowed_url(url):
+                    links_sent += 1
+                    if links_sent > self.max_links_per_connection:
+                        logger.warning("Closing extension websocket due to excessive link submissions.")
+                        try:

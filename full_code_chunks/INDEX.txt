@@ -1,0 +1,13 @@
+﻿Full Code Chunks Index
+Source: D:\شوية برامج\viddownloader\New Text Document (2).txt
+Generated: 2026-04-13 21:34:50
+Parts: 8
+
+part001: start=0, length=99953, file=D:\شوية برامج\viddownloader\full_code_chunks\New Text Document (2)_part001.txt
+part002: start=99953, length=99953, file=D:\شوية برامج\viddownloader\full_code_chunks\New Text Document (2)_part002.txt
+part003: start=199906, length=99996, file=D:\شوية برامج\viddownloader\full_code_chunks\New Text Document (2)_part003.txt
+part004: start=299902, length=99971, file=D:\شوية برامج\viddownloader\full_code_chunks\New Text Document (2)_part004.txt
+part005: start=399873, length=99914, file=D:\شوية برامج\viddownloader\full_code_chunks\New Text Document (2)_part005.txt
+part006: start=499787, length=99940, file=D:\شوية برامج\viddownloader\full_code_chunks\New Text Document (2)_part006.txt
+part007: start=599727, length=99976, file=D:\شوية برامج\viddownloader\full_code_chunks\New Text Document (2)_part007.txt
+part008: start=699703, length=53834, file=D:\شوية برامج\viddownloader\full_code_chunks\New Text Document (2)_part008.txt

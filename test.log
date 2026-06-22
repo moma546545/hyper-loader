@@ -1,0 +1,7 @@
+INFO:SnapDownloader.Hotkeys:[Hotkeys] 'keyboard' package not installed — global hotkeys disabled.
+DEBUG:asyncio:Using proactor: IocpProactor
+INFO:SnapDownloader.ExtensionServer:Extension server started on ws://127.0.0.1:8765
+INFO:SnapDownloader.MemGuard:[MemGuard] Started.
+INFO:websockets.server:server listening on 127.0.0.1:8765
+INFO:SnapDownloader.ExtensionServer:Extension WebSocket server listening on ws://127.0.0.1:8765
+INFO:SnapDownloader.QueueManager:Adding 3 tasks to queue.

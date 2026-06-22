@@ -1,0 +1,14 @@
+{
+  "queue_items": [],
+  "settings": {
+    "out_dir": "C:\\Users\\Mostafa Zahran\\Downloads\\New folder\\downloads",
+    "retries": 3,
+    "auto_retry_delay_seconds": 4,
+    "queue_auto_retry_limit": 2,
+    "bandwidth_limit_kbps": 0,
+    "use_aria2": true,
+    "max_concurrent": 3,
+    "cookies_path": "",
+    "theme": "Aurora Space"
+  }
+}

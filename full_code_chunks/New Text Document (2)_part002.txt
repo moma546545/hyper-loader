@@ -1,0 +1,2222 @@
+﻿        return self.settings_controller.session_path()
+
+    def _migrate_legacy_session_json(self):
+        self.settings_controller.migrate_legacy_session_json()
+
+    def _session_save_loop(self):
+        self.settings_controller.session_save_loop()
+
+    def _build_session_payload(self) -> dict:
+        return self.settings_controller.build_session_payload()
+
+    def _write_session_payload(self, payload: dict):
+        self.settings_controller.write_session_payload(payload)
+
+    def _save_session(self, sync: bool = False):
+        self.settings_controller.save_session(sync=sync)
+
+    def _read_session_payload(self) -> dict:
+        return self.settings_controller.read_session_payload()
+
+    def _apply_session_payload(self, payload: dict):
+        self.settings_controller.apply_session_payload(payload)
+
+    def _load_session_async(self):
+        self.settings_controller.load_session_async()
+
+    def _handle_session_load_result(self, result: dict):
+        self.settings_controller.handle_session_load_result(result)
+
+    def _load_session(self):
+        try:
+            payload = self._read_session_payload()
+            self._apply_session_payload(payload)
+        except (OSError, ValueError, TypeError, RuntimeError, json.JSONDecodeError) as exc:
+            self._append_log(f"تعذر تحميل الجلسة: {exc}")
+
+    def closeEvent(self, event):
+        self._is_closing = True
+        self.queue_running = False
+        self.queue_paused = False
+        try:
+            if hasattr(self, "liquid_timer"):
+                self.liquid_timer.stop()
+        except (RuntimeError, AttributeError) as exc:
+            logger.debug(f"تعذر إيقاف liquid_timer: {exc}")
+        try:
+            if hasattr(self, "trial_timer") and self.trial_timer is not None:
+                self.trial_timer.stop()
+        except (RuntimeError, AttributeError) as exc:
+            logger.debug(f"تعذر إيقاف trial_timer: {exc}")
+        try:
+            if hasattr(self, "_scheduler_timer"):
+                self._scheduler_timer.stop()
+        except (RuntimeError, AttributeError) as exc:
+            logger.debug(f"تعذر إيقاف scheduler_timer: {exc}")
+        try:
+            if hasattr(self, "_storage_watchdog_timer") and self._storage_watchdog_timer is not None:
+                self._storage_watchdog_timer.stop()
+        except (RuntimeError, AttributeError) as exc:
+            logger.debug(f"تعذر إيقاف storage_watchdog_timer: {exc}")
+        try:
+            if hasattr(self, "hotkey_manager"):
+                self.hotkey_manager.stop()
+        except (RuntimeError, AttributeError) as exc:
+            logger.debug(f"تعذر إيقاف hotkey_manager: {exc}")
+        try:
+            if hasattr(self, "mini_window") and self.mini_window:
+                self.mini_window.hide()
+                self.mini_window.deleteLater()
+        except (RuntimeError, AttributeError) as exc:
+            logger.debug(f"تعذر تنظيف mini_window: {exc}")
+        try:
+            if hasattr(self, "toast_timer") and self.toast_timer is not None:
+                self.toast_timer.stop()
+        except (RuntimeError, AttributeError) as exc:
+            logger.debug(f"تعذر إيقاف toast_timer: {exc}")
+        try:
+            if hasattr(self, "_visible_thumb_timer") and self._visible_thumb_timer is not None:
+                self._visible_thumb_timer.stop()
+        except (RuntimeError, AttributeError) as exc:
+            logger.debug(f"تعذر إيقاف visible_thumb_timer: {exc}")
+        try:
+            if hasattr(self, "clip_watcher") and self.clip_watcher is not None:
+                self.clip_watcher.stop()
+                self.clip_watcher.hide()
+        except (RuntimeError, AttributeError) as exc:
+            logger.debug(f"تعذر إيقاف clip_watcher: {exc}")
+        try:
+            memory_guard.stop()
+        except RuntimeError as exc:
+            logger.debug(f"تعذر إيقاف memory_guard: {exc}")
+        try:
+            if self.analyze_worker is not None and self.analyze_worker.isRunning():
+                self.analyze_worker.requestInterruption()
+                self.analyze_worker.wait(800)
+                if self.analyze_worker.isRunning():
+                    self.analyze_worker.terminate()
+                    self.analyze_worker.wait(800)
+        except (RuntimeError, AttributeError) as exc:
+            logger.debug(f"تعذر إيقاف analyze_worker: {exc}")
+        for worker in list(self.active_workers.values()):
+            try:
+                worker.stop()
+            except (RuntimeError, AttributeError) as exc:
+                logger.debug(f"تعذر إرسال stop إلى worker: {exc}")
+        for worker in list(self.active_workers.values()):
+            try:
+                worker.wait(5000)
+                if worker.isRunning():
+                    worker.terminate()
+                    worker.wait(1500)
+            except (RuntimeError, AttributeError) as exc:
+                logger.debug(f"تعذر إنهاء worker أثناء الإغلاق: {exc}")
+        try:
+            event_bus.unsubscribe(ShowNotificationEvent, self._on_show_notification_event)
+            event_bus.unsubscribe(DownloadFinishedEvent, self._on_download_finished_event)
+        except (RuntimeError, ValueError) as exc:
+            logger.debug(f"تعذر إلغاء الاشتراك من event_bus: {exc}")
+        self._session_save_shutdown = True
+        self._session_save_event.set()
+        self._save_stats()
+        self._save_session(sync=True)
+        try:
+            if hasattr(self, "_session_save_thread") and self._session_save_thread is not None and self._session_save_thread.is_alive():
+                self._session_save_thread.join(timeout=2.0)
+        except RuntimeError as exc:
+            logger.debug(f"تعذر انتظار session_save_thread: {exc}")
+        try:
+            if self._session_load_thread is not None and self._session_load_thread.is_alive():
+                self._session_load_thread.join(timeout=1.0)
+        except RuntimeError as exc:
+            logger.debug(f"تعذر انتظار session_load_thread: {exc}")
+        try:
+            if hasattr(self, "tray_icon") and self.tray_icon is not None:
+                self.tray_icon.hide()
+        except (RuntimeError, AttributeError) as exc:
+            logger.debug(f"تعذر تنظيف tray_icon: {exc}")
+        super().closeEvent(event)
+
+    def _append_log(self, message: str):
+        text = str(message or "").strip()
+        if not text:
+            return
+        stamp = datetime.now().strftime("%H:%M:%S")
+        line = f"[{stamp}] {text}"
+        self.logs.append(line)
+        if len(self.logs) > 260:
+            self.logs = self.logs[-260:]
+            self.search_view.log_text.setPlainText("\n".join(self.logs))
+            return
+        self.search_view.log_text.append(line)
+
+    def _set_status(self, value: str):
+        self.search_view.state_label.setText(value)
+
+    def _set_downloads_filter(self, key: str):
+        self.downloads_filter = key
+        self.downloads_page = 1
+        if hasattr(self, "downloads_view") and hasattr(self.downloads_view, "set_active_filter"):
+            self.downloads_view.set_active_filter(key)
+        else:
+            for name, btn in self.downloads_view.filter_buttons.items():
+                btn.setChecked(name == key)
+        self._refresh_downloads_list()
+
+    def _set_downloads_sort(self, value: str):
+        self.downloads_sort = value or "Date (Newest)"
+        self.downloads_page = 1
+        self._refresh_downloads_list()
+
+    def _set_queue_state_filter(self, value: str):
+        mapping = {
+            "Queue: All": "all",
+            "Queue: Pending": "pending",
+            "Queue: Running": "running",
+            "Queue: Paused": "paused",
+            "Queue: Failed": "failed",
+            "Queue: Cancelled": "cancelled",
+            "الكل": "all",
+            "في الانتظار": "pending",
+            "قيد التشغيل": "running",
+            "متوقف مؤقتاً": "paused",
+            "فشل": "failed",
+            "ملغى": "cancelled",
+        }
+        self.queue_state_filter = mapping.get(value, "all")
+        self.downloads_page = 1
+        self._refresh_downloads_list()
+
+    def _set_downloads_page(self, value: str):
+        try:
+            self.downloads_page = max(1, int(value))
+        except (TypeError, ValueError, OverflowError):
+            self.downloads_page = 1
+        self._refresh_downloads_list()
+
+    def _update_downloads_dashboard(self):
+        if not hasattr(self, "downloads_view"):
+            return
+        if not hasattr(self.downloads_view, "set_dashboard_counts") and not hasattr(self.downloads_view, "dash_active"):
+            return
+        items = self.queue_manager.get_queue_items()
+        active = len([q for q in items if str(q.get("status", "")).lower() == "running"])
+        queued = len([q for q in items if str(q.get("status", "pending")).lower() in {"pending", "paused", "queued", "waiting"}])
+        completed = len([h for h in self.stats.get("download_history", []) if str(h.get("status", "")).lower() in {"success", "completed"}])
+        failed = len([h for h in self.stats.get("download_history", []) if str(h.get("status", "")).lower() == "failed"])
+        if hasattr(self, "downloads_view") and hasattr(self.downloads_view, "set_dashboard_counts"):
+            self.downloads_view.set_dashboard_counts(active, queued, completed, failed)
+        else:
+            self.downloads_view.dash_active.setText(f"نشط\n{active}")
+            self.downloads_view.dash_queued.setText(f"في الطابور\n{queued}")
+            self.downloads_view.dash_completed.setText(f"مكتمل\n{completed}")
+            self.downloads_view.dash_failed.setText(f"فشل\n{failed}")
+
+    def _retry_failed_items(self):
+        items = self.queue_manager.get_queue_items()
+        failed = [item for item in items if item.get("status") == "failed"]
+        restored = 0
+        for item in failed:
+            item["status"] = "pending"
+            restored += 1
+        if restored == 0:
+            self._warn("لا توجد عناصر فاشلة لإعادة المحاولة")
+            return
+        self._save_stats()
+        self._append_log(f"تمت إعادة {restored} عنصر فاشل إلى الطابور")
+        self._set_downloads_filter("queued")
+        if restored > 0 and not self.queue_running:
+            self._start_queue_download()
+
+    def _clear_completed_history(self):
+        try:
+            before = count_history("success")
+            delete_history("success")
+            self.stats["download_history"] = self._fetch_db_history(limit=250)
+            self._save_stats()
+            self._append_log(f"تم حذف {before} عنصر مكتمل من السجل")
+            self._refresh_downloads_list()
+        except (RuntimeError, OSError, ValueError, TypeError) as exc:
+            self._warn(f"فشل حذف السجل المكتمل: {exc}")
+
+    def _export_history_csv(self):
+        path, _ = QFileDialog.getSaveFileName(self, "Export Download History", "download_history.csv", "CSV Files (*.csv)")
+        if not path:
+            return
+        rows = self._fetch_db_history(limit=20000)
+        try:
+            with open(path, "w", encoding="utf-8", newline="") as f:
+                writer = csv.writer(f)
+                writer.writerow(["timestamp", "title", "url", "mode", "format", "quality", "size", "status", "message"])
+                for item in rows:
+                    writer.writerow(
+                        [
+                            str(item.get("timestamp", "")),
+                            str(item.get("title", "")),
+                            str(item.get("url", "")),
+                            str(item.get("mode", "")),
+                            str(item.get("format", "")),
+                            str(item.get("quality", "")),
+                            str(item.get("size", "")),
+                            str(item.get("status", "")),
+                            str(item.get("message", "")),
+                        ]
+                    )
+            self._info("تم تصدير السجل بنجاح")
+            self._append_log(f"تم تصدير السجل إلى {path}")
+        except (OSError, ValueError, TypeError) as exc:
+            self._warn(f"فشل تصدير السجل: {exc}")
+
+    def _export_history_json(self):
+        path, _ = QFileDialog.getSaveFileName(self, "Export Download History", "download_history.json", "JSON Files (*.json)")
+        if not path:
+            return
+        rows = self._fetch_db_history(limit=20000)
+        try:
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(rows, f, ensure_ascii=False, indent=2)
+            self._info("تم تصدير السجل JSON بنجاح")
+            self._append_log(f"تم تصدير السجل JSON إلى {path}")
+        except (OSError, ValueError, TypeError) as exc:
+            self._warn(f"فشل تصدير JSON: {exc}")
+
+    def _export_queue_to_file(self):
+        items = self.queue_manager.get_queue_items()
+        if not items:
+            self._warn(_("لا توجد عناصر في الطابور لتصديرها"))
+            return
+        default_path = os.path.join(os.getcwd(), "queue_items.json")
+        path, _ = QFileDialog.getSaveFileName(
+            self,
+            _("Export Queue"),
+            default_path,
+            "JSON Files (*.json);;All Files (*)",
+        )
+        if not path:
+            return
+        payload = {"queue_items": items}
+        try:
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(payload, f, ensure_ascii=False, indent=2)
+            self._info(_("تم تصدير الطابور بنجاح إلى: {path}").format(path=path))
+            self._append_log(f"تم تصدير الطابور إلى {path}")
+        except (OSError, ValueError, TypeError) as exc:
+            self._warn(_("فشل تصدير الطابور: {err}").format(err=str(exc)))
+
+    def _import_queue_from_file(self):
+        path, _ = QFileDialog.getOpenFileName(
+            self,
+            _("Import Queue"),
+            "",
+            "JSON Files (*.json);;All Files (*)",
+        )
+        if not path:
+            return
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            if isinstance(data, dict):
+                items = data.get("queue_items", [])
+            elif isinstance(data, list):
+                items = data
+            else:
+                raise ValueError("Invalid queue file format")
+            normalized = []
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+                status = str(item.get("status", "pending")).lower()
+                if status == "running":
+                    item["status"] = "pending"
+                normalized.append(item)
+            if not normalized:
+                self._warn(_("لا توجد عناصر صالحة في ملف الطابور"))
+                return
+            self.queue_manager.add_tasks(normalized)
+            self._save_session()
+            self._refresh_downloads_list()
+            self._info(_("تم استيراد {count} عنصر إلى الطابور").format(count=len(normalized)))
+        except (OSError, ValueError, TypeError, json.JSONDecodeError) as exc:
+            self._warn(_("فشل استيراد الطابور: {err}").format(err=str(exc)))
+
+    def _retry_all_failed_queue_items(self):
+        if self.queue_running or self._active_workers_count() > 0:
+            self._warn(_("أوقف التحميلات أولاً قبل إعادة المحاولة الجماعية"))
+            return
+        items = self.queue_manager.get_queue_items()
+        changed = False
+        for item in items:
+            status = str(item.get("status", "pending")).lower()
+            if status in {"failed", "cancelled", "paused"}:
+                item["status"] = "pending"
+                item["retry_count"] = 0
+                item["next_retry_at"] = 0
+                changed = True
+        if not changed:
+            self._info(_("لا توجد عناصر فاشلة أو ملغاة لإعادة المحاولة"))
+            return
+        self._save_session()
+        self.queue_running = True
+        self.queue_paused = False
+        self._refresh_downloads_list()
+        self._process_parallel_queue()
+
+    def _open_downloads_folder(self):
+        target = self.current_download_path or self.search_view.out_dir_input.text().strip() or default_download_dir()
+        folder = target if os.path.isdir(target) else os.path.dirname(target)
+        folder = folder or os.getcwd()
+        self._open_path_in_file_manager(folder)
+
+    def _open_folder(self, file_path: str):
+        path = str(file_path or "").strip()
+        if path and os.path.isfile(path):
+            folder = os.path.dirname(path)
+        elif path and os.path.isdir(path):
+            folder = path
+        else:
+            folder = self.current_download_path or self.search_view.out_dir_input.text().strip() or default_download_dir()
+        folder = folder if os.path.isdir(folder) else os.path.dirname(folder)
+        folder = folder or os.getcwd()
+        self._open_path_in_file_manager(folder)
+
+    def _open_path_in_file_manager(self, folder: str):
+        try:
+            if sys.platform == "win32":
+                os.startfile(folder)
+            elif sys.platform == "darwin":
+                subprocess.Popen(["open", folder])
+            else:
+                subprocess.Popen(["xdg-open", folder])
+        except (OSError, subprocess.SubprocessError, ValueError) as exc:
+            self._warn(f"تعذر فتح المجلد: {exc}")
+
+    def _size_to_bytes(self, size_text: str):
+        text = str(size_text or "").strip().upper().replace("IB", "B")
+        if not text or text == "--":
+            return 0
+        try:
+            if text.endswith("GB"):
+                return int(float(text[:-2].strip()) * 1024 * 1024 * 1024)
+            if text.endswith("MB"):
+                return int(float(text[:-2].strip()) * 1024 * 1024)
+            if text.endswith("KB"):
+                return int(float(text[:-2].strip()) * 1024)
+            if text.endswith("B"):
+                return int(float(text[:-1].strip()))
+        except (ValueError, TypeError):
+            return 0
+        return 0
+
+    def _apply_history_sort(self, indexed_items):
+        data = list(indexed_items)
+        key = self.downloads_sort
+        if key == "Date (Oldest)":
+            data.sort(key=lambda x: str(x[1].get("timestamp", "")))
+        elif key == "Alphabetical (A → Z)":
+            data.sort(key=lambda x: str(x[1].get("title", "")).lower())
+        elif key == "Alphabetical (Z → A)":
+            data.sort(key=lambda x: str(x[1].get("title", "")).lower(), reverse=True)
+        elif key == "Size (Largest)":
+            data.sort(key=lambda x: self._size_to_bytes(x[1].get("size", "--")), reverse=True)
+        elif key == "Size (Smallest)":
+            data.sort(key=lambda x: self._size_to_bytes(x[1].get("size", "--")))
+        else:
+            data.sort(key=lambda x: str(x[1].get("timestamp", "")), reverse=True)
+        return data
+
+    def _load_thumbnail(self, url: str, width: int = 132, height: int = 74):
+        thumb_url = str(url or "").strip()
+        if not thumb_url:
+            return None
+        cache_key = f"{thumb_url}|{width}x{height}"
+        with self._thumbnail_state_lock:
+            if cache_key in self.thumbnail_cache:
+                self.thumbnail_cache.move_to_end(cache_key)
+                return self.thumbnail_cache[cache_key]
+            if cache_key in self.thumbnail_failed:
+                return None
+        if os.path.isfile(thumb_url):
+            pixmap = QPixmap(thumb_url)
+            if pixmap.isNull():
+                self._mark_thumbnail_failed(cache_key)
+                return None
+            scaled = pixmap.scaled(
+                width,
+                height,
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
+            )
+            with self._thumbnail_state_lock:
+                self.thumbnail_cache[cache_key] = scaled
+                self.thumbnail_cache.move_to_end(cache_key)
+            self._trim_thumbnail_cache()
+            return scaled
+        return None
+
+    def _queue_download_thumbnail(self, model_index, item: dict, label: QLabel, width: int, height: int):
+        self.downloads_thumbnail_jobs.append(
+            {
+                "model_index": model_index,
+                "item": item,
+                "label": label,
+                "width": width,
+                "height": height,
+            }
+        )
+
+    def _schedule_visible_thumbnail_load(self, delay_ms: int = 0):
+        if not hasattr(self, "_visible_thumb_timer"):
+            return
+        self._visible_thumb_timer.start(max(0, int(delay_ms)))
+
+    def _process_visible_thumbnail_jobs(self):
+        if not hasattr(self, "downloads_view") or not hasattr(self.downloads_view, "downloads_list") or not self.downloads_thumbnail_jobs:
+            return
+        viewport = self.downloads_view.downloads_list.viewport()
+        if viewport is None:
+            return
+        viewport_rect = viewport.rect()
+        remaining = []
+        loaded = 0
+        max_per_tick = THUMBNAIL_VISIBLE_BATCH_PER_TICK
+        for job in self.downloads_thumbnail_jobs:
+            model_index = job.get("model_index")
+            label = job.get("label")
+            if model_index is None or label is None:
+                continue
+            if loaded >= max_per_tick:
+                remaining.append(job)
+                continue
+            item_rect = self.downloads_view.downloads_list.visualRect(model_index)
+            if not item_rect.isValid():
+                remaining.append(job)
+                continue
+            if item_rect.bottom() < 0 or item_rect.top() > viewport_rect.height():
+                remaining.append(job)
+                continue
+            self._set_download_card_thumbnail(
+                job.get("item", {}),
+                label,
+                int(job.get("width", 140)),
+                int(job.get("height", 80)),
+            )
+            loaded += 1
+        self.downloads_thumbnail_jobs = remaining
+        if self.downloads_thumbnail_jobs and loaded >= max_per_tick:
+            self._schedule_visible_thumbnail_load(20)
+
+    def _set_thumb_placeholder(self, label: QLabel):
+        t = get_theme(self.theme)
+        label.setText("🎬")
+        label.setStyleSheet(f"background:transparent; border:none; color:{t['muted']}; font-size:32px;")
+
+    def _set_download_card_thumbnail(self, item: dict, label: QLabel, width: int, height: int):
+        thumb_url = str(item.get("thumbnail", "") or "").strip()
+        if not thumb_url:
+            self._set_thumb_placeholder(label)
+            return
+        pix = self._load_thumbnail(thumb_url, width, height)
+        if pix is not None:
+            label.setPixmap(pix)
+            label.setText("")
+            return
+        if not thumb_url.lower().startswith(("http://", "https://")):
+            self._mark_thumbnail_failed(f"{thumb_url}|{width}x{height}")
+            self._set_thumb_placeholder(label)
+            return
+        cache_key = f"{thumb_url}|{width}x{height}"
+        should_start_request = False
+        with self._thumbnail_state_lock:
+            if cache_key in self.thumbnail_failed:
+                self._set_thumb_placeholder(label)
+                return
+            waiters = self.thumbnail_waiters.setdefault(cache_key, [])
+            waiters.append(label)
+            self._thumbnail_waiter_timestamps[cache_key] = time.time()
+            if len(waiters) > 1:
+                return
+            if self._active_thumbnail_requests >= self._max_concurrent_thumbnails:
+                return
+            self._active_thumbnail_requests += 1
+            should_start_request = True
+        if not should_start_request:
+            return
+        request = QNetworkRequest(QUrl(thumb_url))
+        request.setTransferTimeout(2500)
+        reply = self.net_manager.get(request)
+        reply.finished.connect(
+            lambda r=reply, u=thumb_url, w=width, h=height: self._on_download_thumbnail_loaded(r, u, w, h)
+        )
+
+    def _on_download_thumbnail_loaded(self, reply: QNetworkReply, thumb_url: str, width: int, height: int):
+        cache_key = f"{thumb_url}|{width}x{height}"
+        with self._thumbnail_state_lock:
+            waiters = list(self.thumbnail_waiters.pop(cache_key, []))
+            self._thumbnail_waiter_timestamps.pop(cache_key, None)
+        scaled = None
+        if reply.error() == QNetworkReply.NetworkError.NoError:
+            data = reply.readAll()
+            pixmap = QPixmap()
+            if pixmap.loadFromData(data):
+                scaled = pixmap.scaled(
+                    width,
+                    height,
+                    Qt.AspectRatioMode.KeepAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation,
+                )
+                with self._thumbnail_state_lock:
+                    self.thumbnail_cache[cache_key] = scaled
+                    self.thumbnail_cache.move_to_end(cache_key)
+                self._trim_thumbnail_cache()
+            else:
+                self._mark_thumbnail_failed(cache_key)
+        else:
+            self._mark_thumbnail_failed(cache_key)
+        reply.deleteLater()
+        with self._thumbnail_state_lock:
+            self._active_thumbnail_requests = max(0, self._active_thumbnail_requests - 1)
+        for label in waiters:
+            try:
+                if scaled is not None:
+                    label.setPixmap(scaled)
+                    label.setText("")
+                else:
+                    self._set_thumb_placeholder(label)
+            except RuntimeError:
+                continue
+        self._process_pending_thumbnails()
+
+    def _process_pending_thumbnails(self):
+        with self._thumbnail_state_lock:
+            if self._active_thumbnail_requests >= self._max_concurrent_thumbnails:
+                return
+            pending_keys = list(self.thumbnail_waiters.keys())
+        for cache_key in pending_keys:
+            with self._thumbnail_state_lock:
+                if self._active_thumbnail_requests >= self._max_concurrent_thumbnails:
+                    return
+                if cache_key in self.thumbnail_cache or cache_key in self.thumbnail_failed:
+                    continue
+                if cache_key not in self.thumbnail_waiters:
+                    continue
+            parts = cache_key.split("|")
+            if len(parts) < 2:
+                continue
+            thumb_url = parts[0]
+            dims = parts[1].split("x")
+            if len(dims) < 2:
+                continue
+            try:
+                width, height = int(dims[0]), int(dims[1])
+            except ValueError:
+                continue
+            with self._thumbnail_state_lock:
+                if self._active_thumbnail_requests >= self._max_concurrent_thumbnails:
+                    return
+                if cache_key in self.thumbnail_cache or cache_key in self.thumbnail_failed:
+                    continue
+                if cache_key not in self.thumbnail_waiters:
+                    continue
+                self._active_thumbnail_requests += 1
+            request = QNetworkRequest(QUrl(thumb_url))
+            request.setTransferTimeout(2500)
+            reply = self.net_manager.get(request)
+            reply.finished.connect(
+                lambda r=reply, u=thumb_url, w=width, h=height: self._on_download_thumbnail_loaded(r, u, w, h)
+            )
+
+    def _cleanup_stale_thumbnail_waiters(self):
+        now = time.time()
+        with self._thumbnail_state_lock:
+            stale_keys = [
+                key for key, ts in self._thumbnail_waiter_timestamps.items()
+                if now - ts > THUMBNAIL_WAITER_TTL_SECONDS
+            ]
+            for key in stale_keys:
+                self.thumbnail_waiters.pop(key, None)
+                self._thumbnail_waiter_timestamps.pop(key, None)
+        for key in stale_keys:
+            self._mark_thumbnail_failed(key)
+
+    def _refresh_downloads_list(self):
+        self._update_downloads_dashboard()
+        
+        if hasattr(self, "downloads_view") and hasattr(self.downloads_view, "set_queue_state_visible"):
+            self.downloads_view.set_queue_state_visible(self.downloads_filter in {"active", "queued", "scheduled"})
+        elif hasattr(self.downloads_view, "queue_state_combo"):
+            self.downloads_view.queue_state_combo.setVisible(self.downloads_filter in {"active", "queued", "scheduled"})
+            
+        history = self.stats.get("download_history", [])
+        if self.downloads_filter == "completed":
+            history = self._fetch_db_history(status="success", limit=250)
+            self.stats["download_history"] = history
+            if hasattr(self, "downloads_view") and hasattr(self.downloads_view, "get_history_filters"):
+                hf = self.downloads_view.get_history_filters()
+                mode_filter = hf.get("mode")
+                format_filter = hf.get("format")
+                date_filter = hf.get("date")
+            else:
+                mode_filter = self.downloads_view.history_mode_combo.currentData() if hasattr(self.downloads_view, "history_mode_combo") else None
+                format_filter = self.downloads_view.history_format_combo.currentData() if hasattr(self.downloads_view, "history_format_combo") else None
+                date_filter = self.downloads_view.history_date_combo.currentData() if hasattr(self.downloads_view, "history_date_combo") else None
+            if mode_filter and mode_filter != "all":
+                history = [h for h in history if self._normalize_history_mode(h.get("mode", "")) == mode_filter]
+            if format_filter and format_filter != "all":
+                history = [h for h in history if str(h.get("format", "")).upper() == str(format_filter).upper()]
+            if date_filter and date_filter != "all":
+                now_dt = datetime.now()
+                if date_filter == "24h":
+                    cutoff = now_dt - timedelta(days=1)
+                elif date_filter == "7d":
+                    cutoff = now_dt - timedelta(days=7)
+                else:
+                    cutoff = now_dt - timedelta(days=30)
+                filtered = []
+                for h in history:
+                    ts_text = str(h.get("timestamp", "") or "")
+                    try:
+                        ts_dt = datetime.fromisoformat(ts_text)
+                    except (TypeError, ValueError):
+                        try:
+                            ts_dt = datetime.fromisoformat(ts_text.replace("Z", "+00:00"))
+                        except (TypeError, ValueError):
+                            continue
+                    if ts_dt >= cutoff:
+                        filtered.append(h)
+                history = filtered
+        items = self.queue_manager.get_queue_items()
+        
+        if hasattr(self, "downloads_view") and hasattr(self.downloads_view, "get_search_query"):
+            query = self.downloads_view.get_search_query().lower()
+        else:
+            query = self.downloads_view.downloads_search_input.text().strip().lower() if hasattr(self.downloads_view, "downloads_search_input") else ""
+
+        entries = []
+        now_ts = datetime.now().timestamp()
+        
+        if self.downloads_filter == "active":
+            for i, e in enumerate(items):
+                if str(e.get("status", "")).lower() == "running":
+                    entries.append(dict(e, queue_index=i))
+        elif self.downloads_filter == "queued":
+            for i, e in enumerate(items):
+                # Include items that are waiting or failed/paused/cancelled
+                status = str(e.get("status", "pending")).lower()
+                if status in {"pending", "paused", "failed", "cancelled", "queued", "waiting"}:
+                    # If it's scheduled for the future, don't show it in queued unless it failed
+                    sched = e.get("scheduled_at", 0)
+                    if sched > now_ts and status == "pending":
+                        continue
+                    entries.append(dict(e, queue_index=i))
+        elif self.downloads_filter == "scheduled":
+            for i, e in enumerate(items):
+                sched = e.get("scheduled_at", 0)
+                if sched > now_ts and str(e.get("status", "")).lower() == "pending":
+                    e_copy = dict(e, queue_index=i)
+                    e_copy["status"] = "scheduled"
+                    entries.append(e_copy)
+        else: # completed
+            indexed = list(enumerate(history))
+            sorted_items = self._apply_history_sort(indexed)
+            
+            # Pagination logic for completed
+            total_pages = max(1, (len(sorted_items) + self.downloads_page_size - 1) // self.downloads_page_size)
+            self.downloads_page = min(max(1, self.downloads_page), total_pages)
+            start = (self.downloads_page - 1) * self.downloads_page_size
+            end = start + self.downloads_page_size
+            
+            entries = [item for _, item in sorted_items[start:end]]
+            
+            if hasattr(self, "downloads_view") and hasattr(self.downloads_view, "set_page_options"):
+                self.downloads_view.set_page_options(total_pages, self.downloads_page)
+            elif hasattr(self.downloads_view, "page_combo"):
+                self.downloads_view.page_combo.blockSignals(True)
+                self.downloads_view.page_combo.clear()
+                for p in range(1, total_pages + 1):
+                    self.downloads_view.page_combo.addItem(str(p))
+                self.downloads_view.page_combo.setCurrentText(str(self.downloads_page))
+                self.downloads_view.page_combo.blockSignals(False)
+                self.downloads_view.page_combo.setVisible(total_pages > 1)
+
+        # Hide page combo for non-completed tabs
+        if self.downloads_filter != "completed":
+            if hasattr(self, "downloads_view") and hasattr(self.downloads_view, "set_page_options"):
+                self.downloads_view.set_page_options(1, 1)
+            elif hasattr(self.downloads_view, "page_combo"):
+                self.downloads_view.page_combo.hide()
+
+        # Apply Queue State Filter
+        if self.downloads_filter in {"active", "queued", "scheduled"} and self.queue_state_filter != "all":
+            # Note: for scheduled, status was overridden to "scheduled" above, so this might filter it out if we chose something else.
+            # But scheduled items are pending. We map them to scheduled for display.
+            # Let's check original status if available.
+            entries = [e for e in entries if str(e.get("status", "")).lower() == self.queue_state_filter or (self.queue_state_filter == "pending" and str(e.get("status", "")).lower() == "scheduled")]
+
+        entries = [e for e in entries if str(e.get("status", "")).lower() != "deleted"]
+
+        # Apply Search Query
+        if query:
+            entries = [e for e in entries if query in str(e.get("title", "")).lower() or query in str(e.get("url", "")).lower()]
+
+        entry_fingerprints = []
+        for idx, entry in enumerate(entries):
+            key = self._download_entry_cache_key(entry, idx)
+            sig = self._download_entry_render_signature(entry)
+            entry_fingerprints.append((key, sig))
+        refresh_fingerprint = (
+            str(self.theme or "default"),
+            str(self.downloads_filter or ""),
+            str(self.queue_state_filter or ""),
+            str(query or ""),
+            int(self.downloads_page or 1),
+            tuple(entry_fingerprints),
+        )
+        if refresh_fingerprint == self._downloads_last_fingerprint:
+            return
+        self._downloads_last_fingerprint = refresh_fingerprint
+
+        self._clear_rendered_download_widgets(drop_cache=False)
+        self._active_download_card_refs.clear()
+        self.downloads_thumbnail_jobs.clear()
+        active_keys = set()
+        for key, _sig in entry_fingerprints:
+            active_keys.add(key)
+        for key in list(self._download_card_cache.keys()):
+            if key not in active_keys:
+                self._download_card_cache.pop(key, None)
+                self._download_card_state.pop(key, None)
+
+        if not entries:
+            self.downloads_view.downloads_model.update_items([{"_empty": True}])
+            empty_card = QFrame()
+            empty_card.setObjectName("playlist_row")
+            empty_card.setStyleSheet(
+                f"""
+                QFrame#playlist_row {{
+                    background: {get_theme(self.theme)['panel']};
+                    border-radius: 16px;
+                    border: 1px solid {get_theme(self.theme)['border']};
+                }}
+                """
+            )
+            empty_layout = QVBoxLayout(empty_card)
+            empty_layout.setContentsMargins(24, 24, 24, 24)
+            empty_layout.setSpacing(12)
+            
+            icon_lbl = QLabel("📭")
+            icon_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            icon_lbl.setStyleSheet("font-size: 48px; background: transparent; border: none;")
+            
+            theme = get_theme(self.theme)
+            title = QLabel(_("لا توجد عناصر هنا حالياً"))
+            title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            title.setStyleSheet(
+                f"font-size: 18px; font-weight: 800; color: {theme['text']}; background: transparent; border: none;"
+            )
+            
+            subtitle_text = _("أضف روابط جديدة من المتصفح (Browser) لبدء التحميل")
+            if self.downloads_filter == "active":
+                subtitle_text = _("لا يوجد تحميل نشط الآن، راجع تبويب 'الطابور' لبدء التحميل")
+            elif self.downloads_filter == "completed":
+                subtitle_text = _("لم تقم بإكمال أي تحميلات بعد.")
+                
+            subtitle = QLabel(subtitle_text)
+            subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            subtitle.setWordWrap(True)
+            subtitle.setStyleSheet(
+                f"font-size: 14px; color: {theme['muted']}; background: transparent; border: none;"
+            )
+            
+            empty_layout.addStretch(1)
+            empty_layout.addWidget(icon_lbl)
+            empty_layout.addWidget(title)
+            empty_layout.addWidget(subtitle)
+            empty_layout.addStretch(1)
+            index = self.downloads_view.downloads_model.index(0, 0)
+            self.downloads_view.downloads_list.setIndexWidget(index, empty_card)
+            self._rendered_download_rows[0] = "empty"
+            return
+
+        self._downloads_render_generation += 1
+        self._downloads_render_cursor = 0
+        self._downloads_render_loading = False
+        self.downloads_view.downloads_model.update_items(entries)
+        QTimer.singleShot(0, lambda g=self._downloads_render_generation: self._maybe_render_more_download_entries(g, force=True))
+
+    def _clear_rendered_download_widgets(self, drop_cache: bool = False):
+        if not hasattr(self, "downloads_view") or not hasattr(self.downloads_view, "downloads_list"):
+            self._rendered_download_rows.clear()
+            return
+        list_view = self.downloads_view.downloads_list
+        model = self.downloads_view.downloads_model
+        for row_index, cache_key in list(self._rendered_download_rows.items()):
+            model_index = model.index(int(row_index), 0)
+            if model_index.isValid():
+                try:
+                    widget = list_view.indexWidget(model_index)
+                    if widget is not None:
+                        list_view.setIndexWidget(model_index, None)
+                        widget.hide()
+                        widget.setParent(None)
+                except RuntimeError:
+                    pass
+            if drop_cache and isinstance(cache_key, str):
+                self._download_card_cache.pop(cache_key, None)
+                self._download_card_state.pop(cache_key, None)
+        self._rendered_download_rows.clear()
+
+    def _visible_download_rows_window(self, buffer_rows: int = 8) -> tuple[int, int]:
+        model = self.downloads_view.downloads_model
+        total_rows = model.rowCount()
+        if total_rows <= 0:
+            return (0, -1)
+        list_view = self.downloads_view.downloads_list
+        viewport = list_view.viewport()
+        if viewport is None:
+            return (0, min(total_rows - 1, 12))
+        rect = viewport.rect()
+        top_index = list_view.indexAt(rect.topLeft())
+        bottom_probe = QPoint(rect.left() + 4, max(rect.top(), rect.bottom() - 4))
+        bottom_index = list_view.indexAt(bottom_probe)
+        if top_index.isValid():
+            first_row = int(top_index.row())
+        else:
+            row_hint = list_view.sizeHintForRow(0) if total_rows > 0 else 0
+            row_hint = max(1, int(row_hint or 84))
+            first_row = max(0, int(list_view.verticalScrollBar().value() / row_hint))
+        if bottom_index.isValid():
+            last_row = int(bottom_index.row())
+        else:
+            last_row = min(total_rows - 1, first_row + 10)
+        first_row = max(0, first_row - max(0, int(buffer_rows)))
+        last_row = min(total_rows - 1, last_row + max(0, int(buffer_rows)))
+        return (first_row, last_row)
+
+    def _render_download_entries_batch(self, generation: int, batch_size: int = 16):
+        if generation != self._downloads_render_generation or self._downloads_render_loading:
+            return
+        self._downloads_render_loading = True
+        try:
+            self._active_download_card_refs.clear()
+            model = self.downloads_view.downloads_model
+            list_view = self.downloads_view.downloads_list
+            start, end = self._visible_download_rows_window(buffer_rows=8)
+            if end < start:
+                return
+            target_rows = set(range(start, end + 1))
+
+            for existing_row in list(self._rendered_download_rows.keys()):
+                if existing_row in target_rows:
+                    continue
+                model_index = model.index(int(existing_row), 0)
+                if model_index.isValid():
+                    try:
+                        widget = list_view.indexWidget(model_index)
+                        if widget is not None:
+                            list_view.setIndexWidget(model_index, None)
+                            widget.hide()
+                            widget.setParent(None)
+                    except RuntimeError:
+                        pass
+                self._rendered_download_rows.pop(existing_row, None)
+
+            rendered_now = 0
+            pending_more = False
+            for row_index in sorted(target_rows):
+                if rendered_now >= max(1, int(batch_size)):
+                    pending_more = True
+                    break
+                model_index = model.index(row_index, 0)
+                if not model_index.isValid():
+                    continue
+                item = model.get_item(row_index)
+                if item is None:
+                    continue
+                cache_key = self._download_entry_cache_key(item, row_index)
+                existing_key = self._rendered_download_rows.get(row_index)
+                if existing_key == cache_key and list_view.indexWidget(model_index) is not None:
+                    queue_index = item.get("queue_index")
+                    if isinstance(queue_index, int):
+                        try:
+                            widget = list_view.indexWidget(model_index)
+                            refs = getattr(widget, "_active_refs", None)
+                            if isinstance(refs, dict):
+                                self._active_download_card_refs[int(queue_index)] = refs
+                        except RuntimeError:
+                            pass
+                    continue
+                try:
+                    self._add_download_entry_card(item, row_index)
+                    self._rendered_download_rows[row_index] = cache_key
+                    rendered_now += 1
+                except (RuntimeError, TypeError, ValueError, AttributeError) as exc:
+                    logger.warning(f"تعذر رسم عنصر في قائمة التحميلات: {exc}")
+                    self._add_error_card(row_index, str(exc))
+                    self._rendered_download_rows[row_index] = f"error:{row_index}"
+                    rendered_now += 1
+            if pending_more:
+                QTimer.singleShot(0, lambda g=generation: self._render_download_entries_batch(g, batch_size=batch_size))
+        finally:
+            self._downloads_render_loading = False
+        self._schedule_visible_thumbnail_load(0)
+        self.downloads_view.downloads_list.update()
+
+    def _on_downloads_list_scrolled(self, _value: int):
+        self._schedule_visible_thumbnail_load(40)
+        self._maybe_render_more_download_entries(self._downloads_render_generation)
+
+    def _on_downloads_list_range_changed(self, _min_value: int, _max_value: int):
+        self._schedule_visible_thumbnail_load(0)
+        self._maybe_render_more_download_entries(self._downloads_render_generation)
+
+    def _maybe_render_more_download_entries(self, generation: int, force: bool = False):
+        if generation != self._downloads_render_generation:
+            return
+        if self._downloads_render_loading:
+            return
+        if force:
+            self._render_download_entries_batch(generation, batch_size=24)
+            return
+        self._render_download_entries_batch(generation, batch_size=12)
+
+    def _add_error_card(self, row_index: int, error_msg: str):
+        t = get_theme(self.theme)
+        card = QFrame()
+        card.setObjectName("playlist_row")
+        card.setStyleSheet(f"""
+            QFrame#playlist_row {{
+                background: {t['panel']};
+                border-radius: 12px;
+                border: 1px solid {t['danger']};
+            }}
+        """)
+        h = QHBoxLayout(card)
+        h.setContentsMargins(12, 12, 12, 12)
+        lbl = QLabel(f"{_('خطأ في عرض العنصر')}: {error_msg}")
+        lbl.setStyleSheet(f"color: {t['danger']}; font-weight: bold;")
+        h.addWidget(lbl)
+        
+        index = self.downloads_view.downloads_model.index(row_index, 0)
+        self.downloads_view.downloads_list.setIndexWidget(index, card)
+
+    def _downloads_style_pack(self, t: dict) -> dict:
+        theme_key = str(self.theme or "default")
+        cached = self._downloads_styles_cache.get(theme_key)
+        if cached is not None:
+            return cached
+        base_btn = (
+            f"QPushButton {{ background: {t['panel_soft']}; color: {t['text']}; border: none; "
+            "border-radius: 6px; font-size: 13px; font-weight: bold; padding: 0 12px; } "
+            f"QPushButton:hover {{ background: {t['border']}; }}"
+        )
+        pack = {
+            "card": (
+                f"QFrame#playlist_row {{ background: {t['panel']}; border-radius: 12px; border: 1px solid {t['border']}; }} "
+                f"QFrame#playlist_row:hover {{ background: {t['panel_soft']}; border: 1px solid {t['accent']}; }} "
+                f"QLabel#status_badge {{ font-size: 12px; font-weight: bold; padding: 4px 8px; border-radius: 6px; background: {t['panel_soft']}; color: {t['muted']}; }} "
+                f"QLabel#status_badge[status_class='text-success'] {{ color: {t['success']}; }} "
+                f"QLabel#status_badge[status_class='text-danger'] {{ color: {t['danger']}; }} "
+                f"QLabel#status_badge[status_class='text-warning'] {{ color: {t['warning']}; }} "
+                f"QLabel#status_badge[status_class='text-accent'] {{ color: {t['accent']}; }}"
+            ),
+            "thumb_box": f"QFrame#thumb_preview {{ border-radius: 8px; background: {t['bg']}; border: 1px solid {t['border']}; }}",
+            "title": f"font-size: 15px; font-weight: bold; color: {t['text']}; background: transparent; border: none;",
+            "details": f"font-size: 13px; color: {t['muted']}; background: transparent; border: none;",
+            "eta": f"font-size: 12px; font-weight: bold; color: {t['text']}; background: transparent; border: none;",
+            "meta": f"font-size: 13px; color: {t['muted']}; background: transparent; border: none;",
+            "badge": f"background: {t['accent']}; color: white; border-radius: 4px; font-size: 11px; font-weight: bold; padding: 3px 6px;",
+            "progress": (
+                f"QProgressBar {{ background-color: {t['bg']}; border-radius: 4px; border: 1px solid {t['border']}; }} "
+                f"QProgressBar::chunk {{ background-color: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 {t['accent']}, stop:1 {t['accent_2']}); border-radius: 4px; }}"
+            ),
+            "btn_base": base_btn,
+            "btn_success": base_btn + f" QPushButton {{ color: {t['success']}; background: {t['success']}22; }} QPushButton:hover {{ background: {t['success']}33; }}",
+            "btn_warning": base_btn + f" QPushButton {{ color: {t['warning']}; background: {t['warning']}22; }} QPushButton:hover {{ background: {t['warning']}33; }}",
+            "btn_accent": base_btn + f" QPushButton {{ color: {t['accent']}; background: {t['accent']}22; }} QPushButton:hover {{ background: {t['accent']}33; }}",
+            "btn_danger": base_btn + f" QPushButton {{ color: {t['danger']}; background: {t['danger']}22; }} QPushButton:hover {{ background: {t['danger']}33; }}",
+        }
+        self._downloads_styles_cache[theme_key] = pack
+        return pack
+
+    def _add_download_entry_card(self, item: dict, row_index: int):
+        t = get_theme(self.theme)
+        styles = self._downloads_style_pack(t)
+        queue_index = item.get("queue_index")
+        model_index = self.downloads_view.downloads_model.index(row_index, 0)
+        # QWidget caching here is prone to stale C++ object handles with setIndexWidget.
+        # Prefer correctness over reuse; model cache keys still avoid unnecessary refresh work.
+        cache_enabled = False
+        cache_key = self._download_entry_cache_key(item, row_index)
+        render_sig = self._download_entry_render_signature(item)
+        if cache_enabled:
+            cached = self._download_card_cache.get(cache_key)
+            cached_sig = self._download_card_state.get(cache_key)
+            if cached is not None and cached_sig == render_sig:
+                try:
+                    _ = cached.objectName()
+                    if isinstance(queue_index, int):
+                        refs = getattr(cached, "_active_refs", None)
+                        if isinstance(refs, dict):
+                            self._active_download_card_refs[int(queue_index)] = refs
+                    self.downloads_view.downloads_list.setIndexWidget(model_index, cached)
+                    return
+                except RuntimeError:
+                    # Cached QWidget was already deleted by Qt; drop stale cache entry.
+                    self._download_card_cache.pop(cache_key, None)
+                    self._download_card_state.pop(cache_key, None)
+        card = QFrame()
+        card.setObjectName("playlist_row")
+        card.setStyleSheet(styles["card"])
+
+        h = QHBoxLayout(card)
+        h.setContentsMargins(12, 12, 12, 12)
+        h.setSpacing(15)
+        THUMB_W, THUMB_H = 140, 80
+        thumb_box = QFrame()
+        thumb_box.setFixedSize(THUMB_W, THUMB_H)
+        thumb_box.setObjectName("thumb_preview")
+        thumb_box.setStyleSheet(styles["thumb_box"])
+        tg = QGridLayout(thumb_box)
+        tg.setContentsMargins(0, 0, 0, 0)
+        tg.setSpacing(0)
+        thumb = QLabel()
+        thumb.setFixedSize(THUMB_W, THUMB_H)
+        thumb.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        thumb.setStyleSheet("background:transparent; border:none; border-radius: 8px;")
+        self._set_thumb_placeholder(thumb)
+        self._queue_download_thumbnail(model_index, item, thumb, THUMB_W, THUMB_H)
+        tg.addWidget(thumb, 0, 0)
+        duration_seconds = int(item.get("duration_seconds") or 0)
+        if duration_seconds > 0:
+            dur_lbl = QLabel(self._format_seconds(duration_seconds))
+            dur_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            dur_lbl.setStyleSheet(
+                f"background: {t['bg']}CC; color: #FFFFFF; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold;"
+            )
+            tg.addWidget(dur_lbl, 0, 0, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignBottom)
+        h.addWidget(thumb_box)
+        center = QVBoxLayout()
+        center.setSpacing(6)
+        title_text = item.get("title", "رابط غير معروف")
+        if not title_text or title_text == "Unknown":
+            title_text = item.get("url", "رابط غير معروف")
+        title = QLabel(title_text)
+        title.setStyleSheet(styles["title"])
+        title.setWordWrap(True)
+        title.setMaximumHeight(42)
+        center.addWidget(title)
+        status_text = str(item.get("status", "pending")).upper()
+        status_map = {
+            "RUNNING": "جاري التحميل",
+            "PENDING": "في الانتظار",
+            "PAUSED": "متوقف مؤقتاً",
+            "FAILED": "فشل",
+            "CANCELLED": "ملغى",
+            "SUCCESS": "مكتمل",
+            "COMPLETED": "مكتمل",
+            "SCHEDULED": "مجدول"
+        }
+        status_ar = status_map.get(status_text, status_text)
+        if item.get("scheduled_at", 0) > 0 and status_text == "SCHEDULED":
+            dt = datetime.fromtimestamp(item["scheduled_at"])
+            status_ar = f"مجدول: {dt.strftime('%H:%M:%S')}"
+        if self.downloads_filter == "active":
+            raw_progress = float(item.get("progress", 0) or 0)
+            if 0 < raw_progress < 1:
+                progress_val = 1
+            else:
+                progress_val = max(0, min(100, int(round(raw_progress))))
+            speed_text = str(item.get("speed", "--"))
+            eta_text = str(item.get("eta", "--:--"))
+            format_text = str(item.get("format", "--"))
+            mode_text = "صوت" if str(item.get("mode", "video")).lower() == "audio" else "فيديو"
+            info_row = QHBoxLayout()
+            info_row.setSpacing(10)
+            badge = QLabel(f" {mode_text} ")
+            badge.setStyleSheet(styles["badge"])
+            info_row.addWidget(badge)
+            details = QLabel(f"{format_text}  •  {progress_val}%  •  {speed_text}")
+            details.setStyleSheet(styles["details"])
+            info_row.addWidget(details)
+            info_row.addStretch(1)
+            eta_lbl = QLabel(f"الوقت المتبقي: {eta_text}")
+            eta_lbl.setStyleSheet(styles["eta"])
+            info_row.addWidget(eta_lbl)
+            center.addLayout(info_row)
+            bar = QProgressBar()
+            bar.setRange(0, 100)
+            bar.setValue(progress_val)
+            bar.setFixedHeight(8)
+            bar.setTextVisible(False)
+            bar.setStyleSheet(styles["progress"])
+            center.addWidget(bar)
+            if isinstance(queue_index, int):
+                refs = {
+                    "card": card,
+                    "details_label": details,
+                    "eta_label": eta_lbl,
+                    "progress_bar": bar,
+                    "format_text": format_text,
+                    "_last_ui_tuple": (progress_val, speed_text, eta_text),
+                    "_last_ui_ts": time.monotonic(),
+                }
+                self._active_download_card_refs[int(queue_index)] = refs
+                setattr(card, "_active_refs", refs)
+            resume = item.get("resume")
+            if isinstance(resume, dict):
+                try:
+                    partials_count = int(resume.get("partials_count") or 0)
+                except (TypeError, ValueError, OverflowError):
+                    partials_count = 0
+                try:
+                    partials_bytes = int(resume.get("partials_total_bytes") or 0)
+                except (TypeError, ValueError, OverflowError):
+                    partials_bytes = 0
+                if partials_count > 0:
+                    partial_lbl = QLabel(f"ملفات جزئية: {partials_count}  •  {format_bytes(partials_bytes)}")
+                    partial_lbl.setStyleSheet(f"font-size: 12px; color: {t['muted']}; background: transparent; border: none;")
+                    center.addWidget(partial_lbl)
+            if isinstance(queue_index, int):
+                history = list(self._speed_history.get(queue_index, []))
+                if history:
+                    max_value = max(history) or 1.0
+                    graph = SpeedGraphWidget(t["accent"], t["panel_soft"])
+                    graph.set_values(history, max_value)
+                    center.addWidget(graph)
+        else:
+            meta_row = QHBoxLayout()
+            status_lbl = QLabel(status_ar)
+            status_lbl.setObjectName("status_badge")
+            
+            # Use dynamic classes instead of hardcoded hex
+            status_class = "text-muted"
+            if status_text in ["SUCCESS", "COMPLETED"]:
+                status_class = "text-success"
+            elif status_text == "FAILED":
+                status_class = "text-danger"
+            elif status_text == "PAUSED":
+                status_class = "text-warning"
+            elif status_text == "RUNNING":
+                status_class = "text-accent"
+            status_lbl.setProperty("status_class", status_class)
+            status_lbl.style().polish(status_lbl)
+            meta_row.addWidget(status_lbl)
+            resume = item.get("resume")
+            extra_resume = ""
+            if isinstance(resume, dict):
+                try:
+                    partials_count = int(resume.get("partials_count") or 0)
+                except (TypeError, ValueError, OverflowError):
+                    partials_count = 0
+                try:
+                    partials_bytes = int(resume.get("partials_total_bytes") or 0)
+                except (TypeError, ValueError, OverflowError):
+                    partials_bytes = 0
+                if partials_count > 0:
+                    extra_resume = f"  •  ملفات جزئية: {partials_count} ({format_bytes(partials_bytes)})"
+            meta_lbl = QLabel(f"{item.get('format', '--')}  •  {item.get('size', '--')}{extra_resume}")
+            meta_lbl.setStyleSheet(styles["meta"])
+            meta_row.addWidget(meta_lbl)
+            meta_row.addStretch(1)
+            center.addLayout(meta_row)
+        center.addStretch(1)
+        h.addLayout(center, 1)
+        if isinstance(queue_index, int) or self.downloads_filter == "completed":
+            icons = QHBoxLayout()
+            icons.setSpacing(8)
+            if self.downloads_filter == "completed":
+                play_icon = QPushButton(_("تشغيل"))
+                play_icon.setStyleSheet(styles["btn_success"])
+                play_icon.setFixedHeight(36)
+                play_icon.clicked.connect(lambda _, row=item: self._play_history_item(row))
+                icons.addWidget(play_icon)
+                folder_icon = QPushButton(_("المجلد"))
+                folder_icon.setStyleSheet(styles["btn_base"])
+                folder_icon.setFixedHeight(36)
+                folder_icon.clicked.connect(lambda _, row=item: self._open_history_item_folder(row))
+                icons.addWidget(folder_icon)
+            else:
+                queue_status = str(item.get("status", "")).lower()
+                if queue_status == "running":
+                    pause_icon = QPushButton(_("إيقاف"))
+                    pause_icon.setStyleSheet(styles["btn_warning"])
+                    pause_icon.setFixedHeight(36)
+                    pause_icon.clicked.connect(lambda _, i=queue_index: self._pause_queue_item(i))
+                    icons.addWidget(pause_icon)
+                elif queue_status == "paused":
+                    resume_icon = QPushButton(_("استكمال"))
+                    resume_icon.setStyleSheet(styles["btn_success"])
+                    resume_icon.setFixedHeight(36)
+                    resume_icon.clicked.connect(lambda _, i=queue_index: self._resume_queue_item(i))
+                    icons.addWidget(resume_icon)
+                elif queue_status == "pending":
+                    pause_icon = QPushButton(_("إيقاف"))
+                    pause_icon.setStyleSheet(styles["btn_warning"])
+                    pause_icon.setFixedHeight(36)
+                    pause_icon.clicked.connect(lambda _, i=queue_index: self._pause_queue_item(i))
+                    icons.addWidget(pause_icon)
+                if queue_status in {"failed", "cancelled", "paused"}:
+                    retry_icon = QPushButton(_("إعادة"))
+                    retry_icon.setStyleSheet(styles["btn_accent"])
+                    retry_icon.setFixedHeight(36)
+                    retry_icon.clicked.connect(lambda _, i=queue_index: self._retry_queue_item(i))
+                    icons.addWidget(retry_icon)
+                cancel_icon = QPushButton(_("إلغاء"))
+                cancel_icon.setStyleSheet(styles["btn_danger"])
+                cancel_icon.setFixedHeight(36)
+                if queue_status == "running":
+                    cancel_icon.clicked.connect(lambda _, i=queue_index: self._cancel_queue_item(i))
+                    icons.addWidget(cancel_icon)
+                delete_icon = QPushButton(_("حذف"))
+                delete_icon.setStyleSheet(styles["btn_danger"])
+                delete_icon.setFixedHeight(36)
+                if queue_status != "running":
+                    delete_icon.clicked.connect(lambda _, i=queue_index: self._delete_queue_item(i))
+                    icons.addWidget(delete_icon)
+            h.addLayout(icons)
+        if cache_enabled:
+            self._download_card_cache[cache_key] = card
+            self._download_card_state[cache_key] = render_sig
+            while len(self._download_card_cache) > int(self._download_card_cache_limit):
+                stale_key = next(iter(self._download_card_cache.keys()))
+                self._download_card_cache.pop(stale_key, None)
+                self._download_card_state.pop(stale_key, None)
+        self._rendered_download_rows[int(row_index)] = cache_key
+        self.downloads_view.downloads_list.setIndexWidget(model_index, card)
+
+    def _download_entry_cache_key(self, item: dict, row_index: int) -> str:
+        queue_index = item.get("queue_index")
+        if isinstance(queue_index, int):
+            return f"queue:{queue_index}"
+        timestamp = str(item.get("timestamp", "") or "").strip()
+        url = str(item.get("url", "") or "").strip()
+        title = str(item.get("title", "") or "").strip()
+        if timestamp or url or title:
+            return f"history:{timestamp}|{url}|{title}"
+        return f"row:{int(row_index)}"
+
+    def _download_entry_render_signature(self, item: dict):
+        resume = item.get("resume")
+        if isinstance(resume, dict):
+            resume_sig = (
+                int(resume.get("partials_count") or 0),
+                int(resume.get("partials_total_bytes") or 0),
+            )
+        else:
+            resume_sig = (0, 0)
+        return (
+            str(item.get("title", "")),
+            str(item.get("url", "")),
+            str(item.get("status", "")),
+            str(item.get("format", "")),
+            str(item.get("size", "")),
+            str(item.get("speed", "")),
+            str(item.get("eta", "")),
+            int(item.get("duration_seconds") or 0),
+            int(item.get("scheduled_at") or 0),
+            int(round(float(item.get("progress", 0) or 0))),
+            resume_sig,
+        )
+    def _check_updates_background(self):
+        if self._auto_update_worker is not None:
+            QTimer.singleShot(60_000, self._check_updates_background)
+            return
+        try:
+            settings = load_session_settings()
+            settings["last_ytdlp_auto_check_ts"] = time.time()
+            save_session_settings(settings)
+        except (TypeError, ValueError, RuntimeError, OSError) as exc:
+            logger.debug(f"تعذر تحديث وقت فحص yt-dlp التلقائي: {exc}")
+        self._check_app_updates_background()
+        self._append_log("Checking for yt-dlp core updates...")
+
+        def _on_update_done(return_code, stdout_text, stderr_text):
+            self._auto_update_worker = None
+            if return_code == 0:
+                self._append_log("[Auto-Update] yt-dlp core updated successfully.")
+                self.update_retry_count = 0
+                self._schedule_background_update_check()
+                return
+            error_message = (stderr_text or stdout_text or "Unknown error").strip()
+            self._append_log(f"[Auto-Update] Failed to update yt-dlp core. Error: {error_message}")
+            if self.update_retry_count < 3:
+                self.update_retry_count += 1
+                delay_ms = 5000 * (3 ** self.update_retry_count)
+                self._append_log(f"[Auto-Update] Retrying in {delay_ms // 1000} seconds...")
+                QTimer.singleShot(delay_ms, self._check_updates_background)
+            else:
+                self._append_log("[Auto-Update] Max retries reached. Aborting update process.")
+                self._schedule_background_update_check()
+
+        worker = YtDlpCoreUpdateWorker(self)
+        worker.finished.connect(_on_update_done)
+        self._auto_update_worker = worker
+        worker.start()
+
+    def _schedule_background_update_check(self, initial_delay_ms: int = 0):
+        day_seconds = 24 * 60 * 60
+        delay_ms = max(0, int(initial_delay_ms))
+        try:
+            settings = load_session_settings()
+            last_check_ts = float(settings.get("last_ytdlp_auto_check_ts", 0) or 0)
+        except (AttributeError, TypeError, ValueError):
+            last_check_ts = 0.0
+        if last_check_ts > 0:
+            elapsed = max(0.0, time.time() - last_check_ts)
+            if elapsed < day_seconds:
+                remaining = day_seconds - elapsed
+                delay_ms = max(delay_ms, int(remaining * 1000))
+        QTimer.singleShot(delay_ms, self._check_updates_background)
+
+    def _quick_download(self, url):
+        self.search_view.url_input.setText(url)
+        self._start_analyze()
+
+    def _schedule_downloads_refresh(self, delay_ms: int = 220):
+        if self._downloads_refresh_pending:
+            return
+        self._downloads_refresh_pending = True
+
+        def _run():
+            self._downloads_refresh_pending = False
+            if hasattr(self, "downloads_view") and hasattr(self.downloads_view, "downloads_list"):
+                self._refresh_downloads_list()
+
+        QTimer.singleShot(max(0, int(delay_ms)), _run)
+
+    def _refresh_queue_list(self):
+        self._schedule_downloads_refresh(80)
+
+    def _on_queue_progress_updated(self, index: int, progress: float, speed: str, eta: str):
+        if self.active_view != "downloads":
+            return
+        if self.downloads_filter != "active":
+            return
+        refs = self._active_download_card_refs.get(int(index))
+        if not isinstance(refs, dict):
+            return
+        try:
+            raw_progress = float(progress or 0)
+        except (TypeError, ValueError, OverflowError):
+            raw_progress = 0.0
+        if 0 < raw_progress < 1:
+            progress_val = 1
+        else:
+            progress_val = max(0, min(100, int(round(raw_progress))))
+        speed_text = str(speed or "--")
+        eta_text = str(eta or "--:--")
+        try:
+            card_ref = refs.get("card")
+            if card_ref is not None:
+                _ = card_ref.objectName()
+            details_label = refs.get("details_label")
+            eta_label = refs.get("eta_label")
+            progress_bar = refs.get("progress_bar")
+            format_text = str(refs.get("format_text", "--"))
+            prev = refs.get("_last_ui_tuple")
+            now_ts = time.monotonic()
+            if isinstance(prev, tuple) and len(prev) == 3:
+                prev_progress, prev_speed, prev_eta = prev
+                last_ts = float(refs.get("_last_ui_ts", 0.0) or 0.0)
+                if (
+                    int(prev_progress) == int(progress_val)
+                    and str(prev_speed) == speed_text
+                    and str(prev_eta) == eta_text
+                ):
+                    return
+                # Throttle noisy text-only updates while keeping progress responsive.
+                if int(prev_progress) == int(progress_val) and (now_ts - last_ts) < 0.35:
+                    return
+                if abs(int(progress_val) - int(prev_progress)) <= 1 and (now_ts - last_ts) < 0.12:
+                    return
+            if details_label is not None:
+                details_label.setText(f"{format_text}  •  {progress_val}%  •  {speed_text}")
+            if eta_label is not None:
+                eta_label.setText(f"الوقت المتبقي: {eta_text}")
+            if progress_bar is not None:
+                progress_bar.setValue(progress_val)
+            refs["_last_ui_tuple"] = (progress_val, speed_text, eta_text)
+            refs["_last_ui_ts"] = now_ts
+        except RuntimeError:
+            self._active_download_card_refs.pop(int(index), None)
+
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasText():
+            event.accept()
+        else:
+            event.ignore()
+
+    def dropEvent(self, event):
+        text = event.mimeData().text().strip()
+        if text.startswith("http"):
+            self.search_view.url_input.setText(text)
+            self._start_analyze()
+            self._switch_view("search")
+
+    def _on_show_notification_event(self, event: ShowNotificationEvent):
+        self._show_toast(event.message, event.level, event.title)
+
+    def _on_extension_link_event(self, event: ExtensionLinkReceivedEvent):
+        payload = dict(event.payload or {})
+        QTimer.singleShot(0, lambda p=payload: self.extension_controller.handle_extension_link(p))
+
+    def _show_tray_message(self, title: str, message: str, icon=QSystemTrayIcon.MessageIcon.Information, timeout: int = 1800):
+        if not hasattr(self, "tray_icon"):
+            return
+        if not self.tray_icon.isVisible():
+            return
+        self.tray_icon.showMessage(str(title or "SnapDownloader"), str(message or ""), icon, int(timeout))
+
+    def _notify_tray_progress(self):
+        items = self.queue_manager.get_queue_items()
+        if not items:
+            return
+        total = len(items)
+        completed = 0
+        progress_sum = 0.0
+        for item in items:
+            status = str(item.get("status", "pending"))
+            if status in {"success", "failed", "cancelled"}:
+                completed += 1
+                progress_sum += 100.0
+                continue
+            raw = float(item.get("progress", 0) or 0)
+            progress_sum += max(0.0, min(100.0, raw))
+        overall = int(round(progress_sum / max(1, total)))
+        bucket = min(100, max(0, (overall // 10) * 10))
+        if bucket < 10 or bucket == self._tray_progress_bucket:
+            return
+        self._tray_progress_bucket = bucket
+        self._show_tray_message(
+            "SnapDownloader",
+            f"إجمالي التقدم: {overall}% ({completed}/{total})",
+            QSystemTrayIcon.MessageIcon.Information,
+            1400,
+        )
+
+    def _update_speed_history(self, wid, kbps):
+        try:
+            key = int(wid)
+        except (TypeError, ValueError, OverflowError):
+            return
+        history = self._speed_history.get(key)
+        if history is None:
+            history = deque(maxlen=60)
+            self._speed_history[key] = history
+        try:
+            value = float(kbps)
+        except (TypeError, ValueError, OverflowError):
+            value = 0.0
+        if value < 0:
+            value = 0.0
+        history.append(value)
+
+    def _info(self, message: str):
+        event_bus.publish(ShowNotificationEvent(message, "info"))
+
+    def _warn(self, message: str):
+        event_bus.publish(ShowNotificationEvent(message, "warn", title="Warning"))
+
+    def _stats_path(self):
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        return os.path.join(base_dir, "xd_stats.json")
+
+    def _update_liquid_animation(self):
+        self.liquid_offset = (self.liquid_offset + 2) % 100
+        
+        # We only update the progress bar if it exists and is visible
+        if hasattr(self.search_view, "progress_bar") and self.search_view.progress_bar is not None:
+            pos = self.liquid_offset / 100.0
+            pb = self.search_view.progress_bar
+            if hasattr(pb, "set_liquid_phase"):
+                pb.set_liquid_phase(pos)
+            else:
+                phase_bucket = int(pos * 20)
+                if phase_bucket == self._liquid_style_phase_bucket:
+                    return
+                self._liquid_style_phase_bucket = phase_bucket
+                t = get_theme(self.theme)
+                style = f"""
+                    QProgressBar::chunk {{
+                        background: qlineargradient(x1:0, y1:0.5, x2:1, y2:0.5,
+                            stop:0 {t['accent']},
+                            stop:{pos} {t['accent_2']},
+                            stop:1 {t['accent']});
+                    }}
+                """
+                pb.setStyleSheet(style)
+
+
+MainWindow = PremiumWindow
+
+
+def main():
+    start_app(PremiumWindow)
+
+
+if __name__ == "__main__":
+    main()
+
+====================================================================================================
+FILE: core\__init__.py
+====================================================================================================
+
+
+# core package
+
+
+
+
+====================================================================================================
+FILE: core\anti_detection.py
+====================================================================================================
+
+
+"""
+core/anti_detection.py - Unified Anti-Detection Engine
+
+This engine coordinates various strategies to avoid being blocked by web services.
+It reacts to download errors by adjusting request patterns, rotating proxies,
+and changing browser identity.
+"""
+import random
+import logging
+from .proxy_manager import proxy_manager
+
+logger = logging.getLogger("SnapDownloader.AntiDetect")
+
+# A list of common, recent User-Agent strings to rotate through.
+# Source: https://www.whatismybrowser.com/guides/the-latest-user-agent/
+USER_AGENTS = [
+    # Latest Chrome on Windows
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+    # Latest Chrome on macOS
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+    # Latest Firefox on Windows
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:149.0) Gecko/20100101 Firefox/149.0",
+    # Latest Firefox on macOS
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:149.0) Gecko/20100101 Firefox/149.0",
+    # Latest Edge on Windows
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+    # Latest Safari on macOS
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.4 Safari/605.1.15",
+    # Chrome on Linux
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36",
+    # Firefox on Linux
+    "Mozilla/5.0 (X11; Linux x86_64; rv:149.0) Gecko/20100101 Firefox/149.0",
+    # Older but common Chrome on Windows
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    # Opera on Windows
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 OPR/129.0.0.0",
+]
+ACCEPT_LANGUAGES = [
+    "en-US,en;q=0.9,ar;q=0.8",
+    "en-GB,en;q=0.9,fr-FR;q=0.8",
+    "de-DE,de;q=0.9,en-US;q=0.8",
+    "es-ES,es;q=0.9,en;q=0.8",
+    "ja-JP,ja;q=0.9,en-US;q=0.8",
+    "en,fr;q=0.9,de;q=0.8",
+]
+SEC_CH_UA_VALUES = [
+    '"Not/A)Brand";v="8", "Chromium";v="147", "Google Chrome";v="147"',
+    '"Not/A)Brand";v="8", "Chromium";v="146", "Microsoft Edge";v="146"',
+    # Firefox does not send Sec-CH-UA, so we can send a plausible Chrome one
+    '"Not/A)Brand";v="8", "Chromium";v="145", "Google Chrome";v="145"',
+]
+
+class AntiDetectionEngine:
+    def __init__(self):
+        self.current_user_agent = random.choice(USER_AGENTS)
+        self.strategy = "normal" # "normal" | "cautious"
+
+    def get_next_user_agent(self) -> str:
+        """Selects a new, random User-Agent different from the current one."""
+        current_ua = self.current_user_agent
+        new_ua = random.choice(USER_AGENTS)
+        while new_ua == current_ua and len(USER_AGENTS) > 1:
+            new_ua = random.choice(USER_AGENTS)
+        self.current_user_agent = new_ua
+        logger.info(f"[Anti-Detect] Switched User-Agent to: {new_ua[:40]}...")
+        return new_ua
+
+    def get_yt_dlp_options(self) -> list[str]:
+        """
+        Returns a list of command-line arguments for yt-dlp based on the
+        current anti-detection strategy.
+        """
+        opts = []
+        # Add User-Agent
+        opts.extend(["--user-agent", self.current_user_agent])
+        opts.extend(["--add-header", f"Accept-Language:{random.choice(ACCEPT_LANGUAGES)}"])
+        opts.extend(["--add-header", f"Sec-CH-UA:{random.choice(SEC_CH_UA_VALUES)}"])
+        opts.extend(["--add-header", "Sec-CH-UA-Mobile:?0"])
+        opts.extend(["--add-header", "Sec-CH-UA-Platform:\"Windows\""])
+        if self.strategy == "cautious":
+            opts.extend(["--sleep-interval", f"{random.uniform(1.2, 2.8):.2f}"])
+            opts.extend(["--max-sleep-interval", f"{random.uniform(3.0, 5.5):.2f}"])
+        else:
+            opts.extend(["--sleep-interval", f"{random.uniform(0.2, 0.8):.2f}"])
+            opts.extend(["--max-sleep-interval", f"{random.uniform(1.0, 2.0):.2f}"])
+        
+        # Add proxy if enabled
+        opts.extend(proxy_manager.get_yt_dlp_flag())
+
+        return opts
+
+    def on_error(self, error_text: str):
+        """
+        Analyzes a download error and adjusts the strategy accordingly.
+        Returns True if a retry is recommended.
+        """
+        error_lower = error_text.lower()
+        is_rate_limit = "too many requests" in error_lower or "429" in error_lower or "rate limit" in error_lower
+        is_bot_challenge = any(
+            marker in error_lower for marker in ["captcha", "forbidden", "403", "unusual traffic", "verify you are human"]
+        )
+        
+        if is_rate_limit or is_bot_challenge:
+            logger.warning("[Anti-Detect] Rate limit detected. Switching strategy.")
+            # 1. Rotate proxy if available
+            if proxy_manager.is_enabled() and len(proxy_manager.config.get("proxies", [])) > 1:
+                proxy_manager.rotate()
+                logger.info("[Anti-Detect] Rotated proxy.")
+
+            # 2. Switch User-Agent
+            self.get_next_user_agent()
+
+            # 3. Adopt a more cautious strategy
+            self.strategy = "cautious"
+            
+            return True # Recommend a retry
+
+        return False
+
+# Singleton instance
+anti_detection_engine = AntiDetectionEngine()
+
+
+
+
+====================================================================================================
+FILE: core\audio_normalizer.py
+====================================================================================================
+
+
+"""
+core/audio_normalizer.py — FFMPEG-Based Audio Normalization
+Uses FFMPEG's loudnorm filter to normalize audio levels across all downloaded files.
+Supports folder-wide batch normalization.
+"""
+import os
+import re
+import json
+import shutil
+import subprocess
+import threading
+import logging
+from typing import Callable, Optional
+
+logger = logging.getLogger("SnapDownloader.AudioNorm")
+
+# LUFS target level (EBU R128 standard = -23 LUFS, streaming = -14 LUFS)
+STREAMING_TARGET_LUFS = -14.0
+BROADCAST_TARGET_LUFS = -23.0
+
+
+def _find_ffmpeg() -> Optional[str]:
+    return shutil.which("ffmpeg")
+
+
+def normalize_file(
+    input_path: str,
+    output_path: Optional[str] = None,
+    target_lufs: float = STREAMING_TARGET_LUFS,
+    true_peak: float = -1.0,
+    loudness_range: float = 11.0,
+    in_place: bool = True,
+    progress_callback: Optional[Callable[[str], None]] = None,
+) -> tuple[bool, str]:
+    """
+    Normalize audio of a media file using FFMPEG loudnorm filter.
+
+    Args:
+        input_path: Path to source file.
+        output_path: Path for output. If None and in_place=True, replaces original.
+        target_lufs: Target loudness in LUFS (default -14 for streaming).
+        true_peak: Maximum true peak level in dBTP.
+        loudness_range: Target loudness range (LRA).
+        in_place: Replace original file after conversion.
+        progress_callback: Called with status messages.
+
+    Returns:
+        (success: bool, message: str)
+    """
+    ffmpeg = _find_ffmpeg()
+    if not ffmpeg:
+        return False, "FFMPEG not found. Please install FFMPEG."
+
+    if not os.path.isfile(input_path):
+        return False, f"File not found: {input_path}"
+
+    ext = os.path.splitext(input_path)[1].lower()
+    tmp_path = input_path + ".norm_tmp" + ext
+
+    if output_path is None:
+        output_path = input_path if in_place else input_path + "_normalized" + ext
+
+    try:
+        # ── Pass 1: Measure loudness ──────────────────────────────────────────
+        if progress_callback:
+            progress_callback(f"Analyzing: {os.path.basename(input_path)}")
+
+        measure_cmd = [
+            ffmpeg, "-hide_banner", "-i", input_path,
+            "-af", f"loudnorm=I={target_lufs}:TP={true_peak}:LRA={loudness_range}:print_format=json",
+            "-vn", "-f", "null", "-",
+        ]
+        result = subprocess.run(
+            measure_cmd,
+            capture_output=True,
+            text=True,
+            timeout=300,
+            encoding="utf-8",
+            errors="replace",
+        )
+        # Parse JSON from stderr
+        json_match = re.search(r'\{[^{}]+\}', result.stderr, re.DOTALL)
+        if json_match:
+            stats = json.loads(json_match.group())
+            measured_i    = stats.get("input_i", str(target_lufs))
+            measured_tp   = stats.get("input_tp", str(true_peak))
+            measured_lra  = stats.get("input_lra", str(loudness_range))
+            measured_thresh = stats.get("input_thresh", "-70.0")
+            offset        = stats.get("target_offset", "0.0")
+        else:
+            # Fallback: single-pass without stats
+            measured_i = str(target_lufs)
+            measured_tp = str(true_peak)
+            measured_lra = str(loudness_range)
+            measured_thresh = "-70.0"
+            offset = "0.0"
+
+        # ── Pass 2: Apply normalization ───────────────────────────────────────
+        if progress_callback:
+            progress_callback(f"Normalizing: {os.path.basename(input_path)}")
+
+        norm_filter = (
+            f"loudnorm=I={target_lufs}:TP={true_peak}:LRA={loudness_range}"
+            f":measured_I={measured_i}:measured_TP={measured_tp}"
+            f":measured_LRA={measured_lra}:measured_thresh={measured_thresh}"
+            f":offset={offset}:linear=true:print_format=summary"
+        )
+
+        apply_cmd = [
+            ffmpeg, "-hide_banner", "-i", input_path,
+            "-af", norm_filter,
+            "-ar", "48000",       # 48 kHz standard
+            "-y", tmp_path,
+        ]
+        apply_result = subprocess.run(
+            apply_cmd,
+            capture_output=True,
+            text=True,
+            timeout=600,
+            encoding="utf-8",
+            errors="replace",
+        )
+
+        if apply_result.returncode != 0:
+            return False, f"Normalization failed: {apply_result.stderr[-300:]}"
+
+        # ── Swap files ────────────────────────────────────────────────────────
+        if in_place:
+            os.replace(tmp_path, output_path)
+        else:
+            os.rename(tmp_path, output_path)
+
+        msg = f"✅ Normalized: {os.path.basename(input_path)}"
+        if progress_callback:
+            progress_callback(msg)
+        return True, msg
+
+    except subprocess.TimeoutExpired:
+        _cleanup(tmp_path)
+        return False, "Normalization timed out."
+    except Exception as exc:
+        _cleanup(tmp_path)
+        return False, f"Error: {exc}"
+
+
+def normalize_folder(
+    folder: str,
+    extensions: tuple = (".mp3", ".m4a", ".aac", ".wav", ".flac", ".ogg"),
+    target_lufs: float = STREAMING_TARGET_LUFS,
+    progress_callback: Optional[Callable[[str], None]] = None,
+    done_callback: Optional[Callable[[int, int], None]] = None,
+):
+    """
+    Normalize all audio files in a folder (non-blocking, runs in background thread).
+    done_callback(success_count, total_count)
+    """
+    def _run():
+        files = [
+            os.path.join(folder, f)
+            for f in os.listdir(folder)
+            if os.path.isfile(os.path.join(folder, f))
+            and os.path.splitext(f)[1].lower() in extensions
+        ]
+        total = len(files)
+        success = 0
+        for fp in files:
+            ok, msg = normalize_file(fp, target_lufs=target_lufs, progress_callback=progress_callback)
+            if ok:
+                success += 1
+        if done_callback:
+            done_callback(success, total)
+
+    threading.Thread(target=_run, daemon=True, name="AudioNormalizer").start()
+
+
+def _cleanup(path: str):
+    try:
+        if os.path.exists(path):
+            os.remove(path)
+    except Exception as exc:
+        logger.warning(f"[Normalizer] Cleanup failed for {path}: {exc}")
+
+
+
+
+====================================================================================================
+FILE: core\background_workers.py
+====================================================================================================
+
+
+import subprocess
+import sys
+import json
+import os
+import hashlib
+import urllib.request
+
+try:
+    from PySide6.QtCore import QThread, Signal
+except ImportError:
+    from PyQt6.QtCore import QThread, pyqtSignal as Signal
+
+
+class YtDlpPipUpdateWorker(QThread):
+    finished = Signal(bool, str)
+
+    def run(self):
+        try:
+            process = subprocess.Popen(
+                [sys.executable, "-m", "pip", "install", "-U", "yt-dlp"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            )
+            stdout, stderr = process.communicate()
+            if process.returncode == 0:
+                self.finished.emit(True, stdout)
+            else:
+                self.finished.emit(False, stderr)
+        except Exception as exc:
+            self.finished.emit(False, str(exc))
+
+
+class YtDlpCoreUpdateWorker(QThread):
+    finished = Signal(int, str, str)
+
+    def run(self):
+        try:
+            result = subprocess.run(
+                [sys.executable, "-m", "yt_dlp", "-U"],
+                capture_output=True,
+                text=True,
+                check=False,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            )
+            self.finished.emit(result.returncode, result.stdout or "", result.stderr or "")
+        except Exception as exc:
+            self.finished.emit(-1, "", str(exc))
+
+
+def _parse_version(value: str) -> tuple:
+    raw = str(value or "").strip()
+    parts = []
+    for chunk in raw.replace("-", ".").replace("+", ".").split("."):
+        if not chunk:
+            continue
+        digits = "".join(ch for ch in chunk if ch.isdigit())
+        parts.append(int(digits) if digits else 0)
+    return tuple(parts or [0])
+
+
+def is_newer_version(current: str, candidate: str) -> bool:
+    return _parse_version(candidate) > _parse_version(current)
+
+
+class AppUpdateCheckWorker(QThread):
+    finished = Signal(bool, dict, str)
+
+    def __init__(self, current_version: str, manifest_url: str):
+        super().__init__()
+        self.current_version = str(current_version or "").strip()
+        self.manifest_url = str(manifest_url or "").strip()
+
+    def run(self):
+        if not self.manifest_url:
+            self.finished.emit(True, {"available": False}, "")
+            return
+        try:
+            req = urllib.request.Request(
+                self.manifest_url,
+                headers={"User-Agent": "VidDownloader", "Accept": "application/json"},
+            )
+            with urllib.request.urlopen(req, timeout=6) as resp:
+                raw = resp.read().decode("utf-8", errors="replace")
+            manifest = json.loads(raw or "{}")
+            if not isinstance(manifest, dict):
+                self.finished.emit(False, {}, "Invalid update manifest")
+                return
+            latest = str(manifest.get("version", "")).strip()
+            if not latest:
+                self.finished.emit(False, {}, "Manifest missing version")
+                return
+            available = is_newer_version(self.current_version, latest)
+            payload = dict(manifest)
+            payload["available"] = available
+            payload["current_version"] = self.current_version
+            self.finished.emit(True, payload, "")
+        except Exception as exc:
+            self.finished.emit(False, {}, str(exc))
+
+
+class AppUpdateDownloadWorker(QThread):
+    progress = Signal(int, int)
+    finished = Signal(bool, str, str)
+
+    def __init__(self, url: str, expected_sha256: str, out_path: str):
+        super().__init__()
+        self.url = str(url or "").strip()
+        self.expected_sha256 = str(expected_sha256 or "").strip().lower()
+        self.out_path = str(out_path or "").strip()
+
+    def run(self):
+        if not self.url or not self.out_path:
+            self.finished.emit(False, "", "Missing download URL or output path")
+            return
+        try:
+            os.makedirs(os.path.dirname(self.out_path), exist_ok=True)
+            req = urllib.request.Request(self.url, headers={"User-Agent": "VidDownloader"})
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                total = int(resp.headers.get("Content-Length") or 0)
+                sha = hashlib.sha256()
+                downloaded = 0
+                with open(self.out_path, "wb") as f:
+                    while True:
+                        chunk = resp.read(1024 * 256)
+                        if not chunk:
+                            break
+                        f.write(chunk)
+                        sha.update(chunk)
+                        downloaded += len(chunk)
+                        self.progress.emit(downloaded, total)
+            digest = sha.hexdigest().lower()
+            if self.expected_sha256 and digest != self.expected_sha256:
+                try:
+                    os.remove(self.out_path)
+                except Exception:
+                    pass
+                self.finished.emit(False, "", "SHA256 mismatch")
+                return
+            self.finished.emit(True, self.out_path, "")
+        except Exception as exc:
+            self.finished.emit(False, "", str(exc))
+
+
+
+
+====================================================================================================
+FILE: core\bandwidth_scheduler.py
+====================================================================================================
+
+
+"""
+core/bandwidth_scheduler.py — Time-Based Bandwidth Scheduler
+Automatically adjusts download speed based on time of day.
+Example: Full speed at night, limited during work hours.
+"""
+import json
+import os
+import logging
+from datetime import datetime, time
+from typing import Optional
+
+logger = logging.getLogger("SnapDownloader.BandwidthScheduler")
+CONFIG_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "bandwidth_schedule.json")
+
+DEFAULT_SCHEDULE = [
+    # (start_hour, end_hour, limit_kbps)  — 0 means unlimited
+    {"start": "00:00", "end": "08:00", "limit_kbps": 0,      "label": "Night (Unlimited)"},
+    {"start": "08:00", "end": "12:00", "limit_kbps": 2048,   "label": "Morning (2 MB/s)"},
+    {"start": "12:00", "end": "18:00", "limit_kbps": 1024,   "label": "Work Hours (1 MB/s)"},
+    {"start": "18:00", "end": "22:00", "limit_kbps": 0,      "label": "Evening (Unlimited)"},
+    {"start": "22:00", "end": "24:00", "limit_kbps": 0,      "label": "Late Night (Unlimited)"},
+]
+
+
+class BandwidthScheduler:
+    def __init__(self):
+        self.schedule = []
+        self.enabled = False
+        self.load()
+
+    # ── Persistence ──────────────────────────────────────────────────────────
+
+    def load(self):
+        if os.path.exists(CONFIG_PATH):
+            try:
+                with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                self.enabled = bool(data.get("enabled", False))
+                self.schedule = self.normalize_schedule(data.get("schedule", DEFAULT_SCHEDULE))
+                return
+            except Exception as exc:
+                logger.warning(f"[Scheduler] Failed to load config, using defaults: {exc}")
+        self.schedule = self.normalize_schedule(DEFAULT_SCHEDULE)
+        self.enabled = False
+
+    def save(self):
+        try:
+            payload_schedule = self.normalize_schedule(self.schedule)
+            self.schedule = payload_schedule
+            with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+                json.dump({"enabled": self.enabled, "schedule": payload_schedule}, f, indent=2, ensure_ascii=False)
+        except Exception as exc:
+            logger.warning(f"[Scheduler] Failed to save: {exc}")
+
+    # ── Logic ─────────────────────────────────────────────────────────────────
+
+    def get_current_limit(self) -> int:
+        """
+        Return the current bandwidth limit in KB/s.
+        Returns 0 if scheduler is disabled or no matching rule.
+        """
+        if not self.enabled or not self.schedule:
+            return 0
+
+        now = datetime.now().time()
+        for rule in self.schedule:
+            try:
+                start = _parse_time(rule["start"])
+                end   = _parse_time(rule["end"])
+                if _time_in_range(start, end, now):
+                    return int(rule.get("limit_kbps", 0))
+            except Exception as exc:
+                logger.debug(f"[Scheduler] Invalid rule skipped in get_current_limit: {exc}")
+                continue
+        return 0
+
+    def get_active_rule(self) -> Optional[dict]:
+        """Return the currently active rule dict or None."""
+        if not self.enabled:
+            return None
+        now = datetime.now().time()
+        for rule in self.schedule:
+            try:
+                if _time_in_range(_parse_time(rule["start"]), _parse_time(rule["end"]), now):
+                    return rule
+            except Exception as exc:
+                logger.debug(f"[Scheduler] Invalid rule skipped in get_active_rule: {exc}")
+                continue
+        return None
+
+    def set_enabled(self, enabled: bool):
+        self.enabled = enabled
+        self.save()
+
+    def set_schedule(self, schedule):
+        self.schedule = self.normalize_schedule(schedule)
+        self.save()
+
+    def update_rule(self, index: int, start: str, end: str, limit_kbps: int, label: str = ""):
+        if 0 <= index < len(self.schedule):
+            self.schedule[index] = self.normalize_schedule(
+                [{"start": start, "end": end, "limit_kbps": limit_kbps, "label": label}]
+            )[0]
+            self.save()
+
+    def add_rule(self, start: str, end: str, limit_kbps: int, label: str = ""):
+        self.schedule.extend(
+            self.normalize_schedule(
+                [{"start": start, "end": end, "limit_kbps": limit_kbps, "label": label}]
+            )
+        )
+        self.save()
+
+    def remove_rule(self, index: int):
+        if 0 <= index < len(self.schedule):
+            self.schedule.pop(index)
+            self.save()
+
+    def reset_to_defaults(self):
+        self.schedule = self.normalize_schedule(DEFAULT_SCHEDULE)
+        self.save()
+
+    def normalize_schedule(self, schedule) -> list[dict]:
+        if not isinstance(schedule, list):
+            raise ValueError("schedule must be a list")
+        normalized = []
+        for item in schedule:
+            if not isinstance(item, dict):
+                raise ValueError("each schedule rule must be an object")
+            start = _normalize_time_text(item.get("start", "00:00"))
+            end = _normalize_time_text(item.get("end", "00:00"))
+            _parse_time(start)
+            _parse_time(end)
+            limit_kbps = max(0, int(item.get("limit_kbps", 0) or 0))
+            label = str(item.get("label", "")).strip() or f"{start} → {end}"
+            normalized.append(
+                {
+                    "start": start,
+                    "end": end,
+                    "limit_kbps": limit_kbps,
+                    "label": label,
+                }
+            )
+        return normalized
+
+    def format_schedule_summary(self) -> str:
+        if not self.enabled:
+            return "Scheduler: Disabled"
+        rule = self.get_active_rule()
+        if not rule:
+            return "Scheduler: No matching rule"
+        limit = rule.get("limit_kbps", 0)
+        label = rule.get("label", "")
+        speed_str = f"{limit} KB/s" if limit > 0 else "Unlimited"
+        return f"Scheduler: {label} → {speed_str}"
+
+
+# ── Helpers ──────────────────────────────────────────────────────────────────
+
+def _parse_time(t: str) -> time:
+    text = _normalize_time_text(t)
+    h_text, m_text = text.split(":")
+    hour = int(h_text)
+    minute = int(m_text)
+    # M-13: Use 23:59 as sentinel for end-of-day instead of 0:0
+    # This avoids confusion in _time_in_range when start < end
+    if hour == 24 and minute == 0:
+        return time(23, 59)
+    if not (0 <= hour <= 23 and 0 <= minute <= 59):
+        raise ValueError(f"invalid time: {t}")
+    return time(hour, minute)
+
+
+def _normalize_time_text(value: str) -> str:
+    parts = str(value or "").strip().split(":")
+    if len(parts) != 2:

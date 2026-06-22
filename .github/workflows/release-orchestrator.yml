@@ -1,0 +1,62 @@
+name: Release Orchestrator
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_all_tests:
+        description: "Run all tests before packaging"
+        required: false
+        type: boolean
+        default: false
+      fail_fast:
+        description: "Stop test run on first failure"
+        required: false
+        type: boolean
+        default: true
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Gate (Release Preconditions)
+        shell: pwsh
+        env:
+          RUN_ALL_TESTS: ${{ github.event_name == 'workflow_dispatch' && inputs.run_all_tests }}
+          FAIL_FAST: ${{ github.event_name != 'workflow_dispatch' || inputs.fail_fast }}
+        run: |
+          $gateArgs = @("-SkipBuild")
+          if ($env:RUN_ALL_TESTS -eq "true") {
+            $gateArgs += "-RunAllTests"
+          }
+          if ($env:FAIL_FAST -eq "true") {
+            $gateArgs += "-FailFast"
+          }
+          ./release_build.ps1 @gateArgs
+
+      - name: Build Release Artifact
+        shell: pwsh
+        run: ./release_build.ps1
+
+      - name: Upload Release Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: viddownloader-windows
+          path: |
+            dist/**
+            build/**

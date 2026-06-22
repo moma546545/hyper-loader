@@ -1,0 +1,23 @@
+# UI Framework
+PySide6
+qtawesome
+
+# Core downloader
+yt-dlp
+curl_cffi
+
+# Windows Native Toast Notifications
+win11toast
+
+# Security
+keyring
+cryptography
+
+# Browser Extension
+websockets
+
+# Testing Framework
+pytest
+
+# Packaging
+pyinstaller

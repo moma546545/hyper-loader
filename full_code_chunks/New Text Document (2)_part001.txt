@@ -1,0 +1,2209 @@
+﻿VIDDOWNLOADER - FULL SOURCE CODE EXPORT
+Generated: 2026-04-13 21:21:41
+Total Files: 63
+Root: D:\شوية برامج\viddownloader
+
+====================================================================================================
+FILE: app.py
+====================================================================================================
+
+import json
+import csv
+import os
+import re
+import shutil
+import subprocess
+import sys
+import logging
+import threading
+import time
+import tempfile
+import uuid
+import ipaddress
+import urllib.parse
+from collections import OrderedDict, deque
+from logging.handlers import RotatingFileHandler
+from datetime import datetime, timedelta
+
+logger = logging.getLogger("SnapDownloader")
+
+from core.qt_compat import (
+    QThread, Qt, Signal, QUrl, QTimer, QPropertyAnimation, QEasingCurve, QDateTime,
+    QStringListModel, QTime, QSize, QPoint, QObject, QEvent,
+    QNetworkAccessManager, QNetworkRequest, QNetworkReply,
+    QMediaPlayer, QAudioOutput,
+    QVideoWidget,
+    QIcon, QAction, QPixmap, QPainter, QColor, QPen, QPainterPath,
+    QApplication,
+    QButtonGroup,
+    QCheckBox,
+    QComboBox,
+    QCompleter,
+    QFileDialog,
+    QFrame,
+    QGridLayout,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QListView,
+    QListWidget,
+    QMainWindow,
+    QMessageBox,
+    QPushButton,
+    QProgressBar,
+    QRadioButton,
+    QScrollArea,
+    QSlider,
+    QSpinBox,
+    QStackedWidget,
+    QTextEdit,
+    QTimeEdit,
+    QVBoxLayout,
+    QWidget,
+    QGraphicsOpacityEffect,
+    QSystemTrayIcon,
+    QMenu,
+    QStyle,
+    QDateTimeEdit,
+)
+
+from core.downloader import DownloadWorker
+from core.workers import AnalyzeWorker, FormatProbeWorker, ConversionWorker
+from ui.models import DownloadListModel
+from ui.widgets import SpeedGraphWidget, WheelEventFilter
+from ui.trim_dialog import TrimView
+from core.i18n import _, i18n
+from core.constants import (
+    VIDEO_FORMATS,
+    AUDIO_FORMATS,
+    VIDEO_QUALITIES,
+    AUDIO_QUALITIES,
+    SUBTITLE_OPTIONS,
+    LIQUID_TIMER_INTERVAL_MS,
+    THUMBNAIL_FAILED_MAX,
+    MAX_CONCURRENT_THUMBNAILS,
+    THUMBNAIL_CLEANUP_INTERVAL_MS,
+    THUMBNAIL_WAITER_TTL_SECONDS,
+    THUMBNAIL_VISIBLE_BATCH_PER_TICK,
+    APP_VERSION,
+)
+from core.extension_server import extension_server
+from core.database import init_db, insert_history, fetch_history, count_history, delete_history, get_all_stats, increment_stat, record_peak_speed, migrate_from_json, save_queue_items, load_queue_items, save_session_settings, load_session_settings, close_thread_connection
+from core.duplicate_finder import build_duplicate_report
+from core.cookie_importer import get_available_browsers, auto_detect_and_export
+from core.hotkeys import setup_default_hotkeys
+from core.smart_rename import TEMPLATES as RENAME_TEMPLATES
+from core.proxy_manager import proxy_manager
+from core.config import DEFAULT_SETTINGS, THEME_MODE_MAP, normalize_video_quality_label, default_download_dir
+from core.storage_watchdog import has_enough_space, format_bytes
+from core.background_workers import (
+    YtDlpPipUpdateWorker,
+    YtDlpCoreUpdateWorker,
+    AppUpdateCheckWorker,
+    AppUpdateDownloadWorker,
+)
+from core.audio_normalizer import normalize_file, normalize_folder, STREAMING_TARGET_LUFS
+from core.anti_detection import anti_detection_engine
+from core.bandwidth_scheduler import scheduler
+from core.memory_guard import memory_guard
+from core.sustainability import sustainability, ACTIONS as SUSTAINABILITY_ACTIONS
+from core.queue_manager import QueueManager
+from core.event_bus import event_bus, ShowNotificationEvent, DownloadFinishedEvent, ExtensionLinkReceivedEvent
+from core.window_controllers import SettingsController, DownloadController, ImportController, ExtensionController, AnalyzeController
+from core.ui_controller import UIController
+from core.session_service import SessionService
+from core.trial_manager import TrialManager
+from core.error_handler import ErrorHandler
+from ui.themes import THEMES, get_theme
+from ui.clip_watcher import ClipWatcher
+from ui.mini_mode import MiniModeWindow
+from ui.error_dashboard import ErrorDashboard, analyze_error
+from ui.overlay import NotificationOverlay
+from ui.playlist_view import PlaylistView
+from ui.stats_view import StatsView
+from ui.views.title_bar import build_title_bar
+
+from core.bootstrap import start_app
+
+class PremiumWindow(QMainWindow):
+    def _bulk_import(self):
+        self.import_controller.bulk_import()
+
+    def _bulk_import_worker(self, file_path: str):
+        self.import_controller.bulk_import_worker(file_path)
+
+    def _handle_bulk_import_result(self, payload: dict):
+        self.import_controller.handle_bulk_import_result(payload)
+
+    def _on_playlist_view_analyze_requested(self, url: str):
+        self.analyze_controller.on_playlist_view_analyze_requested(url)
+
+    def _on_playlist_analyze_finished(self, success: bool, message: str, payload: dict, items: list):
+        self.analyze_controller.on_playlist_analyze_finished(success, message, payload, items)
+
+    def _start_analyze(self):
+        self.analyze_controller.start_analyze()
+
+    def _force_reset_search_ui(self):
+        self.analyze_controller.force_reset_search_ui()
+
+    def _update_search_spinner(self):
+        self.analyze_controller.update_search_spinner()
+
+    def _on_analyze_finished(self, success: bool, message: str, payload: dict, items: list):
+        self.analyze_controller.on_analyze_finished(success, message, payload, items)
+
+    def _on_playlist_view_download_requested(self, tasks: list):
+        self.analyze_controller.on_playlist_view_download_requested(tasks)
+
+    def _pulse_widget(self, btn):
+        return
+
+    def _on_trim_view_saved(self, start, end):
+        self.search_view.start_input.setText(start)
+        self.search_view.end_input.setText(end)
+        self.search_view.show_single_state()
+
+    def _on_trim_view_back(self):
+        self.search_view.show_single_state()
+
+    def _wire_views(self):
+        # Map properties from views to self so controllers do not break
+        # SearchView
+        self.download_btn = self.search_view.download_btn
+
+        # Re-wire SearchView signals to app.py controller methods
+        self.search_view.analyze_requested.connect(lambda url: self._start_analyze()) 
+        self.search_view.paste_requested.connect(self._paste_clipboard)
+        self.search_view.clear_history_requested.connect(self._clear_search_history)
+        self.search_view.download_requested.connect(self._start_single_download)
+        self.search_view.schedule_requested.connect(self._add_current_to_queue)
+        self.search_view.trim_toggle_requested.connect(self.search_view._toggle_trim_options)
+
+        # DownloadsView
+
+        # Connect DownloadsView
+        self.downloads_view.filter_changed.connect(self._set_downloads_filter)
+        self.downloads_view.search_changed.connect(self._refresh_downloads_list)
+        self.downloads_view.queue_state_changed.connect(self._set_queue_state_filter)
+        self.downloads_view.page_changed.connect(self._set_downloads_page)
+        self.downloads_view.export_json_requested.connect(self._export_history_json)
+        self.downloads_view.export_csv_requested.connect(self._export_history_csv)
+        self.downloads_view.queue_reorder_requested.connect(self._on_queue_reorder_requested)
+        self.downloads_view.list_scrolled.connect(self._on_downloads_list_scrolled)
+        self.downloads_view.list_range_changed.connect(self._on_downloads_list_range_changed)
+
+        # SettingsView
+        # Map SettingsView signals
+        self.settings_view.apply_requested.connect(self._apply_settings_to_search)
+        self.settings_view.dir_picker_requested.connect(self._pick_settings_dir)
+        self.settings_view.cookie_picker_requested.connect(self._pick_cookies)
+        self.settings_view.auto_cookie_requested.connect(self._auto_import_cookies)
+        self.settings_view.update_ytdlp_requested.connect(self._update_ytdlp)
+        self.settings_view.check_app_updates_requested.connect(self._check_app_updates_manual)
+        self.settings_view.export_settings_requested.connect(self._export_settings_to_file)
+        self.settings_view.import_settings_requested.connect(self._import_settings_from_file)
+        self.settings_view.proxy_add_requested.connect(self._add_proxy)
+        self.settings_view.proxy_test_requested.connect(self._test_proxy)
+        self.settings_view.normalize_requested.connect(self._normalize_downloads_folder)
+        self.settings_view.mini_mode_requested.connect(self._toggle_mini_mode)
+        self.settings_view.sustainability_apply_requested.connect(self._apply_sustainability)
+        self.settings_view.ui_language_changed.connect(self._set_ui_language)
+        self.settings_view.bandwidth_rule_selected.connect(self._load_selected_bandwidth_rule)
+        self.settings_view.bandwidth_editor_changed.connect(self._sync_bandwidth_schedule_rule_list)
+        self.settings_view.bandwidth_new_rule_requested.connect(self._prepare_new_bandwidth_rule)
+        self.settings_view.bandwidth_save_rule_requested.connect(self._save_bandwidth_rule_from_form)
+        self.settings_view.bandwidth_remove_rule_requested.connect(self._remove_selected_bandwidth_rule)
+        self.settings_view.bandwidth_apply_schedule_requested.connect(self._apply_bandwidth_schedule_rules)
+        self.settings_view.bandwidth_reset_schedule_requested.connect(self._reset_bandwidth_schedule_rules)
+
+        # PlayerView
+        
+        self.player_view.back_requested.connect(self._stop_and_go_back)
+        self.player_view.fullscreen_requested.connect(self._toggle_fullscreen)
+        self.player_view.playback_toggled.connect(self._toggle_playback)
+        self.player_view.next_requested.connect(self._play_next_in_history)
+        self.player_view.prev_requested.connect(self._play_previous_in_history)
+        self.player_view.seek_requested.connect(self._seek_to_slider_position)
+        # Keep player timeline/time-label synced with the actual media stream.
+        self.player_view.media_player.positionChanged.connect(self._on_player_position_changed)
+        self.player_view.media_player.durationChanged.connect(self._on_player_duration_changed)
+        if hasattr(self.player_view.media_player, "errorOccurred"):
+            self.player_view.media_player.errorOccurred.connect(self._on_player_error)
+
+        # ToolsView
+        self.tools_view.fetch_channel_requested.connect(lambda url: (self.search_view.url_input.setText(url), self._switch_view("search"), self._start_analyze()))
+        self.tools_view.export_queue_requested.connect(self._export_queue_to_file)
+        self.tools_view.import_queue_requested.connect(self._import_queue_from_file)
+        self.tools_view.retry_failed_requested.connect(self._retry_all_failed_queue_items)
+
+        # BrowserView (Bulk Download)
+        self.bulk_analyze_btn = self.browser_view.bulk_analyze_btn
+        self.run_queue_btn = self.browser_view.run_queue_btn
+        self.pause_queue_btn = self.browser_view.pause_queue_btn
+        self.resume_queue_btn = self.browser_view.resume_queue_btn
+        
+        self.browser_view.analyze_bulk_requested.connect(self._analyze_bulk)
+        self.browser_view.start_queue_requested.connect(self._start_queue_download)
+        self.browser_view.pause_queue_requested.connect(self._pause_queue_download)
+        self.browser_view.resume_queue_requested.connect(self._resume_queue_download)
+
+
+    VIDEO_FORMATS = VIDEO_FORMATS
+    AUDIO_FORMATS = AUDIO_FORMATS
+    VIDEO_QUALITIES = VIDEO_QUALITIES
+    AUDIO_QUALITIES = AUDIO_QUALITIES
+    SUBTITLE_OPTIONS = SUBTITLE_OPTIONS
+    download_finished_ui = Signal(object)
+    bulk_import_finished_ui = Signal(object)
+    session_loaded_ui = Signal(object)
+
+    def __init__(self):
+        super().__init__()
+        self.download_finished_ui.connect(self._handle_download_finished_event)
+        self.bulk_import_finished_ui.connect(self._handle_bulk_import_result)
+        self.session_loaded_ui.connect(self._handle_session_load_result)
+        self.active_view = "search"
+        self.preview_data = {}
+        self.queue_manager = QueueManager(self)
+        self.current_worker = None
+        self.current_task = None
+        self.analyze_worker = None
+        self.progress_speed = "--"
+        self.progress_eta = "--"
+        self.progress_size = "--"
+        self.current_download_path = ""
+        self.logs = []
+        self.stats = {"total_videos": 0, "total_audios": 0, "download_history": []}
+        self.theme = "Modern Dark"
+        self.ui_language = i18n.current_lang
+        self.system_theme_sync_enabled = True
+        self._last_system_theme_mode = None
+        self.max_concurrent = int(DEFAULT_SETTINGS["max_concurrent"])
+        self.storage_guard_enabled = bool(DEFAULT_SETTINGS["storage_guard_enabled"])
+        self.storage_min_free_gb = max(1, int(DEFAULT_SETTINGS["storage_min_free_gb"]))
+        self.bandwidth_scheduler_enabled = bool(scheduler.enabled)
+        self._bandwidth_schedule_summary = scheduler.format_schedule_summary()
+        self._editing_bandwidth_rule_index = None
+        self.cookies_path = ""
+        self.search_history = []
+        self._search_history_limit = int(DEFAULT_SETTINGS["search_history_limit"])
+        self.search_history_ttl_days = max(1, int(DEFAULT_SETTINGS["search_history_ttl_days"]))
+        self.search_history_model = QStringListModel(self)
+        self.active_workers = {}
+        self.queue_items = []
+        self.downloads_filter = "completed"
+        self.queue_state_filter = "all"
+        self.downloads_sort = "Date (Newest)"
+        self.downloads_page = 1
+        self.downloads_page_size = 6
+        self.trial_enabled = str(os.getenv("SNAPDOWNLOADER_ENABLE_TRIAL", "")).strip().lower() in {"1", "true", "yes", "on"}
+        self.trial_manager = TrialManager(
+            enabled=self.trial_enabled,
+            total_days=int(DEFAULT_SETTINGS["trial_total_days"]),
+            load_settings=load_session_settings,
+        )
+        self.trial_total_days = int(self.trial_manager.total_days)
+        self.trial_started_at = ""
+        self.trial_days_remaining = self.trial_total_days
+        self.page_animation = None
+        self.trial_timer = None
+        self.toast_timer = None
+        self.wheel_filter = WheelEventFilter(self)
+        self.settings_controller = SettingsController(self)
+        self.analyze_controller = AnalyzeController(self)
+        self.download_controller = DownloadController(self)
+        self.import_controller = ImportController(self)
+        self.extension_controller = ExtensionController(self)
+        self.ui_controller = UIController(self)
+        self.session_service = SessionService()
+        self.pause_requested_workers = set()
+        self.cancel_requested_workers = set()
+        self._metadata_fetch_queue = []
+        self._metadata_fetch_worker = None
+        self._bulk_analysis_queue = []
+        self._bulk_analysis_results = []
+        self._bulk_analysis_settings = {}
+        self.thumbnail_cache = OrderedDict()
+        self.thumbnail_cache_max = max(50, int(DEFAULT_SETTINGS["thumbnail_cache_max"]))
+        self.thumbnail_failed = set()
+        self.thumbnail_failed_max = THUMBNAIL_FAILED_MAX
+        self.thumbnail_waiters = {}
+        self._thumbnail_waiter_timestamps = {}
+        self._thumbnail_state_lock = threading.RLock()
+        self._active_thumbnail_requests = 0
+        self._max_concurrent_thumbnails = MAX_CONCURRENT_THUMBNAILS
+        self.downloads_thumbnail_jobs = []
+        self._downloads_refresh_pending = False
+        self._active_download_card_refs = {}
+        self._download_card_cache = {}
+        self._download_card_state = {}
+        self._rendered_download_rows = {}
+        self._downloads_styles_cache = {}
+        self._downloads_last_fingerprint = None
+        self._download_card_cache_limit = 120
+        self._visible_thumb_timer = QTimer(self)
+        self._visible_thumb_timer.setSingleShot(True)
+        self._visible_thumb_timer.timeout.connect(self._process_visible_thumbnail_jobs)
+        self._ui_animations = []
+        self.update_retry_count = 0
+        self._auto_update_worker = None
+        self._app_update_check_worker = None
+        self._app_update_download_worker = None
+        self._available_app_update = None
+        self._available_app_update_download_path = ""
+        self._formats_worker = None
+        self._conversion_worker = None
+        self.auto_retry_delay_seconds = int(DEFAULT_SETTINGS["auto_retry_delay_seconds"])
+        self.queue_auto_retry_limit = int(DEFAULT_SETTINGS["queue_auto_retry_limit"])
+        self.queue_running = False
+        self.queue_paused = False
+        self._is_closing = False
+        self._session_save_lock = threading.Lock()
+        self._session_save_write_lock = threading.Lock()
+        self._session_save_event = threading.Event()
+        self._session_save_payload = None
+        self._session_save_shutdown = False
+        self._session_save_thread = threading.Thread(
+            target=self._session_save_loop,
+            daemon=True,
+            name="SessionSaveWorker",
+        )
+        self._session_save_thread.start()
+        self._session_load_thread = None
+        self._downloads_render_generation = 0
+        self._downloads_render_cursor = 0
+        self._downloads_render_loading = False
+        self._tray_progress_bucket = -1
+        self._speed_history = {}
+        self._player_duration_ms = 0
+        self._player_is_seeking = False
+        self._display_progress_wid = None
+        self._storage_guard_alerted = False
+        self._storage_guard_last_message = ""
+        self._liquid_style_phase_bucket = -1
+        
+        # Liquid Animation
+        self.liquid_offset = 0
+        self.liquid_timer = QTimer(self)
+        self.liquid_timer.timeout.connect(self._update_liquid_animation)
+        self._liquid_timer_interval_ms = LIQUID_TIMER_INTERVAL_MS
+        self.liquid_timer.start(self._liquid_timer_interval_ms)
+        self._thumbnail_cleanup_timer = QTimer(self)
+        self._thumbnail_cleanup_timer.setInterval(THUMBNAIL_CLEANUP_INTERVAL_MS)
+        self._thumbnail_cleanup_timer.timeout.connect(self._cleanup_stale_thumbnail_waiters)
+        self._thumbnail_cleanup_timer.start()
+        self._settings_autosave_timer = QTimer(self)
+        self._settings_autosave_timer.setSingleShot(True)
+        self._settings_autosave_timer.setInterval(450)
+        self._settings_autosave_timer.timeout.connect(lambda: self._apply_settings_to_search(silent=True))
+        self._search_history_save_timer = QTimer(self)
+        self._search_history_save_timer.setSingleShot(True)
+        self._search_history_save_timer.setInterval(2000)
+        self._search_history_save_timer.timeout.connect(self._save_session)
+        self._storage_watchdog_timer = QTimer(self)
+        self._storage_watchdog_timer.setInterval(5000)
+        self._storage_watchdog_timer.timeout.connect(self._run_storage_watchdog)
+        self._storage_watchdog_timer.start()
+        self._scheduler_timer = QTimer(self)
+        self._scheduler_timer.setInterval(30000)
+        self._scheduler_timer.timeout.connect(self._refresh_bandwidth_schedule)
+        self._scheduler_timer.start()
+        initial_system_theme_mode = self._detect_system_theme_mode()
+        if initial_system_theme_mode in THEME_MODE_MAP:
+            self._last_system_theme_mode = initial_system_theme_mode
+            self.theme = str(THEME_MODE_MAP.get(initial_system_theme_mode, self.theme))
+        self._system_theme_timer = QTimer(self)
+        self._system_theme_timer.setInterval(10000)
+        self._system_theme_timer.timeout.connect(self._refresh_system_theme)
+        self._system_theme_timer.start()
+        
+        # ── Database init & JSON migration (Background) ────────────────────
+        QTimer.singleShot(0, self._init_database_async)
+        self._init_trial_state()
+
+        # ── Clip Watcher (Snap-Bar) ───────────────────────────────────────
+        self.clip_watcher = ClipWatcher(self.theme)
+        self.clip_watcher.downloadRequested.connect(self._quick_download)
+        self.clip_watcher.start()
+
+        # ── Auto-Updater ──────────────────────────────────────────────────
+        self._schedule_background_update_check(initial_delay_ms=5000)
+
+        # ── Mini Mode ─────────────────────────────────────────────────────
+        self.mini_window = MiniModeWindow(THEMES.get(self.theme, THEMES["Modern Dark"]))
+        self.mini_window.showMainRequested.connect(self._show_from_mini)
+        self.mini_window.pauseRequested.connect(self._pause_queue_download)
+
+        # ── Global Hotkeys ────────────────────────────────────────────────
+        self.hotkey_manager = setup_default_hotkeys(self)
+        QTimer.singleShot(2000, self.hotkey_manager.start)
+
+        # ── Browser Extension Server ───────────────────────────────────────
+        extension_server.start()
+
+        # ── Memory Guard ────────────────────────────────────────────────────────
+        memory_guard.on_warning = lambda mb: (self._append_log(f"[RAM] High usage: {mb:.0f} MB. Clearing caches."), self._trim_thumbnail_cache())
+        memory_guard.on_critical = lambda mb: self._warn(f"⚠️ RAM critical: {mb:.0f} MB — GC triggered")
+        memory_guard.start()
+        self.net_manager = QNetworkAccessManager(self)
+
+        self.setAcceptDrops(True)
+        self._build_ui()
+        self._refresh_bandwidth_schedule()
+        self._load_stats()
+        self._load_session_async()
+        self._refresh_downloads_list()
+
+        # Connect QueueManager signals to UI slots
+        self.queue_manager.queue_changed.connect(self._refresh_queue_list)
+        self.queue_manager.progress_updated.connect(self._on_queue_progress_updated)
+        self.queue_manager.start_worker_requested.connect(self._start_download_from_queue)
+        self.queue_manager.queue_stopped.connect(lambda: self._set_controls_enabled(True))
+        self.queue_manager.queue_stopped.connect(lambda: self._set_status(_("Ready")))
+        self.queue_manager.queue_limit_exceeded.connect(self._on_queue_limit_exceeded)  # H-07
+
+        # Subscribe to events from the event bus
+        event_bus.subscribe(ShowNotificationEvent, self._on_show_notification_event)
+        event_bus.subscribe(DownloadFinishedEvent, self._on_download_finished_event)
+        event_bus.subscribe(ExtensionLinkReceivedEvent, self._on_extension_link_event)
+
+    def _build_ui(self):
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, False)
+        self.setWindowTitle("SnapDownloader")
+        self.setMinimumSize(900, 620)
+        self.resize(1000, 700)
+        # Center the window
+        screen = QApplication.primaryScreen().geometry()
+        size = self.geometry()
+        self.move((screen.width() - size.width()) // 2, (screen.height() - size.height()) // 2)
+        self.setStyleSheet(self._qss())
+        
+        if QSystemTrayIcon.isSystemTrayAvailable():
+            self.tray_icon = QSystemTrayIcon(self)
+            icon = self.style().standardIcon(QStyle.StandardPixmap.SP_DriveNetIcon)
+            self.tray_icon.setIcon(icon)
+            self.tray_menu = QMenu()
+            show_action = QAction("Show Window", self)
+            show_action.triggered.connect(self.showNormal)
+            quit_action = QAction("Quit Application", self)
+            quit_action.triggered.connect(QApplication.instance().quit)
+            self.tray_menu.addAction(show_action)
+            self.tray_menu.addAction(quit_action)
+            self.tray_icon.setContextMenu(self.tray_menu)
+            self.tray_icon.show()
+            self.tray_icon.activated.connect(self._on_tray_activated)
+
+        root = QWidget()
+        layout = QVBoxLayout(root)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+        layout.addWidget(self._build_title_bar())
+        
+        # Modern UI: Sidebar + Main Content Area
+        content_layout = QHBoxLayout()
+        content_layout.setContentsMargins(0, 0, 0, 0)
+        content_layout.setSpacing(0)
+        
+        content_layout.addWidget(self._build_sidebar_nav())
+        
+        self.main_stack = QStackedWidget()
+        self.main_stack.setObjectName("main_stack")
+
+        # Instantiate Extracted Views
+        from ui.views.search_view import SearchView
+        from ui.views.browser_view import BrowserView
+        from ui.views.downloads_view import DownloadsView
+        from ui.views.settings_view import SettingsView
+        from ui.views.player_view import PlayerView
+        from ui.views.tools_view import ToolsView
+
+        self.search_view = SearchView(self)
+        self.browser_view = BrowserView(self)
+        self.downloads_view = DownloadsView(self)
+        self.settings_view = SettingsView(self)
+        self.player_view = PlayerView(self)
+        self.tools_view = ToolsView(self)
+        self.stats_view = StatsView(self.theme)
+
+        self._wire_views()
+        self._reload_bandwidth_schedule_editor()
+        self._sync_bandwidth_schedule_rule_list()
+        self._prepare_new_bandwidth_rule()
+        self._bind_settings_autosave()
+        self.search_view.formats_requested.connect(self._on_formats_requested)
+        self.downloads_view.history_filters_changed.connect(self._refresh_downloads_list)
+
+        self.main_stack.addWidget(self.search_view)    # 0
+        self.main_stack.addWidget(self.browser_view)   # 1
+        self.main_stack.addWidget(self.downloads_view) # 2
+        self.main_stack.addWidget(self.settings_view)  # 3
+        self.main_stack.addWidget(self.player_view)    # 4
+        self.main_stack.addWidget(self.tools_view)     # 5
+        self.error_dashboard = ErrorDashboard()
+        self.main_stack.addWidget(self.error_dashboard)         # 6
+        self.playlist_view = PlaylistView(net_manager=self.net_manager)
+        self.playlist_view.analyzeRequested.connect(self._on_playlist_view_analyze_requested)
+        self.playlist_view.downloadRequested.connect(self._on_playlist_view_download_requested)
+        self.main_stack.addWidget(self.playlist_view)           # 7
+        self.main_stack.addWidget(self.stats_view)              # 8
+
+        content_layout.addWidget(self.main_stack, 1)
+        layout.addLayout(content_layout, 1)
+        
+        self.setCentralWidget(root)
+        self.notification_overlay = NotificationOverlay(root)
+        self._init_toast()
+        self._init_trial_timer()
+        self._switch_view("search")
+        self._set_search_state("empty")
+
+    def _init_database_async(self):
+        """Initialize database and migrate legacy data in a background thread."""
+        def task():
+            try:
+                from core.database import init_db, migrate_from_json
+                init_db()
+                old_json = os.path.join(os.path.dirname(__file__), "xd_stats.json")
+                if os.path.exists(old_json):
+                    n = migrate_from_json(old_json)
+                    if n > 0:
+                        logger.info(f"[DB] Migrated {n} history entries from JSON to SQLite")
+                self._migrate_legacy_session_json()
+            except (ImportError, OSError, RuntimeError, ValueError, TypeError) as exc:
+                logger.warning(f"[DB] Async init failed: {exc}")
+            finally:
+                close_thread_connection()
+        
+        threading.Thread(target=task, daemon=True, name="DBInitWorker").start()
+
+    def _detect_system_theme_mode(self):
+        return self.settings_controller.detect_system_theme_mode()
+
+    def _set_system_theme_sync_enabled(self, enabled: bool):
+        self.settings_controller.set_system_theme_sync_enabled(enabled)
+
+    def _apply_theme(self, theme_name: str, persist: bool = False):
+        self.settings_controller.apply_theme(theme_name, persist=persist)
+
+    def _refresh_system_theme(self, force: bool = False, persist: bool = False):
+        self.settings_controller.refresh_system_theme(force=force, persist=persist)
+
+    def _toggle_theme(self):
+        self.settings_controller.toggle_theme()
+
+    def _toggle_dark_light_mode(self):
+        self.settings_controller.toggle_dark_light_mode()
+
+    def _set_ui_language(self, lang_code: str):
+        self.settings_controller.set_ui_language(lang_code, persist=True)
+
+    def _qss(self):
+        from ui.themes import get_style_sheet
+        return get_style_sheet(self.theme)
+
+    def _build_title_bar(self):
+        return build_title_bar(self)
+
+    def _prune_inactive_workers(self):
+        if not hasattr(self, "active_workers"):
+            return 0
+        stale_keys = []
+        for wid, worker in list(self.active_workers.items()):
+            if worker is None:
+                stale_keys.append(wid)
+                continue
+            try:
+                if worker.isFinished():
+                    stale_keys.append(wid)
+            except RuntimeError:
+                stale_keys.append(wid)
+        for wid in stale_keys:
+            worker = self.active_workers.pop(wid, None)
+            if self.current_worker is worker:
+                self.current_worker = None
+        if self._display_progress_wid not in self.active_workers:
+            self._display_progress_wid = next(iter(self.active_workers.keys()), None)
+        return len(stale_keys)
+
+    def _active_workers_count(self):
+        self._prune_inactive_workers()
+        return sum(1 for w in self.active_workers.values() if w.isRunning())
+
+    def _close_window(self):
+        if hasattr(self, "tray_icon") and self.tray_icon.isVisible():
+            self.hide()
+            active_count = self._active_workers_count()
+            self.tray_icon.showMessage(
+                "SnapDownloader",
+                _("لا يزال يعمل في الخلفية. التحميلات النشطة: {count}").format(count=active_count),
+                QSystemTrayIcon.MessageIcon.Information,
+                3000,
+            )
+        else:
+            self.close()
+
+    def _on_tray_activated(self, reason):
+        if reason == QSystemTrayIcon.ActivationReason.Trigger or reason == QSystemTrayIcon.ActivationReason.DoubleClick:
+            self.showNormal()
+            self.activateWindow()
+
+    def changeEvent(self, event):
+        """H-08: Stop the animation timer when the window is minimized to save CPU."""
+        if event.type() == QEvent.Type.WindowStateChange:
+            if self.windowState() & Qt.WindowState.WindowMinimized:
+                if hasattr(self, "liquid_timer") and self.liquid_timer.isActive():
+                    self.liquid_timer.stop()
+                    logger.debug("Stopping liquid_timer (minimized)")
+            else:
+                # Restored from minimized - resume if on active view
+                self._update_liquid_timer_state()
+        super().changeEvent(event)
+
+    def _on_mode_changed(self):
+        if self.search_view.video_radio.isChecked():
+            self.search_view.quality_stack.setCurrentIndex(0)
+            self.search_view.format_combo.clear()
+            self.search_view.format_combo.addItems(VIDEO_FORMATS)
+        elif self.search_view.audio_radio.isChecked():
+            self.search_view.quality_stack.setCurrentIndex(1)
+            self.search_view.format_combo.clear()
+            self.search_view.format_combo.addItems(AUDIO_FORMATS)
+        elif self.search_view.gif_radio.isChecked():
+            self.search_view.quality_stack.setCurrentIndex(2)
+            self.search_view.format_combo.clear()
+            self.search_view.format_combo.addItem("GIF")
+
+    # Dragging is handled by the custom title bar widget.
+
+    def _build_sidebar_nav(self):
+        self.sidebar_frame = QFrame()
+        self.sidebar_frame.setObjectName("sidebar_nav")
+        # Default state: expanded
+        self.sidebar_expanded = True
+        self.sidebar_frame.setFixedWidth(176)
+        
+        col = QVBoxLayout(self.sidebar_frame)
+        col.setContentsMargins(8, 16, 8, 16)
+        col.setSpacing(10)
+        
+        self.toggle_sidebar_btn = QPushButton(_("Menu"))
+        self.toggle_sidebar_btn.setObjectName("nav_btn")
+        self.toggle_sidebar_btn.setFixedSize(40, 40)
+        self.toggle_sidebar_btn.setProperty("is_collapsed", False)
+        self.toggle_sidebar_btn.setToolTip(_("طي/توسيع الشريط الجانبي"))
+        self.toggle_sidebar_btn.clicked.connect(self._toggle_sidebar)
+        col.addWidget(self.toggle_sidebar_btn, alignment=Qt.AlignmentFlag.AlignLeft)
+        
+        self.nav_buttons = {}
+        self.entries = [
+            (_("Search"), "search"),
+            (_("Browser"), "browser"),
+            (_("Downloads"), "downloads"),
+            (_("Playlists"), "playlists"),
+            (_("Tools"), "tools"),
+            (_("Stats"), "stats"),
+            (_("Errors"), "errors"),
+            (_("Settings"), "settings"),
+        ]
+        self.nav_group = QButtonGroup(self)
+        self.nav_group.setExclusive(True)
+        
+        for text, key in self.entries:
+            btn = QPushButton(text)
+            btn.setObjectName("nav_btn")
+            btn.setCheckable(True)
+            btn.setProperty("full_text", text)
+            
+            self.nav_group.addButton(btn)
+            btn.clicked.connect(lambda _, k=key: self._switch_view(k))
+            self.nav_buttons[key] = btn
+            col.addWidget(btn)
+            
+        col.addStretch(1)
+        return self.sidebar_frame
+
+    def _toggle_sidebar(self):
+        self.sidebar_expanded = not self.sidebar_expanded
+        collapsed = not self.sidebar_expanded
+        if self.toggle_sidebar_btn.property("is_collapsed") != collapsed:
+            self.toggle_sidebar_btn.setProperty("is_collapsed", collapsed)
+            self.toggle_sidebar_btn.style().polish(self.toggle_sidebar_btn)
+
+        if self.sidebar_expanded:
+            self.sidebar_frame.setFixedWidth(176)
+            self.toggle_sidebar_btn.setText(_("Menu"))
+            for btn in self.nav_buttons.values():
+                full_text = str(btn.property("full_text") or "")
+                if btn.text() != full_text:
+                    btn.setText(full_text)
+                if btn.toolTip():
+                    btn.setToolTip("")
+                if btn.property("is_collapsed") is not False:
+                    btn.setProperty("is_collapsed", False)
+                    btn.style().polish(btn)
+        else:
+            self.sidebar_frame.setFixedWidth(68)
+            self.toggle_sidebar_btn.setText(_("Menu"))
+            for btn in self.nav_buttons.values():
+                full_text = str(btn.property("full_text") or "")
+                if btn.text():
+                    btn.setText("")
+                if btn.toolTip() != full_text:
+                    btn.setToolTip(full_text)
+                if btn.property("is_collapsed") is not True:
+                    btn.setProperty("is_collapsed", True)
+                    btn.style().polish(btn)
+        self.update()
+
+    def _toggle_advanced_options(self):
+        if self.adv_container.isVisible():
+            self.adv_container.hide()
+            self.adv_toggle_btn.setText("⚙ Show advanced settings")
+        else:
+            self.adv_container.show()
+            self.adv_toggle_btn.setText("⚙ Hide advanced settings")
+
+    def _toggle_trim_options(self):
+        self.analyze_controller.toggle_trim_options()
+
+    def _on_formats_requested(self, url: str):
+        text = str(url or "").strip()
+        if not text:
+            self._warn(_("يرجى إدخال رابط أولاً"))
+            return
+        if self._formats_worker is not None and self._formats_worker.isRunning():
+            self._warn(_("يوجد فحص صيغ جارٍ بالفعل"))
+            return
+        self._append_log(_("جاري جلب الصيغ المتاحة..."))
+        worker = FormatProbeWorker(text, self)
+        worker.finished.connect(self._on_formats_probe_finished)
+        self._formats_worker = worker
+        worker.start()
+
+    def _on_formats_probe_finished(self, success: bool, output: str, error: str):
+        worker = self._formats_worker
+        self._formats_worker = None
+        if worker is not None:
+            try:
+                worker.deleteLater()
+            except RuntimeError:
+                pass
+        if not success:
+            self._warn(error or _("تعذر جلب الصيغ من yt-dlp"))
+            return
+        text = str(output or "").strip()
+        if not text:
+            self._warn(_("لم يتم استرجاع أي صيغ من yt-dlp"))
+            return
+        framed = f"{'=' * 28}\nyt-dlp -F\n{'=' * 28}\n{text}\n{'=' * 28}"
+        self.search_view.log_text.append(framed)
+        self._info(_("تم عرض الصيغ المتاحة في سجل التحليل"))
+
+    def _process_metadata_fetch_queue(self):
+        if self._metadata_fetch_worker is not None or not self._metadata_fetch_queue:
+            return
+        
+        task = self._metadata_fetch_queue.pop(0)
+        url = task.get("url")
+        self._metadata_fetch_worker = AnalyzeWorker(url)
+        self._metadata_fetch_worker.finished.connect(lambda s, m, p, i, t=task: self._on_metadata_fetch_finished(s, m, p, i, t))
+        self._metadata_fetch_worker.start()
+
+    def _on_metadata_fetch_finished(self, success, message, payload, items, task):
+        self._metadata_fetch_worker = None
+        if success and payload.get("kind") == "single":
+            task["title"] = payload.get("title", task["title"])
+            task["thumbnail"] = payload.get("thumbnail", task["thumbnail"])
+            task["duration_seconds"] = payload.get("duration_seconds", 0)
+            self._save_session()
+            self._refresh_downloads_list()
+        
+        # Process next
+        QTimer.singleShot(100, self._process_metadata_fetch_queue)
+
+
+
+    def _apply_downloads_inline_theme(self):
+        if hasattr(self, "downloads_view") and hasattr(self.downloads_view, "apply_theme"):
+            self.downloads_view.apply_theme({"theme": self.theme}, get_theme)
+            return
+
+    def _export_settings_to_file(self):
+        self.settings_controller.export_settings()
+
+    def _import_settings_from_file(self):
+        self.settings_controller.import_settings()
+
+    def _pick_cookies(self):
+        self.settings_controller.pick_cookies()
+
+    def _auto_import_cookies(self):
+        self.settings_controller.auto_import_cookies()
+
+    def _update_ytdlp(self):
+        current_worker = getattr(self, "_ytdlp_update_worker", None)
+        if current_worker is not None and current_worker.isRunning():
+            self._warn("yt-dlp update is already running")
+            return
+        logger.info("Checking for yt-dlp updates...")
+        self._append_log("[Update] Checking for yt-dlp updates...")
+
+        def _on_update_done(success, msg):
+            if success:
+                ErrorHandler.show_info(self, _("Success"), _("yt-dlp has been updated successfully!"))
+                logger.info("yt-dlp updated successfully.")
+            else:
+                ErrorHandler.show_warning(self, _("Error"), _("Failed to update yt-dlp: {msg}").format(msg=msg))
+                logger.error(f"yt-dlp update failed: {msg}")
+            self._ytdlp_update_worker = None
+
+        try:
+            worker = YtDlpPipUpdateWorker(self)
+            worker.finished.connect(_on_update_done)
+            self._ytdlp_update_worker = worker  # keep reference alive
+            worker.start()
+        except (RuntimeError, OSError, TypeError, ValueError) as exc:
+            self._ytdlp_update_worker = None
+            self._warn(f"Failed to start yt-dlp updater: {exc}")
+            logger.error(f"Failed to start yt-dlp updater: {exc}")
+
+    def _check_app_updates_manual(self):
+        self._check_app_updates(background=False)
+
+    def _check_app_updates_background(self):
+        self._check_app_updates(background=True)
+
+    def _check_app_updates(self, background: bool):
+        if self._app_update_check_worker is not None and self._app_update_check_worker.isRunning():
+            return
+        manifest_url = str(os.getenv("VIDDOWNLOADER_UPDATE_MANIFEST_URL", "") or "").strip()
+        if not manifest_url:
+            if not background:
+                self._warn("Update manifest URL غير مضبوط. عيّن VIDDOWNLOADER_UPDATE_MANIFEST_URL")
+            return
+        if not background:
+            self._append_log("[Update] Checking for app updates...")
+
+        def _on_done(ok: bool, manifest: dict, error: str):
+            self._app_update_check_worker = None
+            if not ok:
+                if not background:
+                    self._warn(f"تعذر فحص التحديث: {error}")
+                return
+            if not isinstance(manifest, dict) or not manifest.get("available"):
+                if not background:
+                    self._info("لا يوجد تحديث متاح حالياً")
+                return
+            self._available_app_update = manifest
+            latest = str(manifest.get("version", "") or "").strip()
+            notes = str(manifest.get("notes", "") or "").strip()
+            msg = f"يتوفر تحديث جديد: {latest}\nإصدارك الحالي: {APP_VERSION}"
+            if notes:
+                msg = msg + "\n\n" + notes[:1200]
+            resp = QMessageBox.question(
+                self,
+                "تحديث البرنامج",
+                msg + "\n\nهل تريد تنزيل التحديث الآن؟",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.Yes,
+            )
+            if resp == QMessageBox.StandardButton.Yes:
+                self._download_app_update(manifest)
+
+        worker = AppUpdateCheckWorker(APP_VERSION, manifest_url)
+        worker.finished.connect(_on_done)
+        self._app_update_check_worker = worker
+        worker.start()
+
+    def _download_app_update(self, manifest: dict):
+        if self._app_update_download_worker is not None and self._app_update_download_worker.isRunning():
+            self._warn("تنزيل التحديث جارٍ بالفعل")
+            return
+        if not isinstance(manifest, dict):
+            self._warn("بيانات التحديث غير صالحة")
+            return
+        platform_block = manifest.get("windows") if sys.platform == "win32" else manifest.get("linux")
+        if not isinstance(platform_block, dict):
+            platform_block = manifest
+        url = str(platform_block.get("url", "") or "").strip()
+        sha256 = str(platform_block.get("sha256", "") or "").strip()
+        version = str(manifest.get("version", "") or "update").strip()
+        if not url:
+            self._warn("Manifest لا يحتوي على رابط تنزيل صالح")
+            return
+        if not re.fullmatch(r"[A-Fa-f0-9]{64}", sha256 or ""):
+            self._warn("Manifest لا يحتوي على SHA256 صالح للتحديث")
+            return
+        updates_dir = os.path.join(os.path.dirname(self._session_path()), "updates")
+        out_path = os.path.join(updates_dir, f"VidDownloader-{version}.zip")
+        self._available_app_update_download_path = out_path
+        self._append_log(f"[Update] Downloading update: {version}")
+
+        def _on_progress(downloaded: int, total: int):
+            try:
+                if total > 0:
+                    pct = int(round((downloaded / total) * 100))
+                    self.search_view.progress_bar.setValue(max(0, min(100, pct)))
+            except (TypeError, ValueError, ZeroDivisionError, OverflowError):
+                pass
+
+        def _on_done(ok: bool, path: str, error: str):
+            self._app_update_download_worker = None
+            if not ok:
+                self._warn(f"تعذر تنزيل التحديث: {error}")
+                return
+            self._append_log("[Update] Update downloaded successfully.")
+            resp = QMessageBox.question(
+                self,
+                "تحديث جاهز",
+                "تم تنزيل التحديث بنجاح.\nهل تريد تثبيته الآن وإعادة تشغيل البرنامج؟",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.Yes,
+            )
+            if resp == QMessageBox.StandardButton.Yes:
+                self._install_downloaded_app_update(path)
+
+        worker = AppUpdateDownloadWorker(url, sha256, out_path)
+        worker.progress.connect(_on_progress)
+        worker.finished.connect(_on_done)
+        self._app_update_download_worker = worker
+        worker.start()
+
+    def _install_downloaded_app_update(self, zip_path: str):
+        zip_path = str(zip_path or "").strip()
+        if not zip_path or not os.path.isfile(zip_path):
+            self._warn("ملف التحديث غير موجود")
+            return
+        if not bool(getattr(sys, "frozen", False)):
+            self._warn("التحديث التلقائي يعمل فقط على النسخة المعبأة (Packaging)")
+            return
+        exe_path = str(sys.executable)
+        install_dir = os.path.dirname(exe_path)
+        if not install_dir:
+            self._warn("تعذر تحديد مسار التثبيت")
+            return
+        script_path = os.path.join(tempfile.gettempdir(), f"viddl_apply_update_{uuid.uuid4().hex}.ps1")
+        script = r"""
+param(
+  [Parameter(Mandatory=$true)][string]$ZipPath,
+  [Parameter(Mandatory=$true)][string]$InstallDir,
+  [Parameter(Mandatory=$true)][string]$ExeName,
+  [Parameter(Mandatory=$true)][int]$ParentPid
+)
+try { Wait-Process -Id $ParentPid -ErrorAction SilentlyContinue } catch {}
+$tmp = Join-Path $env:TEMP ("viddl-upd-" + [guid]::NewGuid().ToString("N"))
+New-Item -ItemType Directory -Path $tmp -Force | Out-Null
+Expand-Archive -LiteralPath $ZipPath -DestinationPath $tmp -Force
+$root = $tmp
+$items = Get-ChildItem -LiteralPath $tmp
+if ($items.Count -eq 1 -and $items[0].PSIsContainer) { $root = $items[0].FullName }
+$rcArgs = @($root, $InstallDir, "/E", "/NFL", "/NDL", "/NJH", "/NJS", "/NC", "/NS", "/NP", "/R:2", "/W:1")
+& robocopy @rcArgs | Out-Null
+$destExe = Join-Path $InstallDir $ExeName
+if (Test-Path -LiteralPath $destExe) {
+  Start-Process -FilePath $destExe -WorkingDirectory $InstallDir
+}
+Remove-Item -LiteralPath $ZipPath -Force -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath $tmp -Recurse -Force -ErrorAction SilentlyContinue
+"""
+        try:
+            with open(script_path, "w", encoding="utf-8") as f:
+                f.write(script.strip() + "\n")
+        except OSError as exc:
+            self._warn(f"تعذر كتابة سكربت التحديث: {exc}")
+            return
+        try:
+            pid = int(os.getpid())
+            exe_name = os.path.basename(exe_path)
+            subprocess.Popen(
+                [
+                    "powershell.exe",
+                    "-NoProfile",
+                    "-ExecutionPolicy",
+                    "Bypass",
+                    "-File",
+                    script_path,
+                    "-ZipPath",
+                    zip_path,
+                    "-InstallDir",
+                    install_dir,
+                    "-ExeName",
+                    exe_name,
+                    "-ParentPid",
+                    str(pid),
+                ],
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            )
+        except (OSError, subprocess.SubprocessError, ValueError) as exc:
+            self._warn(f"تعذر تشغيل سكربت التحديث: {exc}")
+            return
+        QApplication.instance().quit()
+
+    def _toggle_fullscreen(self):
+        if self.isFullScreen():
+            self.showNormal()
+        else:
+            self.showFullScreen()
+
+    def _stop_and_go_back(self):
+        if hasattr(self, "player_view") and hasattr(self.player_view, "stop"):
+            self.player_view.stop()
+        else:
+            self.player_view.media_player.stop()
+        self._switch_view("downloads")
+
+    def _play_previous_in_history(self):
+        items = self.stats.get("download_history", [])
+        if not items or not hasattr(self, "_current_playing_url"):
+            return
+        current_idx = -1
+        for i, item in enumerate(items):
+            if item.get("url") == self._current_playing_url:
+                current_idx = i
+                break
+        if current_idx > 0:
+            self._play_history_item(items[current_idx - 1])
+
+    def _play_next_in_history(self):
+        items = self.stats.get("download_history", [])
+        if not items or not hasattr(self, "_current_playing_url"):
+            return
+        current_idx = -1
+        for i, item in enumerate(items):
+            if item.get("url") == self._current_playing_url:
+                current_idx = i
+                break
+        if current_idx != -1 and current_idx < len(items) - 1:
+            self._play_history_item(items[current_idx + 1])
+
+    def _toggle_playback(self):
+        if hasattr(self, "player_view") and hasattr(self.player_view, "toggle_playback"):
+            self.player_view.toggle_playback()
+            return
+        if self.player_view.media_player.playbackState() == QMediaPlayer.PlaybackState.PlayingState:
+            self.player_view.media_player.pause()
+        else:
+            self.player_view.media_player.play()
+
+    def _seek_to_slider_position(self, value=None):
+        if not hasattr(self, "player_view") or not hasattr(self.player_view, "player_seek_slider"):
+            return
+        if value is None:
+            if hasattr(self, "player_view") and hasattr(self.player_view, "get_seek_value"):
+                value = self.player_view.get_seek_value()
+            else:
+                value = self.player_view.player_seek_slider.value()
+        if hasattr(self, "player_view") and hasattr(self.player_view, "set_position"):
+            self.player_view.set_position(int(value))
+        else:
+            self.player_view.media_player.setPosition(int(value))
+        self._player_is_seeking = False
+
+    def _on_player_position_changed(self, position: int):
+        if hasattr(self, "player_view") and hasattr(self.player_view, "player_seek_slider") and not self._player_is_seeking:
+            if hasattr(self, "player_view") and hasattr(self.player_view, "set_seek_value"):
+                self.player_view.set_seek_value(int(position))
+            else:
+                self.player_view.player_seek_slider.setValue(int(position))
+        self._update_player_time_label(position, self._player_duration_ms)
+
+    def _on_player_duration_changed(self, duration: int):
+        self._player_duration_ms = max(0, int(duration or 0))
+        if hasattr(self, "player_view") and hasattr(self.player_view, "player_seek_slider"):
+            if hasattr(self, "player_view") and hasattr(self.player_view, "set_seek_range"):
+                self.player_view.set_seek_range(0, self._player_duration_ms)
+            else:
+                self.player_view.player_seek_slider.setRange(0, self._player_duration_ms)
+        if hasattr(self, "player_view") and hasattr(self.player_view, "get_position"):
+            pos = self.player_view.get_position()
+        else:
+            pos = self.player_view.media_player.position()
+        self._update_player_time_label(pos, self._player_duration_ms)
+
+    def _on_player_error(self, *_args):
+        if not hasattr(self, "player_view") or not hasattr(self.player_view, "media_player"):
+            return
+        try:
+            reason = str(self.player_view.media_player.errorString() or "").strip()
+        except (RuntimeError, AttributeError, TypeError, ValueError):
+            reason = ""
+        if not reason:
+            reason = "تعذر تشغيل الملف داخل المشغل الداخلي."
+        self._append_log(f"[Player] {reason}")
+
+    def _update_player_time_label(self, position_ms: int, duration_ms: int):
+        if not hasattr(self, "player_time_label"):
+            return
+        text = f"{self._format_ms(position_ms)} / {self._format_ms(duration_ms)}"
+        if hasattr(self, "player_view") and hasattr(self.player_view, "set_time_label"):
+            self.player_view.set_time_label(text)
+        else:
+            self.player_view.player_time_label.setText(text)
+
+    def _format_ms(self, value_ms: int) -> str:
+        total_seconds = max(0, int(value_ms or 0) // 1000)
+        minutes = total_seconds // 60
+        seconds = total_seconds % 60
+        return f"{minutes:02d}:{seconds:02d}"
+
+    def _play_file(self, file_path, title=""):
+        path = str(file_path or "").strip()
+        if not path or not os.path.exists(path):
+            ErrorHandler.show_warning(self, _("Error"), _("File not found!"))
+            return
+        if hasattr(self, "player_view") and hasattr(self.player_view, "set_source_file"):
+            self.player_view.set_source_file(path)
+        else:
+            self.player_view.media_player.setSource(QUrl.fromLocalFile(path))
+        if hasattr(self, "player_view") and hasattr(self.player_view, "show_title_overlay"):
+            self.player_view.show_title_overlay(title or os.path.basename(path), auto_hide_ms=3000)
+        elif hasattr(self, "player_title_overlay"):
+            self.player_view.player_title_overlay.setText(title or os.path.basename(path))
+            self.player_view.player_title_overlay.show()
+            QTimer.singleShot(3000, self.player_view.player_title_overlay.hide)
+        self._switch_view("player")
+        if hasattr(self, "player_view") and hasattr(self.player_view, "play"):
+            self.player_view.play()
+        else:
+            self.player_view.media_player.play()
+
+    def _find_best_file_path(self, item: dict) -> str:
+        if not isinstance(item, dict):
+            return ""
+        raw_path = str(item.get("file_path", "") or "").strip()
+        if raw_path and os.path.isfile(raw_path):
+            return raw_path
+        search_dirs = []
+        for candidate in [
+            self.current_download_path,
+            (self.search_view.get_out_dir() if hasattr(self, "search_view") and hasattr(self.search_view, "get_out_dir") else (self.search_view.out_dir_input.text().strip() if hasattr(self, "out_dir_input") else "")),
+            default_download_dir(),
+        ]:
+            c = str(candidate or "").strip()
+            if c and os.path.isdir(c) and c not in search_dirs:
+                search_dirs.append(c)
+        if not search_dirs:
+            return ""
+        title = str(item.get("title", "") or "").strip().lower()
+        url = str(item.get("url", "") or "").strip().lower()
+        ids = []
+        for pattern in [
+            r"\[([A-Za-z0-9_-]{6,})\]",
+            r"[?&]v=([A-Za-z0-9_-]{6,})",
+            r"youtu\.be/([A-Za-z0-9_-]{6,})",
+        ]:
+            for m in re.findall(pattern, f"{title} {url}"):
+                if m not in ids:
+                    ids.append(m)
+        media_exts = {
+            ".mp4", ".webm", ".mkv", ".avi", ".mov", ".flv",
+            ".mp3", ".m4a", ".aac", ".wav", ".flac", ".ogg", ".wma",
+        }
+        max_candidates_per_dir = 2000
+        title_tokens = [t for t in re.findall(r"[a-zA-Z0-9\u0600-\u06FF]+", title) if len(t) > 2][:6]
+        for folder in search_dirs:
+            try:
+                files = []
+                with os.scandir(folder) as entries:
+                    for entry in entries:
+                        if len(files) >= max_candidates_per_dir:
+                            break
+                        if not entry.is_file():
+                            continue
+                        ext = os.path.splitext(entry.name)[1].lower()
+                        if ext in media_exts:
+                            files.append(entry.path)
+            except OSError:
+                continue
+            if ids:
+                for fp in files:
+                    name = os.path.basename(fp).lower()
+                    if any(f"[{vid.lower()}]" in name or vid.lower() in name for vid in ids):
+                        return fp
+            if title_tokens:
+                ranked = []
+                for fp in files:
+                    name = os.path.basename(fp).lower()
+                    score = sum(1 for t in title_tokens if t in name)
+                    if score > 0:
+                        ranked.append((score, fp))
+                if ranked:
+                    ranked.sort(key=lambda x: (x[0], os.path.getmtime(x[1])), reverse=True)
+                    return ranked[0][1]
+        return ""
+
+    def _play_history_item(self, item: dict):
+        self._current_playing_url = item.get("url")
+
+        def _on_ready(target: str):
+            if target:
+                item["file_path"] = target
+                self._play_file(target, title=item.get("title", ""))
+                return
+            ErrorHandler.show_warning(self, _("Error"), _("File not found!"))
+
+        self._resolve_history_item_path_async(item, _on_ready)
+
+    def _open_history_item_folder(self, item: dict):
+        def _on_ready(target: str):
+            if target:
+                item["file_path"] = target
+                self._open_folder(target)
+                return
+            self._open_folder("")
+
+        self._resolve_history_item_path_async(item, _on_ready)
+
+    def _resolve_history_item_path_async(self, item: dict, on_ready):
+        data = dict(item or {})
+        # Keep this callback on the UI thread to guarantee button actions fire.
+        target = self._find_best_file_path(data)
+        on_ready(target)
+
+    def _switch_view(self, key: str):
+        self.ui_controller.switch_view(key)
+
+    def _update_liquid_timer_state(self):
+        self.ui_controller.update_liquid_timer_state()
+
+    def _should_run_liquid_animation(self) -> bool:
+        return self.ui_controller._should_run_liquid_animation()
+
+    def _animate_view_change(self):
+        self.ui_controller.animate_view_change()
+        
+    def _init_trial_timer(self):
+        if not self.trial_enabled:
+            if hasattr(self, "trial_label"):
+                self.trial_label.hide()
+            return
+        self._update_trial_banner()
+        self.trial_timer = QTimer(self)
+        self.trial_timer.timeout.connect(self._update_trial_banner)
+        self.trial_timer.start(86_400_000)  # refresh once per day (24h)
+
+    def _init_trial_state(self):
+        state = self.trial_manager.load_state()
+        self.trial_started_at = state.started_at
+        self.trial_total_days = int(state.total_days)
+        self.trial_days_remaining = int(state.days_remaining)
+
+    def _recompute_trial_days(self):
+        state = self.trial_manager.recompute(
+            started_at=self.trial_started_at,
+            total_days=self.trial_total_days,
+        )
+        self.trial_started_at = state.started_at
+        self.trial_total_days = int(state.total_days)
+        self.trial_days_remaining = int(state.days_remaining)
+
+    def _update_trial_banner(self):
+        if not hasattr(self, "trial_label"):
+            return
+        if not self.trial_enabled:
+            self.trial_label.hide()
+            return
+        self._recompute_trial_days()
+        self.trial_label.setText(self.trial_manager.banner_text(self.trial_days_remaining))
+
+    def _init_toast(self):
+        # This method is now a placeholder as NotificationOverlay handles its own setup.
+        pass
+
+    def _show_toast(self, message: str, level: str = "info", title: str = None):
+        text = str(message or "").strip()
+        if not text or not hasattr(self, "notification_overlay"):
+            return
+
+        if title is None:
+            if level == "success": title = "Success"
+            elif level == "warn": title = "Warning"
+            elif level == "error": title = "Error"
+            else: title = "Information"
+        
+        self.notification_overlay.show_message(title, text, level)
+
+    def _show_toast_from_thread(self, message: str, level: str = "info", title: str = None):
+        # Helper to be called from non-GUI threads via signals/slots
+        self._show_toast(message, level, title)
+
+    def _pick_conv_file(self):
+        path, _ = QFileDialog.getOpenFileName(self, "Select Media File", "", "Media Files (*.mp4 *.mkv *.avi *.mp3 *.wav);;All Files (*)")
+        if path:
+            self.tools_view.conv_input.setText(path)
+
+    def _start_conversion(self):
+        if self._conversion_worker is not None and self._conversion_worker.isRunning():
+            QMessageBox.information(self, "Busy", "A conversion is already in progress.")
+            return
+        input_path = self.tools_view.conv_input.text()
+        if not input_path or not os.path.exists(input_path):
+            QMessageBox.warning(self, "Error", "Please select a valid file.")
+            return
+        
+        fmt = self.tools_view.conv_fmt.currentText().lower()
+        output_path = os.path.splitext(input_path)[0] + f"_converted.{fmt}"
+        
+        ffmpeg_bin = shutil.which("ffmpeg") or "ffmpeg"
+        cmd = [ffmpeg_bin, "-y", "-i", input_path, output_path]
+        worker = ConversionWorker(cmd, output_path, self)
+        self._conversion_worker = worker
+        self._append_log(f"Conversion started: {input_path} -> {output_path}")
+        self._set_status("جاري التحويل")
+
+        def _on_conversion_done(success: bool, final_path: str, error: str):
+            self._conversion_worker = None
+            if success:
+                QMessageBox.information(self, "Done", f"Conversion finished successfully.\n{final_path}")
+                self._append_log(f"Conversion finished: {final_path}")
+                self._set_status("اكتمل التحويل")
+                return
+            msg = str(error or "FFmpeg conversion failed.").strip()
+            QMessageBox.critical(self, "Error", msg)
+            self._append_log(f"[Conversion ERROR] {msg}")
+            self._set_status("فشل التحويل")
+
+        worker.finished.connect(_on_conversion_done)
+        worker.start()
+
+    def _fetch_channel(self):
+        url = self.tools_view.chan_url.text().strip()
+        if not url: return
+        self.search_view.url_input.setText(url)
+        self._switch_view("search")
+        self._start_analyze()
+
+    def _set_search_state(self, state: str):
+        if state == "single":
+            self.search_view.search_stack.setCurrentIndex(1)
+        elif state == "trim":
+            self.search_view.search_stack.setCurrentIndex(2)
+        else:
+            self.search_view.search_stack.setCurrentIndex(0)
+
+    def _setup_search_history_completer(self):
+        completer = QCompleter(self.search_history_model, self)
+        completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        completer.setFilterMode(Qt.MatchFlag.MatchContains)
+        completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
+        self.search_view.url_input.setCompleter(completer)
+
+    def _normalize_search_history(self, values):
+        out = []
+        seen = set()
+        now = datetime.now().timestamp()
+        ttl_seconds = max(1, int(self.search_history_ttl_days)) * 24 * 3600
+        
+        for raw in (values or []):
+            if isinstance(raw, dict):
+                url = str(raw.get("url", "")).strip()
+                ts = float(raw.get("timestamp", now))
+            else:
+                url = str(raw or "").strip()
+                ts = now
+            
+            if not url or not url.startswith("http"):
+                continue
+                
+            if now - ts > ttl_seconds:
+                continue
+                
+            low = url.lower()
+            if low in seen:
+                continue
+            seen.add(low)
+            out.append({"url": url, "timestamp": ts})
+        return out[: self._search_history_limit]
+
+    def _record_search_history(self, value: str):
+        text = str(value or "").strip()
+        if not text.startswith("http"):
+            return
+        entry = {"url": text, "timestamp": datetime.now().timestamp()}
+        merged = [entry] + self.search_history
+        self.search_history = self._normalize_search_history(merged)
+        self.search_history_model.setStringList([e["url"] for e in self.search_history])
+        if hasattr(self, "_search_history_save_timer") and self._search_history_save_timer is not None:
+            self._search_history_save_timer.start()
+        else:
+            self._save_session()
+
+    def _trim_thumbnail_cache(self):
+        with self._thumbnail_state_lock:
+            while len(self.thumbnail_cache) > self.thumbnail_cache_max:
+                self.thumbnail_cache.popitem(last=False)
+
+    def _mark_thumbnail_failed(self, cache_key: str):
+        key = str(cache_key or "").strip()
+        if not key:
+            return
+        with self._thumbnail_state_lock:
+            self.thumbnail_failed.add(key)
+            if len(self.thumbnail_failed) <= self.thumbnail_failed_max:
+                return
+            overflow = len(self.thumbnail_failed) - self.thumbnail_failed_max
+            for stale_key in list(self.thumbnail_failed)[:overflow]:
+                self.thumbnail_failed.discard(stale_key)
+
+    def _clear_search_history(self):
+        self.search_history = []
+        self.search_history_model.setStringList([])
+        self._save_session()
+        self._info(_("تم مسح سجل البحث"))
+
+    def _paste_clipboard(self):
+        clip = QApplication.clipboard()
+        if clip is None:
+            return
+        txt = (clip.text() or "").strip()
+        if txt:
+            self.search_view.url_input.setText(txt)
+
+    # NOTE: _on_mode_toggle was a duplicate/dead handler never connected to any signal.
+    # _on_mode_changed (connected in _build_search_single_state) is the authoritative handler.
+
+    def _quality_value(self):
+        for radio in self.search_view.quality_radios:
+            if radio.isChecked():
+                text = str(radio.property("base_quality") or radio.text()).strip()
+                return normalize_video_quality_label(text)
+        return "8K"
+
+    def _build_task(self, url=None, title=None, thumbnail="", fmt=None, quality=None):
+        return self.download_controller.build_task(url=url, title=title, thumbnail=thumbnail, fmt=fmt, quality=quality)
+
+    def _validate_task(self, task):
+        if not task.get("url"):
+            self._warn(_("الرابط مطلوب"))
+            return False
+        if not task.get("out_dir"):
+            self._warn(_("مسار الحفظ مطلوب"))
+            return False
+        return True
+
+    def _format_seconds(self, value):
+        total = int(value or 0)
+        h, rem = divmod(total, 3600)
+        m, s = divmod(rem, 60)
+        if h:
+            return f"{h:02d}:{m:02d}:{s:02d}"
+        return f"{m:02d}:{s:02d}"
+
+    def _estimate_size_label(self, duration_seconds: int, quality_label: str):
+        q = str(quality_label).lower()
+        if "8k" in q:
+            per_minute_mb = 450
+        elif "2160" in q or "4k" in q:
+            per_minute_mb = 220
+        elif "1440" in q:
+            per_minute_mb = 140
+        elif "1080" in q:
+            per_minute_mb = 90
+        elif "720" in q:
+            per_minute_mb = 50
+        elif "480" in q:
+            per_minute_mb = 28
+        elif "360" in q:
+            per_minute_mb = 17
+        elif "240" in q:
+            per_minute_mb = 10
+        else:
+            per_minute_mb = 7
+        mb = (int(duration_seconds or 0) / 60) * per_minute_mb
+        if mb >= 1024:
+            return f"{mb/1024:.1f} GB"
+        return f"{mb:.1f} MB"
+
+    def _format_bandwidth_limit(self, limit_kbps: int) -> str:
+        return self.settings_controller.format_bandwidth_limit(limit_kbps)
+
+    def _current_bandwidth_limit_kbps(self) -> int:
+        return self.settings_controller.current_bandwidth_limit_kbps()
+
+    def _refresh_bandwidth_schedule(self, notify: bool = False):
+        self.settings_controller.refresh_bandwidth_schedule(notify=notify)
+
+    def _bandwidth_schedule_editor_text(self) -> str:
+        return self.settings_controller.bandwidth_schedule_editor_text()
+
+    def _reload_bandwidth_schedule_editor(self):
+        self.settings_controller.reload_bandwidth_schedule_editor()
+
+    def _get_bandwidth_schedule_editor_rules(self) -> list[dict]:
+        return self.settings_controller.get_bandwidth_schedule_editor_rules()
+
+    def _set_bandwidth_schedule_editor_rules(self, rules: list[dict], selected_index: int | None = None):
+        self.settings_controller.set_bandwidth_schedule_editor_rules(rules, selected_index=selected_index)
+
+    def _sync_bandwidth_schedule_rule_list(self, selected_index: int | None = None):
+        self.settings_controller.sync_bandwidth_schedule_rule_list(selected_index=selected_index)
+
+    def _set_bandwidth_rule_form(self, rule: dict | None = None):
+        self.settings_controller.set_bandwidth_rule_form(rule)
+
+    def _prepare_new_bandwidth_rule(self):
+        self.settings_controller.prepare_new_bandwidth_rule()
+
+    def _load_selected_bandwidth_rule(self, row: int):
+        self.settings_controller.load_selected_bandwidth_rule(row)
+
+    def _save_bandwidth_rule_from_form(self):
+        self.settings_controller.save_bandwidth_rule_from_form()
+
+    def _remove_selected_bandwidth_rule(self):
+        self.settings_controller.remove_selected_bandwidth_rule()
+
+    def _apply_bandwidth_schedule_rules(self):
+        self.settings_controller.apply_bandwidth_schedule_rules()
+
+    def _reset_bandwidth_schedule_rules(self):
+        self.settings_controller.reset_bandwidth_schedule_rules()
+
+    def _storage_guard_paths(self) -> list[str]:
+        seen = set()
+        paths = []
+        for wid in list(self.active_workers.keys()):
+            task = self.queue_manager.get_task(wid) if isinstance(wid, int) else None
+            out_dir = str((task or {}).get("out_dir", "")).strip()
+            if out_dir and out_dir not in seen:
+                seen.add(out_dir)
+                paths.append(out_dir)
+        fallback = str(self.current_download_path or "").strip()
+        if not fallback and hasattr(self, "out_dir_input"):
+            fallback = self.search_view.out_dir_input.text().strip()
+        if fallback and fallback not in seen:
+            paths.append(fallback)
+        return paths
+
+    def _storage_guard_message(self, path: str, free: int, threshold: int) -> str:
+        return (
+            f"⚠️ المساحة الحرة منخفضة في {path} — المتاح {format_bytes(free)} "
+            f"والحد المطلوب {format_bytes(threshold)}. تم إيقاف التحميل مؤقتاً."
+        )
+
+    def _pause_downloads_for_storage_guard(self, message: str):
+        self.queue_paused = True
+        try:
+            self.queue_manager.pause_queue()
+        except (RuntimeError, AttributeError) as exc:
+            logger.debug(f"تعذر إيقاف الطابور بسبب Storage Guard: {exc}")
+        for wid, worker in list(self.active_workers.items()):
+            self.pause_requested_workers.add(wid)
+            task = self.queue_manager.get_task(wid) if isinstance(wid, int) else None
+            if isinstance(task, dict):
+                task["status"] = "paused"
+                task["next_retry_at"] = 0
+            try:
+                worker.stop()
+            except (RuntimeError, AttributeError) as exc:
+                logger.debug(f"تعذر إيقاف worker {wid} بسبب Storage Guard: {exc}")
+        if message != self._storage_guard_last_message or not self._storage_guard_alerted:
+            self._append_log(message)
+            self._warn(message)
+            self._show_tray_message(
+                "SnapDownloader",
+                message[:120],
+                QSystemTrayIcon.MessageIcon.Warning,
+                3500,
+            )
+        self._storage_guard_alerted = True
+        self._storage_guard_last_message = message
+        self._set_status(_("المساحة منخفضة"))
+        self._save_session()
+        self._refresh_downloads_list()
+
+    def _check_storage_guard(self, path: str = "", pause_on_low: bool = False) -> bool:
+        return self.download_controller.check_storage_guard(path=path, pause_on_low=pause_on_low)
+
+    def _run_storage_watchdog(self):
+        self.download_controller.run_storage_watchdog()
+
+    def _fade_widget(self, widget, delay_ms=0, duration_ms=280):
+        self.ui_controller.fade_widget(widget, delay_ms, duration_ms)
+
+    def _pulse_widget(self, widget):
+        self.ui_controller.pulse_widget(widget)
+
+    def _animate_single_state_widgets(self):
+        widgets = [
+            getattr(self, "single_player_card", None),
+            getattr(self, "single_settings_card", None),
+            getattr(self, "adv_toggle_btn", None),
+            getattr(self, "trim_btn", None),
+            getattr(self, "schedule_btn", None),
+            getattr(self, "download_btn", None),
+            getattr(self, "log_text", None),
+        ]
+        for idx, widget in enumerate(widgets):
+            self._fade_widget(widget, delay_ms=idx * 45, duration_ms=300)
+
+    def _set_single_preview(self, payload: dict):
+        self.preview_data = payload or {}
+        if not self.preview_data.get("url") and hasattr(self, "url_input"):
+            current_url = self.search_view.url_input.text().strip()
+            if current_url:
+                self.preview_data["url"] = current_url
+        title = self.preview_data.get("title", "--")
+        channel = self.preview_data.get("channel", "--")
+        duration = self._format_seconds(self.preview_data.get("duration_seconds", 0))
+        views = self.preview_data.get("views", "0")
+        categories = self.preview_data.get("categories", [])
+        
+        self.search_view.single_title.setText(f"{title} ({duration})")
+        self.search_view.single_channel.setText(f"by {channel}  •  {views} views")
+        
+        if categories:
+            self.search_view.single_category.setText(categories[0])
+            self.search_view.single_category.show()
+        else:
+            self.search_view.single_category.hide()
+
+        # Load real thumbnail via QNetworkAccessManager
+        thumb_url = self.preview_data.get("thumbnail")
+        if thumb_url:
+            request = QNetworkRequest(QUrl(thumb_url))
+            reply = self.net_manager.get(request)
+            reply.finished.connect(lambda r=reply: self._on_thumbnail_loaded(r))
+        else:
+            self.search_view.single_thumb.setText("No Thumbnail Found")
+
+        duration_seconds = int(self.preview_data.get("duration_seconds") or 0)
+        for radio in self.search_view.quality_radios:
+            base_quality = str(radio.property("base_quality") or radio.text()).strip()
+            est = self._estimate_size_label(duration_seconds, base_quality)
+            radio.setText(f"{base_quality}  ⚡ {est}")
+        self._animate_single_state_widgets()
+
+    def _on_thumbnail_loaded(self, reply: QNetworkReply):
+        if reply.error() == QNetworkReply.NetworkError.NoError:
+            data = reply.readAll()
+            pixmap = QPixmap()
+            if pixmap.loadFromData(data):
+                pixmap = pixmap.scaled(self.search_view.single_thumb.size(), Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+                self.search_view.single_thumb.setPixmap(pixmap)
+                self.search_view.single_thumb.setText("")
+        else:
+            self.search_view.single_thumb.setText("Preview Fail")
+        reply.deleteLater()
+
+    def _add_current_to_queue(self):
+        task = self._build_task()
+        if not self._validate_task(task):
+            return
+        
+        # Advanced Scheduler & Speed Control
+        scheduled_dt = self.search_view.schedule_time_edit.dateTime().toPython()
+        now = datetime.now()
+        if scheduled_dt > now:
+            task["scheduled_at"] = scheduled_dt.timestamp()
+            task["status"] = "pending"
+            self._append_log(_("تم جدولة التحميل لبدء في: {when}").format(when=scheduled_dt.strftime("%Y-%m-%d %H:%M:%S")))
+        else:
+            task["scheduled_at"] = 0
+            task["status"] = "pending"
+            self._append_log(_("تمت إضافة عنصر للطابور (بدأ فوراً)"))
+            
+        self.queue_manager.add_task(task)
+        self._info(_("تمت إضافة العنصر للطابور"))
+        if not self.queue_running:
+            self._start_queue_download()
+
+    def _start_single_download(self):
+        task = self._build_task()
+        if not self._validate_task(task):
+            return
+        task["status"] = "running"
+        idx = self.queue_manager.add_task(task)
+        if idx is None:
+            self._warn(_("تعذر بدء التحميل: الطابور ممتلئ"))
+            return
+        queue_task = self.queue_manager.get_task(idx)
+        if not queue_task:
+            self._warn(_("تعذر بدء التحميل: لم يتم العثور على العنصر في الطابور"))
+            return
+        self.queue_running = False
+        self.current_queue_index = -1
+        self._start_download_worker(queue_task, worker_id=idx)
+        self._switch_view("downloads")
+        self._set_downloads_filter("active")
+
+    def _start_queue_download(self):
+        self.download_controller.start_queue_download()
+
+    def _pause_queue_download(self):
+        self.download_controller.pause_queue_download()
+
+    def _resume_queue_download(self):
+        self.download_controller.resume_queue_download()
+
+    def _pause_queue_item(self, item_index: int):
+        self.download_controller.pause_queue_item(item_index)
+
+    def _resume_queue_item(self, item_index: int):
+        self.download_controller.resume_queue_item(item_index)
+
+    def _on_queue_reorder_requested(self, from_row: int, to_row: int):
+        if self.downloads_filter not in {"active", "queued", "scheduled"}:
+            return
+        src = self.downloads_view.downloads_model.get_item(int(from_row))
+        if not isinstance(src, dict):
+            return
+        src_index = src.get("queue_index")
+        if not isinstance(src_index, int):
+            return
+        if to_row is None:
+            return
+        to_row = int(to_row)
+        if to_row < 0:
+            to_index = self.queue_manager.get_item_count() - 1
+        else:
+            dst = self.downloads_view.downloads_model.get_item(to_row)
+            dst_index = dst.get("queue_index") if isinstance(dst, dict) else None
+            if not isinstance(dst_index, int):
+                return
+            to_index = dst_index
+        if to_index < 0:
+            return
+        moved = self.queue_manager.move_task(src_index, to_index)
+        if not moved:
+            return
+        self._save_session()
+        self._refresh_downloads_list()
+
+    def _cancel_queue_item(self, item_index: int):
+        self.download_controller.cancel_queue_item(item_index)
+
+    def _delete_queue_item(self, item_index: int):
+        self.download_controller.delete_queue_item(item_index)
+
+    def _open_trim_for_queue_item(self, item_index: int):
+        self.analyze_controller.open_trim_for_queue_item(item_index)
+
+    def _on_trim_view_saved(self, data: dict):
+        self.analyze_controller.on_trim_view_saved(data)
+
+    def _on_trim_view_back(self):
+        self.analyze_controller.on_trim_view_back()
+
+    def _retry_queue_item(self, item_index: int):
+        self.download_controller.retry_queue_item(item_index)
+
+    def _process_parallel_queue(self):
+        self.download_controller.process_parallel_queue()
+
+    def _start_download_worker(self, task, worker_id=None):
+        self.download_controller.start_download_worker(task, worker_id=worker_id)
+
+    def _start_download_from_queue(self, task: dict, queue_index: int):
+        self.download_controller.start_download_from_queue(task, queue_index)
+
+    def _on_worker_thread_finished(self, wid, worker):
+        self.download_controller.on_worker_thread_finished(wid, worker)
+
+
+    def _on_download_progress(self, wid, percent, speed, eta):
+        self.download_controller.on_download_progress(wid, percent, speed, eta)
+
+    def _extract_size_text(self, line: str):
+        return self.download_controller.extract_size_text(line)
+
+    def _on_download_log(self, line: str):
+        self.download_controller.on_download_log(line)
+
+    def _on_download_state(self, state: str):
+        self.download_controller.on_download_state(state)
+
+    def _append_history(self, success: bool, message: str, payload: dict, task: dict):
+        self.download_controller.append_history(success, message, payload, task)
+
+    def _on_download_finished_event(self, event: DownloadFinishedEvent):
+        self.download_controller.on_download_finished_event(event)
+
+    def _handle_download_finished_event(self, event: DownloadFinishedEvent):
+        self.download_controller.handle_download_finished_event(event)
+
+    def _cancel_active(self):
+        if self.current_worker is not None:
+            self.current_worker.stop()
+        self.queue_running = False
+        self._append_log(_("تم إرسال طلب الإلغاء"))
+
+    def _set_controls_enabled(self, enabled: bool):
+        self.search_view.search_btn.setEnabled(enabled)
+        self.download_btn.setEnabled(enabled)
+        if hasattr(self, "browser_view") and hasattr(self.browser_view, "set_bulk_controls_enabled"):
+            self.browser_view.set_bulk_controls_enabled(enabled)
+        else:
+            self.bulk_analyze_btn.setEnabled(enabled)
+            self.run_queue_btn.setEnabled(enabled)
+            if hasattr(self, "pause_queue_btn"):
+                self.pause_queue_btn.setEnabled(enabled)
+            if hasattr(self, "resume_queue_btn"):
+                self.resume_queue_btn.setEnabled(enabled)
+
+    def _on_queue_limit_exceeded(self, rejected_count: int):
+        """H-07: Warn user when queue is full and items were rejected."""
+        max_size = self.queue_manager.MAX_QUEUE_SIZE
+        self._warn(f"\u26a0\ufe0f \u062a\u0645 \u0631\u0641\u0636 {rejected_count} \u0639\u0646\u0635\u0631 \u2014 \u0627\u0644\u0637\u0627\u0628\u0648\u0631 \u0648\u0635\u0644 \u0644\u0644\u062d\u062f \u0627\u0644\u0623\u0642\u0635\u0649 ({max_size} \u0639\u0646\u0635\u0631)")
+
+    def _allow_private_bulk_urls(self) -> bool:
+        return str(os.getenv("SNAPDOWNLOADER_ALLOW_PRIVATE_BULK_URLS", "")).strip().lower() in {"1", "true", "yes", "on"}
+
+    def _is_allowed_bulk_url(self, url: str) -> bool:
+        try:
+            parsed = urllib.parse.urlparse(str(url or "").strip())
+        except ValueError:
+            return False
+        if parsed.scheme not in {"http", "https"}:
+            return False
+        hostname = str(parsed.hostname or "").strip().lower()
+        if not hostname:
+            return False
+        if self._allow_private_bulk_urls():
+            return True
+        if hostname == "localhost" or hostname.endswith(".local"):
+            return False
+        try:
+            ip = ipaddress.ip_address(hostname)
+        except ValueError:
+            return True
+        return not (
+            ip.is_private
+            or ip.is_loopback
+            or ip.is_link_local
+            or ip.is_reserved
+            or ip.is_multicast
+            or ip.is_unspecified
+        )
+
+    def _extract_urls(self, text: str):
+        urls = []
+        rejected_count = 0
+        for raw in str(text or "").replace("\r", "\n").split("\n"):
+            line = raw.strip()
+            if not line:
+                continue
+            if "://" not in line and line.startswith("www."):
+                line = "https://" + line
+            if self._is_allowed_bulk_url(line):
+                urls.append(line)
+            else:
+                rejected_count += 1
+        seen = set()
+        unique = []
+        for url in urls:
+            if url in seen:
+                continue
+            seen.add(url)
+            unique.append(url)
+        return unique, rejected_count
+
+    def _bulk_settings_fallback(self) -> dict:
+        mode = "video" if hasattr(self.browser_view, "bulk_video_radio") and self.browser_view.bulk_video_radio.isChecked() else "audio"
+        fmt = self.browser_view.bulk_format_combo.currentText() if hasattr(self.browser_view, "bulk_format_combo") else "MP4"
+        quality = self.browser_view.bulk_quality_combo.currentText() if hasattr(self.browser_view, "bulk_quality_combo") else "8K"
+        subtitle = self.browser_view.bulk_subtitle_combo.currentText() if hasattr(self.browser_view, "bulk_subtitle_combo") else "None"
+        return {
+            "mode": str(mode or "audio"),
+            "format": str(fmt or "MP4"),
+            "quality": str(quality or "8K"),
+            "subtitle": str(subtitle or "None"),
+        }
+
+    def _analyze_bulk(self, links=None, settings=None):
+        provided_links = links if isinstance(links, list) else None
+        if provided_links is None:
+            text = self.browser_view.get_bulk_text() if hasattr(self, "browser_view") and hasattr(self.browser_view, "get_bulk_text") else self.browser_view.bulk_text.toPlainText()
+            urls, rejected_count = self._extract_urls(text)
+        else:
+            normalized_text = "\n".join(str(line or "").strip() for line in provided_links if str(line or "").strip())
+            urls, rejected_count = self._extract_urls(normalized_text)
+        if rejected_count > 0:
+            self._warn(_("تم تجاهل {count} رابط غير صالح أو محلي").format(count=rejected_count))
+        if not urls:
+            self._warn(_("لا توجد روابط"))
+            return
+        if self._metadata_fetch_worker is not None:
+            self._warn(_("يوجد تحليل روابط جارٍ بالفعل"))
+            return
+        fallback_settings = self._bulk_settings_fallback()
+        if isinstance(settings, dict):
+            raw_bulk_settings = dict(settings)
+        elif hasattr(self, "browser_view") and hasattr(self.browser_view, "get_bulk_settings"):
+            raw_bulk_settings = self.browser_view.get_bulk_settings()
+        else:
+            raw_bulk_settings = {}
+        bulk_settings = {
+            "mode": str(raw_bulk_settings.get("mode") or fallback_settings["mode"]),
+            "format": str(raw_bulk_settings.get("format") or fallback_settings["format"]),
+            "quality": str(raw_bulk_settings.get("quality") or fallback_settings["quality"]).replace(" kbps", "kbps"),
+            "subtitle": str(raw_bulk_settings.get("subtitle") or fallback_settings["subtitle"]),
+        }
+        self._bulk_analysis_queue = list(urls)
+        self._bulk_analysis_results = []
+        self._bulk_analysis_settings = {
+            "format": bulk_settings["format"],
+            "quality": bulk_settings["quality"],
+            "subtitle": bulk_settings["subtitle"],
+            "mode": bulk_settings["mode"],
+            "total_urls": len(urls),
+        }
+        if hasattr(self, "browser_view") and hasattr(self.browser_view, "set_bulk_analyze_state"):
+            self.browser_view.set_bulk_analyze_state(False, _("جاري التحليل {done}/{total}").format(done=0, total=len(urls)))
+        else:
+            self.bulk_analyze_btn.setEnabled(False)
+            self.bulk_analyze_btn.setText(_("جاري التحليل {done}/{total}").format(done=0, total=len(urls)))
+        self._append_log(_("بدء تحليل {count} رابط قبل إضافتهم للطابور").format(count=len(urls)))
+        self._process_bulk_analysis_queue()
+
+    def _build_bulk_task_from_metadata(self, url: str, title: str, thumbnail: str, duration_seconds: int, channel: str = "") -> dict:
+        settings = dict(self._bulk_analysis_settings or {})
+        task = self._build_task(
+            url=url,
+            title=title or url,
+            thumbnail=thumbnail or "",
+            fmt=settings.get("format", "MP4"),
+            quality=settings.get("quality", "8K"),
+        )
+        task["mode"] = settings.get("mode", "video")
+        task["format"] = settings.get("format", task.get("format", "MP4"))
+        task["quality"] = settings.get("quality", task.get("quality", "8K"))
+        task["subtitle"] = settings.get("subtitle", task.get("subtitle", "None"))
+        task["duration_seconds"] = int(duration_seconds or 0)
+        task["channel"] = str(channel or "").strip()
+        task["status"] = "pending"
+        return task
+
+    def _process_bulk_analysis_queue(self):
+        if self._metadata_fetch_worker is not None:
+            return
+        if not self._bulk_analysis_queue:
+            self._finalize_bulk_analysis()
+            return
+        processed = len(self._bulk_analysis_results)
+        total_urls = int(self._bulk_analysis_settings.get("total_urls", 0) or 0)
+        progress_text = _("جاري التحليل {done}/{total}").format(done=min(processed, total_urls), total=total_urls)
+        if hasattr(self, "browser_view") and hasattr(self.browser_view, "set_bulk_analyze_state"):
+            self.browser_view.set_bulk_analyze_state(False, progress_text)
+        else:
+            self.bulk_analyze_btn.setText(progress_text)
+        url = self._bulk_analysis_queue.pop(0)
+        self._metadata_fetch_worker = AnalyzeWorker(url)
+        self._metadata_fetch_worker.finished.connect(
+            lambda success, message, payload, items, target_url=url: self._on_bulk_analysis_finished(
+                target_url,
+                success,
+                message,
+                payload,
+                items,
+            )
+        )
+        self._metadata_fetch_worker.start()
+
+    def _on_bulk_analysis_finished(self, source_url: str, success: bool, message: str, payload: dict, items: list):
+        self._metadata_fetch_worker = None
+        generated_tasks = []
+        if success and isinstance(payload, dict) and payload.get("kind") == "playlist" and items:
+            for entry in items:
+                generated_tasks.append(
+                    self._build_bulk_task_from_metadata(
+                        url=str(entry.get("url", "")).strip() or source_url,
+                        title=str(entry.get("title", "")).strip() or source_url,
+                        thumbnail=str(entry.get("thumbnail", "")).strip(),
+                        duration_seconds=int(entry.get("duration_seconds") or 0),
+                    )
+                )
+            self._append_log(_("تم تحليل قائمة تشغيل وإضافة {count} عنصر").format(count=len(generated_tasks)))
+        elif success and isinstance(payload, dict):
+            generated_tasks.append(
+                self._build_bulk_task_from_metadata(
+                    url=str(payload.get("webpage_url", "")).strip() or source_url,
+                    title=str(payload.get("title", "")).strip() or source_url,
+                    thumbnail=str(payload.get("thumbnail", "")).strip(),
+                    duration_seconds=int(payload.get("duration_seconds") or 0),
+                    channel=str(payload.get("channel", "")).strip(),
+                )
+            )
+            self._append_log(
+                _("تم تحليل الرابط: {title}").format(title=generated_tasks[0].get("title", source_url))
+            )
+        else:
+            generated_tasks.append(
+                self._build_bulk_task_from_metadata(
+                    url=source_url,
+                    title=source_url,
+                    thumbnail="",
+                    duration_seconds=0,
+                )
+            )
+            self._append_log(
+                _("تعذر جلب بيانات كاملة للرابط، تمت إضافته كرابط مباشر: {url}").format(url=source_url)
+            )
+        self._bulk_analysis_results.extend(generated_tasks)
+        total_urls = int(self._bulk_analysis_settings.get("total_urls", 0) or 0)
+        processed_urls = total_urls - len(self._bulk_analysis_queue)
+        progress_text = _("جاري التحليل {done}/{total}").format(done=processed_urls, total=total_urls)
+        if hasattr(self, "browser_view") and hasattr(self.browser_view, "set_bulk_analyze_state"):
+            self.browser_view.set_bulk_analyze_state(False, progress_text)
+        else:
+            self.bulk_analyze_btn.setText(progress_text)
+        QTimer.singleShot(0, self._process_bulk_analysis_queue)
+
+    def _finalize_bulk_analysis(self):
+        tasks = list(self._bulk_analysis_results)
+        total_urls = int(self._bulk_analysis_settings.get("total_urls", 0) or 0)
+        if hasattr(self, "browser_view") and hasattr(self.browser_view, "set_bulk_analyze_state"):
+            self.browser_view.set_bulk_analyze_state(True, _("تحليل وإضافة للطابور"))
+        else:
+            self.bulk_analyze_btn.setEnabled(True)
+            self.bulk_analyze_btn.setText(_("تحليل وإضافة للطابور"))
+        self._metadata_fetch_worker = None
+        self._bulk_analysis_queue = []
+        self._bulk_analysis_results = []
+        self._bulk_analysis_settings = {}
+        if not tasks:
+            self._warn(_("لم يتم تجهيز أي عناصر صالحة للطابور"))
+            return
+        self.queue_manager.add_tasks(tasks)
+        self._save_session()
+        if hasattr(self, "browser_view") and hasattr(self.browser_view, "clear_bulk_text"):
+            self.browser_view.clear_bulk_text()
+        else:
+            self.browser_view.bulk_text.clear()
+        self._append_log(
+            _("تم تحليل {urls} رابط وإضافة {tasks} عنصر إلى الطابور").format(
+                urls=total_urls, tasks=len(tasks)
+            )
+        )
+        self._switch_view("downloads")
+        self._set_downloads_filter("queued")
+
+    def _pick_settings_dir(self):
+        self.settings_controller.pick_settings_dir()
+
+    def _bind_settings_autosave(self):
+        self.settings_controller.bind_settings_autosave()
+
+    def _schedule_settings_autosave(self, *_):
+        self.settings_controller.schedule_settings_autosave()
+
+    def _apply_settings_to_search(self, silent: bool = False):
+        self.settings_controller.apply_settings_to_search(silent=silent)
+
+    # ── Mini Mode ───────────────────────────────────────────────────────────
+    def _toggle_mini_mode(self):
+        if hasattr(self, "mini_window") and self.mini_window:
+            if self.mini_window.isVisible():
+                self.mini_window.hide()
+                self.show()
+            else:
+                self.mini_window.show()
+                self.hide()
+
+    def _show_from_mini(self):
+        if hasattr(self, "mini_window"):
+            self.mini_window.hide()
+        self.showNormal()
+        self.activateWindow()
+
+    # ── Global Hotkey Handlers ─────────────────────────────────────────────
+    def _paste_and_analyze(self):
+        """Hotkey: Ctrl+Shift+V — paste from clipboard and analyze."""
+        self._paste_clipboard()
+        self._start_analyze()
+        self.showNormal()
+        self.activateWindow()
+
+    def _hotkey_quick_download(self):
+        """Hotkey: Ctrl+Shift+D — quick download whatever is in the clipboard."""
+        try:
+            clip = QApplication.clipboard()
+            url = (clip.text() or "").strip()
+            if url.startswith("http"):
+                self._quick_download(url)
+        except (RuntimeError, AttributeError, TypeError) as exc:
+            logger.warning(f"فشل تنفيذ التحميل السريع من الاختصار: {exc}")
+
+    def _toggle_window_visibility(self):
+        """Hotkey: Ctrl+Shift+S — show or hide the main window."""
+        if self.isVisible():
+            self.hide()
+        else:
+            self.showNormal()
+            self.activateWindow()
+
+    # ── Audio Normalizer ────────────────────────────────────────────────
+    def _normalize_downloads_folder(self):
+        """Normalize all audio files in the downloads folder."""
+        if hasattr(self, "search_view") and hasattr(self.search_view, "get_out_dir"):
+            out_dir = self.search_view.get_out_dir() or default_download_dir()
+        else:
+            out_dir = self.search_view.out_dir_input.text().strip() or default_download_dir()
+        self._info("🎧 Normalizing audio levels in downloads folder...")
+        def _worker():
+            normalize_folder(
+                folder=out_dir,
+                progress_callback=lambda msg: QTimer.singleShot(0, lambda m=msg: self._append_log(m)),
+                done_callback=lambda ok, total: QTimer.singleShot(
+                    0, lambda o=ok, t=total: self._info(f"✅ Normalized {o}/{t} files")
+                ),
+            )
+        threading.Thread(target=_worker, daemon=True, name="NormalizeFolderWorker").start()
+
+    # ── Proxy Helpers ────────────────────────────────────────────────────────
+    def _add_proxy(self):
+        self.settings_controller.add_proxy()
+
+    def _test_proxy(self):
+        self.settings_controller.test_proxy()
+
+    # ── Sustainability ────────────────────────────────────────────────────────
+    def _apply_sustainability(self):
+        self.settings_controller.apply_sustainability()
+
+    def _normalize_history_mode(self, mode_value: str) -> str:
+        mode = str(mode_value or "").strip().lower()
+        if mode in {"audio", "صوت"}:
+            return "audio"
+        return "video"
+
+    def _fetch_db_history(self, status: str = None, limit: int = 2500, offset: int = 0) -> list:
+        rows = fetch_history(status=status, limit=limit, offset=offset)
+        normalized = []
+        for row in rows:
+            normalized.append(
+                {
+                    "timestamp": row.get("timestamp", ""),
+                    "title": row.get("title", ""),
+                    "url": row.get("url", ""),
+                    "mode": self._normalize_history_mode(row.get("mode", "video")),
+                    "format": row.get("format", "--"),
+                    "quality": row.get("quality", "--"),
+                    "size": row.get("size_text", "--"),
+                    "thumbnail": row.get("thumbnail", ""),
+                    "file_path": row.get("file_path", ""),
+                    "status": row.get("status", "success"),
+                    "message": row.get("message", ""),
+                    "attempts": row.get("attempts", 1),
+                    "error": row.get("error", ""),
+                }
+            )
+        return normalized
+
+    def _load_stats(self):
+        try:
+            self.stats["download_history"] = self._fetch_db_history(limit=250)
+            db_stats = get_all_stats()
+            self.stats["total_videos"] = int(db_stats.get("total_videos", 0))
+            self.stats["total_audios"] = int(db_stats.get("total_audios", 0))
+        except (TypeError, ValueError, RuntimeError, OSError) as exc:
+            self._append_log(f"تعذر تحميل الإحصائيات من قاعدة البيانات: {exc}")
+            self.stats["download_history"] = []
+
+    def _save_stats(self):
+        # Legacy callers still invoke _save_stats; persist via unified session pipeline.
+        self._save_session()
+
+    def _session_path(self):

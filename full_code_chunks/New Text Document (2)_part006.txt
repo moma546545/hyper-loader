@@ -1,0 +1,2786 @@
+﻿            msg = result.stderr.strip() or result.stdout.strip() or "تعذر تحليل الرابط"
+            self.finished.emit(False, msg, {}, [])
+            return
+        try:
+            data = json.loads(result.stdout or "{}")
+        except Exception:
+            self.finished.emit(False, "البيانات المسترجعة غير صالحة", {}, [])
+            return
+        if not isinstance(data, dict):
+            self.finished.emit(False, "البيانات المسترجعة غير صالحة", {}, [])
+            return
+        if self._is_playlist(data):
+            items = self._normalize_playlist(data)
+            if not items:
+                self.finished.emit(False, "تم فتح البلاي ليست لكن بدون عناصر قابلة للعرض.", {}, [])
+                return
+            payload = {"kind": "playlist", "title": data.get("title") or "Playlist"}
+            self.finished.emit(True, f"تم تحليل {len(items)} عنصر", payload, items)
+            return
+        payload = {
+            "kind": "single",
+            "title": data.get("title") or "بدون عنوان",
+            "channel": data.get("uploader") or data.get("channel") or "--",
+            "views": f"{data.get('view_count'):,}" if isinstance(data.get("view_count"), int) else "--",
+            "duration_seconds": int(data.get("duration") or 0),
+            "thumbnail": data.get("thumbnail") or "",
+            "categories": data.get("categories", []),
+            "webpage_url": data.get("webpage_url") or self.url,
+            "stream_url": data.get("url") or "", # Direct stream URL for preview if available
+        }
+        self.finished.emit(True, "تم تحليل الرابط بنجاح", payload, [])
+
+
+class FormatProbeWorker(QThread):
+    finished = Signal(bool, str, str)
+
+    def __init__(self, url: str, parent=None):
+        super().__init__(parent)
+        self.url = str(url or "").strip()
+
+    def run(self):
+        if not self.url:
+            self.finished.emit(False, "", "الرابط مطلوب")
+            return
+        cmd = [sys.executable, "-m", "yt_dlp", "-F", self.url]
+        creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+        try:
+            proc = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                creationflags=creationflags,
+                timeout=90,
+            )
+        except Exception as exc:
+            self.finished.emit(False, "", str(exc))
+            return
+        if proc.returncode != 0:
+            self.finished.emit(False, "", (proc.stderr or proc.stdout or "تعذر جلب الصيغ").strip())
+            return
+        self.finished.emit(True, (proc.stdout or "").strip(), "")
+
+
+class ConversionWorker(QThread):
+    finished = Signal(bool, str, str)
+
+    def __init__(self, command, output_path: str, parent=None):
+        super().__init__(parent)
+        self.command = list(command or [])
+        self.output_path = str(output_path or "").strip()
+
+    def run(self):
+        if not self.command:
+            self.finished.emit(False, self.output_path, "Missing conversion command.")
+            return
+        creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+        try:
+            proc = subprocess.run(
+                self.command,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                creationflags=creationflags,
+            )
+        except Exception as exc:
+            self.finished.emit(False, self.output_path, str(exc))
+            return
+        if proc.returncode != 0:
+            err = (proc.stderr or proc.stdout or "FFmpeg conversion failed.").strip()
+            self.finished.emit(False, self.output_path, err)
+            return
+        if self.output_path and not os.path.exists(self.output_path):
+            self.finished.emit(False, self.output_path, "Output file was not created.")
+            return
+        self.finished.emit(True, self.output_path, "")
+
+
+
+
+====================================================================================================
+FILE: main.py
+====================================================================================================
+
+
+
+====================================================================================================
+FILE: refactor_script.py
+====================================================================================================
+
+
+
+====================================================================================================
+FILE: tests\test_anti_detection.py
+====================================================================================================
+
+
+
+====================================================================================================
+FILE: tests\test_deadlock_regression.py
+====================================================================================================
+
+
+
+====================================================================================================
+FILE: tests\test_event_bus.py
+====================================================================================================
+
+
+
+====================================================================================================
+FILE: tests\test_proxy_and_quality.py
+====================================================================================================
+
+
+
+====================================================================================================
+FILE: tests\test_queue_and_db.py
+====================================================================================================
+
+
+
+====================================================================================================
+FILE: tests\test_scheduling.py
+====================================================================================================
+
+
+
+====================================================================================================
+FILE: tests\test_storage_watchdog.py
+====================================================================================================
+
+
+
+====================================================================================================
+FILE: ui\__init__.py
+====================================================================================================
+
+
+"""
+ui/__init__.py - UI components package
+"""
+
+
+
+
+====================================================================================================
+FILE: ui\clip_watcher.py
+====================================================================================================
+
+
+# ui/clip_watcher.py
+import re
+try:
+    from PySide6.QtCore import Qt, QTimer, Signal, QPoint, QPropertyAnimation, QEasingCurve
+    from PySide6.QtGui import QColor, QPainter, QBrush, QPen
+    from PySide6.QtWidgets import (
+        QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, 
+        QApplication, QGraphicsDropShadowEffect, QFrame
+    )
+except ImportError:
+    from PyQt6.QtCore import Qt, QTimer, pyqtSignal as Signal, QPoint, QPropertyAnimation, QEasingCurve
+    from PyQt6.QtGui import QColor, QPainter, QBrush, QPen
+    from PyQt6.QtWidgets import (
+        QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, 
+        QApplication, QGraphicsDropShadowEffect, QFrame
+    )
+from ui.themes import get_theme
+
+class ClipWatcher(QWidget):
+    downloadRequested = Signal(str)
+    analyzeRequested = Signal(str)
+
+    def __init__(self, theme_name="Modern Dark"):
+        super().__init__()
+        self.theme_name = theme_name
+        self.current_url = ""
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        
+        self._init_ui()
+        self.hide_timer = QTimer(self)
+        self.hide_timer.setSingleShot(True)
+        self.hide_timer.timeout.connect(self.hide_animated)
+        
+        self.check_timer = QTimer(self)
+        self.check_timer.timeout.connect(self._check_clipboard)
+        self.last_clipboard = ""
+
+    def _init_ui(self):
+        self.main_frame = QFrame(self)
+        self.main_frame.setObjectName("snap_bar")
+        
+        layout = QHBoxLayout(self.main_frame)
+        layout.setContentsMargins(10, 8, 10, 8)
+        layout.setSpacing(10)
+        
+        icon = QLabel("✨")
+        txt = QLabel("Link Detected!")
+        
+        self.btn_dl = QPushButton("Download Now")
+        self.btn_dl.clicked.connect(self._on_download)
+        
+        self.btn_close = QPushButton("✕")
+        self.btn_close.setObjectName("secondary")
+        self.btn_close.setFixedWidth(24)
+        self.btn_close.clicked.connect(self.hide_animated)
+        
+        layout.addWidget(icon)
+        layout.addWidget(txt)
+        layout.addStretch(1)
+        layout.addWidget(self.btn_dl)
+        layout.addWidget(self.btn_close)
+        
+        self.setFixedSize(300, 54)
+        
+        shadow = QGraphicsDropShadowEffect()
+        shadow.setBlurRadius(15)
+        shadow.setColor(QColor(0, 0, 0, 150))
+        shadow.setOffset(0, 2)
+        self.main_frame.setGraphicsEffect(shadow)
+        self._apply_theme()
+
+    def _apply_theme(self):
+        t = get_theme(self.theme_name)
+        self.main_frame.setStyleSheet(f"""
+            QFrame#snap_bar {{
+                background-color: {t['panel_alt']}f2;
+                border: 1px solid {t['border']};
+                border-radius: 10px;
+            }}
+            QLabel {{
+                color: {t['text']};
+                font-weight: 700;
+                font-size: 11px;
+                background: transparent;
+            }}
+            QPushButton {{
+                background-color: {t['accent']};
+                color: {t['bg']};
+                border: none;
+                border-radius: 6px;
+                padding: 6px 10px;
+                font-weight: 700;
+                font-size: 10px;
+            }}
+            QPushButton:hover {{
+                background-color: {t['accent_2']};
+            }}
+            QPushButton#secondary {{
+                background-color: {t['panel']};
+                color: {t['text']};
+                border: 1px solid {t['border']};
+            }}
+            QPushButton#secondary:hover {{
+                border: 1px solid {t['accent']};
+                color: {t['accent']};
+            }}
+        """)
+
+    def update_theme(self, theme_name: str):
+        self.theme_name = theme_name or self.theme_name
+        self._apply_theme()
+
+    def _on_download(self):
+        self.downloadRequested.emit(self.current_url)
+        self.hide_animated()
+
+    def _check_clipboard(self):
+        cb = QApplication.clipboard().text().strip()
+        if cb == self.last_clipboard or not cb:
+            return
+        self.last_clipboard = cb
+        
+        # Simple URL detection
+        if re.match(r'https?://(?:www\.)?(?:youtube\.com|youtu\.be|facebook\.com|instagram\.com|tiktok\.com|twitter\.com)/.+', cb):
+            self.current_url = cb
+            self.show_animated()
+
+    def show_animated(self):
+        screen = QApplication.primaryScreen().geometry()
+        target_x = screen.width() - self.width() - 20
+        target_y = 40
+        self.move(target_x, target_y - 20)
+        
+        self.anim = QPropertyAnimation(self, b"pos")
+        self.anim.setDuration(400)
+        self.anim.setStartValue(QPoint(target_x, target_y - 20))
+        self.anim.setEndValue(QPoint(target_x, target_y))
+        self.anim.setEasingCurve(QEasingCurve.Type.OutBack)
+        
+        self.show()
+        self.anim.start()
+        self.hide_timer.start(8000)
+
+    def hide_animated(self):
+        curr_pos = self.pos()
+        self.anim = QPropertyAnimation(self, b"pos")
+        self.anim.setDuration(300)
+        self.anim.setStartValue(curr_pos)
+        self.anim.setEndValue(QPoint(curr_pos.x(), curr_pos.y() - 30))
+        self.anim.setEasingCurve(QEasingCurve.Type.InQuad)
+        self.anim.finished.connect(self.hide)
+        self.anim.start()
+
+    def start(self):
+        self.check_timer.start(2000)
+
+    def stop(self):
+        self.check_timer.stop()
+
+
+
+
+====================================================================================================
+FILE: ui\error_dashboard.py
+====================================================================================================
+
+
+"""
+ui/error_dashboard.py — Smart Error Reporting Dashboard
+Displays a premium error analysis panel with actionable solutions.
+Categorizes errors by type and suggests specific fixes.
+"""
+try:
+    from PySide6.QtCore import Qt, QTimer
+    from PySide6.QtWidgets import (
+        QWidget, QFrame, QVBoxLayout, QHBoxLayout,
+        QLabel, QPushButton, QListWidget, QListWidgetItem,
+        QTextEdit, QScrollArea, QApplication,
+    )
+except ImportError:
+    from PyQt6.QtCore import Qt, QTimer
+    from PyQt6.QtWidgets import (
+        QWidget, QFrame, QVBoxLayout, QHBoxLayout,
+        QLabel, QPushButton, QListWidget, QListWidgetItem,
+        QTextEdit, QScrollArea, QApplication,
+    )
+
+import re
+import json
+import os
+from datetime import datetime
+
+
+# ── Error Pattern Database ────────────────────────────────────────────────────
+
+ERROR_PATTERNS = [
+    {
+        "id": "geo_block",
+        "pattern": r"(not available in your country|geo.?block|region)",
+        "category": "🌍 Geo-Block",
+        "severity": "high",
+        "title": "Content blocked in your region",
+        "solutions": [
+            "Enable a VPN or Proxy in Settings → Proxy Manager",
+            "Try a different server location (US/EU)",
+            "Use Cookie Import from a browser where content is accessible",
+        ],
+    },
+    {
+        "id": "auth_required",
+        "pattern": r"(sign in|login required|private video|members only|age.?restricted)",
+        "category": "🔐 Authentication",
+        "severity": "high",
+        "title": "Login or authentication required",
+        "solutions": [
+            "Use Settings → Auto-Import Cookies from your browser (Chrome/Edge)",
+            "Log in to the website in your browser first, then import cookies",
+            "Manually download a cookies.txt file using browser extension",
+        ],
+    },
+    {
+        "id": "network_error",
+        "pattern": r"(connection reset|connection refused|network|timeout|socket|unreachable)",
+        "category": "🌐 Network",
+        "severity": "medium",
+        "title": "Network connectivity issue",
+        "solutions": [
+            "Check your internet connection",
+            "Check if the website is up (try opening URL in browser)",
+            "Try enabling Proxy in Settings",
+            "Increase retry count in Settings → Download Logic",
+        ],
+    },
+    {
+        "id": "rate_limited",
+        "pattern": r"(too many requests|rate.?limit|429|403.*youtube|slow down)",
+        "category": "⏱ Rate Limited",
+        "severity": "medium",
+        "title": "Too many requests — you've been rate-limited",
+        "solutions": [
+            "Wait 10-30 minutes before retrying",
+            "Enable Proxy rotation to distribute requests",
+            "Reduce Max Concurrent Downloads in Settings (set to 1-2)",
+            "Enable bandwidth limiter to appear as a normal user",
+        ],
+    },
+    {
+        "id": "format_unavailable",
+        "pattern": r"(format.*not available|requested format|no video formats found|bestvideo)",
+        "category": "🎞 Format/Quality",
+        "severity": "low",
+        "title": "Requested quality or format not available",
+        "solutions": [
+            "Try a lower quality (720p instead of 1080p)",
+            "Choose a different format (MP4 instead of WEBM)",
+            "Tick 'Allow lower quality fallback' in settings",
+        ],
+    },
+    {
+        "id": "ffmpeg_missing",
+        "pattern": r"(ffmpeg|ffprobe|merge output|postprocessing|converter)",
+        "category": "🔧 FFMPEG",
+        "severity": "medium",
+        "title": "FFMPEG is missing or not in PATH",
+        "solutions": [
+            "Download FFMPEG from https://ffmpeg.org/download.html",
+            "Add FFMPEG to your system PATH environment variable",
+            "Place ffmpeg.exe in the same folder as SnapDownloader",
+        ],
+    },
+    {
+        "id": "url_invalid",
+        "pattern": r"(unsupported url|invalid url|unable to extract|extractor|no suitable)",
+        "category": "🔗 URL/Site",
+        "severity": "low",
+        "title": "URL is unsupported or invalid",
+        "solutions": [
+            "Check the URL is correct and the page still exists",
+            "Update yt-dlp core: Settings → Check for yt-dlp Updates",
+            "This site might not be supported — check yt-dlp supported sites list",
+        ],
+    },
+    {
+        "id": "disk_full",
+        "pattern": r"(no space left|disk.*full|not enough space|errno 28)",
+        "category": "💾 Disk Space",
+        "severity": "high",
+        "title": "Not enough disk space",
+        "solutions": [
+            "Free up disk space (delete old files)",
+            "Change download folder to a drive with more space (Settings → Download Path)",
+            "Clear completed downloads from the Downloads history",
+        ],
+    },
+    {
+        "id": "cancelled",
+        "pattern": r"(cancel|interrupt|stopped by user)",
+        "category": "⏹ Cancelled",
+        "severity": "info",
+        "title": "Download was cancelled by user",
+        "solutions": ["Use Retry button to restart this download"],
+    },
+]
+
+SEVERITY_COLORS = {
+    "high":   "#FF4D4D",
+    "medium": "#FFA040",
+    "low":    "#FFD700",
+    "info":   "#00F0FF",
+}
+
+
+def analyze_error(error_text: str) -> dict:
+    """
+    Match an error string against known patterns and return analysis dict.
+    Returns a dict with category, severity, title, solutions.
+    """
+    if not error_text:
+        return {
+            "id": "unknown",
+            "category": "❓ Unknown",
+            "severity": "low",
+            "title": "Unknown error",
+            "solutions": [
+                "Check app.log for detailed output",
+                "Update yt-dlp to the latest version",
+                "Try the download again",
+            ],
+            "raw": error_text,
+        }
+
+    lower = error_text.lower()
+    for pattern in ERROR_PATTERNS:
+        if re.search(pattern["pattern"], lower):
+            result = dict(pattern)
+            result["raw"] = error_text
+            return result
+
+    return {
+        "id": "unknown",
+        "category": "❓ Unknown",
+        "severity": "low",
+        "title": "Unrecognized error",
+        "solutions": [
+            "Check the log panel for full output",
+            "Google the exact error message",
+            "Update yt-dlp: Settings → Check for yt-dlp Updates",
+            "Open a GitHub issue with the log attached",
+        ],
+        "raw": error_text,
+    }
+
+
+class ErrorDashboard(QWidget):
+    """
+    Premium error reporting panel showing failed downloads
+    with AI-style root cause analysis and solution cards.
+    """
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._errors: list[dict] = []
+        self._build_ui()
+
+    # ── UI Construction ───────────────────────────────────────────────────────
+
+    def _build_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(14)
+
+        # Header
+        hdr = QHBoxLayout()
+        title = QLabel("⚠️ Error Analysis Center")
+        title.setObjectName("single_title")
+        clear_btn = QPushButton("🗑 Clear All")
+        clear_btn.setObjectName("action_schedule")
+        clear_btn.setFixedWidth(110)
+        clear_btn.clicked.connect(self._clear_errors)
+        hdr.addWidget(title)
+        hdr.addStretch(1)
+        hdr.addWidget(clear_btn)
+        layout.addLayout(hdr)
+
+        sub_lbl = QLabel("Smart root-cause analysis with step-by-step solutions")
+        sub_lbl.setObjectName("single_sub")
+        layout.addWidget(sub_lbl)
+
+        # Error list
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self._list_container = QWidget()
+        self._list_layout = QVBoxLayout(self._list_container)
+        self._list_layout.setContentsMargins(0, 0, 0, 0)
+        self._list_layout.setSpacing(10)
+        self._list_layout.addStretch(1)
+        scroll.setWidget(self._list_container)
+        layout.addWidget(scroll, 1)
+
+        self._empty_lbl = QLabel("✅ No errors recorded — all downloads are healthy!")
+        self._empty_lbl.setObjectName("empty_title")
+        self._empty_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(self._empty_lbl)
+
+    # ── Public API ────────────────────────────────────────────────────────────
+
+    def report_error(self, url: str, error_text: str, title: str = ""):
+        """Add a new error report to the dashboard."""
+        analysis = analyze_error(error_text)
+        analysis["url"] = url
+        analysis["title_hint"] = title
+        analysis["timestamp"] = datetime.now().strftime("%H:%M:%S")
+        self._errors.insert(0, analysis)
+        self._rebuild_list()
+
+    def _clear_errors(self):
+        self._errors.clear()
+        self._rebuild_list()
+
+    # ── Rendering ─────────────────────────────────────────────────────────────
+
+    def _rebuild_list(self):
+        # Clear existing widgets except the stretch
+        while self._list_layout.count() > 1:
+            item = self._list_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+        self._empty_lbl.setVisible(len(self._errors) == 0)
+
+        for err in self._errors:
+            card = self._make_error_card(err)
+            self._list_layout.insertWidget(self._list_layout.count() - 1, card)
+
+    def _make_error_card(self, err: dict) -> QFrame:
+        severity = err.get("severity", "low")
+        color = SEVERITY_COLORS.get(severity, "#FFD700")
+
+        card = QFrame()
+        card.setObjectName("playlist_row")
+        card.setStyleSheet(f"QFrame#playlist_row {{ border-left: 4px solid {color}; }}")
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(14, 10, 14, 10)
+        layout.setSpacing(6)
+
+        # Top row
+        top = QHBoxLayout()
+        cat_lbl = QLabel(err.get("category", "Unknown"))
+        cat_lbl.setStyleSheet(f"color: {color}; font-weight: 900; font-size: 11px;")
+        time_lbl = QLabel(err.get("timestamp", ""))
+        time_lbl.setObjectName("single_sub")
+        copy_btn = QPushButton("📋")
+        copy_btn.setObjectName("icon_btn")
+        copy_btn.setFixedSize(26, 26)
+        copy_btn.setToolTip("Copy Error")
+        raw = err.get("raw", "")
+        copy_btn.clicked.connect(lambda _, r=raw: QApplication.clipboard().setText(r))
+        top.addWidget(cat_lbl)
+        top.addStretch(1)
+        top.addWidget(time_lbl)
+        top.addWidget(copy_btn)
+        layout.addLayout(top)
+
+        # Title
+        title_lbl = QLabel(err.get("title", "Error"))
+        title_lbl.setObjectName("playlist_title")
+        layout.addWidget(title_lbl)
+
+        # URL hint
+        url = err.get("url", "")
+        if url:
+            url_lbl = QLabel(f"🔗 {url[:70]}{'…' if len(url) > 70 else ''}")
+            url_lbl.setObjectName("playlist_url")
+            layout.addWidget(url_lbl)
+
+        # Solutions
+        for i, sol in enumerate(err.get("solutions", []), 1):
+            sol_lbl = QLabel(f"  {i}. {sol}")
+            sol_lbl.setObjectName("single_sub")
+            sol_lbl.setWordWrap(True)
+            layout.addWidget(sol_lbl)
+
+        return card
+
+
+
+
+====================================================================================================
+FILE: ui\main_window.py
+====================================================================================================
+
+
+from app import PremiumWindow, main
+
+MainWindow = PremiumWindow
+
+__all__ = ["MainWindow", "main"]
+
+if __name__ == "__main__":
+    main()
+
+
+
+
+====================================================================================================
+FILE: ui\mini_mode.py
+====================================================================================================
+
+
+"""
+ui/mini_mode.py — Compact Mini Player Window
+A floating, always-on-top mini window that shows active download progress.
+Inspired by Spotify Mini Player — beautiful, unobtrusive, draggable.
+"""
+try:
+    from PySide6.QtCore import Qt, QTimer, Signal, QPoint, QPropertyAnimation, QEasingCurve
+    from PySide6.QtGui import QColor, QPainter, QPainterPath
+    from PySide6.QtWidgets import (
+        QWidget, QHBoxLayout, QVBoxLayout, QLabel, QPushButton,
+        QProgressBar, QApplication, QGraphicsOpacityEffect
+    )
+except ImportError:
+    from PyQt6.QtCore import Qt, QTimer, pyqtSignal as Signal, QPoint, QPropertyAnimation, QEasingCurve
+    from PyQt6.QtGui import QColor, QPainter, QPainterPath
+    from PyQt6.QtWidgets import (
+        QWidget, QHBoxLayout, QVBoxLayout, QLabel, QPushButton,
+        QProgressBar, QApplication, QGraphicsOpacityEffect
+    )
+
+
+class MiniModeWindow(QWidget):
+    """
+    A compact floating window showing download progress.
+    Always stays on top, draggable, click to restore main window.
+    """
+    showMainRequested = Signal()
+    pauseRequested = Signal()
+    cancelRequested = Signal()
+
+    def __init__(self, theme_colors: dict = None):
+        super().__init__(None)  # No parent so it floats independently
+        self.t = theme_colors or self._default_colors()
+        self._drag_pos = None
+        self._active_title = "No active downloads"
+        self._progress = 0
+        self._speed = "--"
+        self._eta = "--:--"
+        self._total_active = 0
+        self._pulse_offset = 0
+
+        self.setWindowFlags(
+            Qt.WindowType.FramelessWindowHint |
+            Qt.WindowType.WindowStaysOnTopHint |
+            Qt.WindowType.Tool
+        )
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
+        self.setFixedSize(320, 80)
+
+        self._build_ui()
+        self._position_bottom_right()
+
+        # Pulse animation timer
+        self._pulse_timer = QTimer(self)
+        self._pulse_timer.timeout.connect(self._tick_pulse)
+        self._pulse_timer.start(60)
+
+    # ── UI Construction ───────────────────────────────────────────────────────
+
+    def _build_ui(self):
+        t = self.t
+        outer = self.layout()
+        if outer is None:
+            outer = QHBoxLayout(self)
+            outer.setContentsMargins(12, 8, 12, 8)
+            outer.setSpacing(10)
+        else:
+            while outer.count():
+                item = outer.takeAt(0)
+                child_widget = item.widget()
+                if child_widget is not None:
+                    child_widget.deleteLater()
+                    continue
+                child_layout = item.layout()
+                if child_layout is not None:
+                    while child_layout.count():
+                        child_item = child_layout.takeAt(0)
+                        nested_widget = child_item.widget()
+                        if nested_widget is not None:
+                            nested_widget.deleteLater()
+
+        # Icon
+        self.icon_lbl = QLabel("⬇")
+        self.icon_lbl.setFixedSize(32, 32)
+        self.icon_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.icon_lbl.setStyleSheet(
+            f"background-color: {t['accent']}; color: {t['bg']}; "
+            f"border-radius: 8px; font-size: 13px; font-weight: 800;"
+        )
+
+        # Center column
+        center = QVBoxLayout()
+        center.setSpacing(2)
+        center.setContentsMargins(0, 0, 0, 0)
+
+        self.title_lbl = QLabel(self._active_title)
+        self.title_lbl.setStyleSheet(
+            f"color: {t['text']}; font-size: 11px; font-weight: 700; background: transparent;"
+        )
+        self.title_lbl.setMaximumWidth(180)
+
+        self.meta_lbl = QLabel(f"⚡ {self._speed}  ⏱ {self._eta}")
+        self.meta_lbl.setStyleSheet(
+            f"color: {t['muted']}; font-size: 10px; font-weight: 600; background: transparent;"
+        )
+
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setRange(0, 100)
+        self.progress_bar.setValue(0)
+        self.progress_bar.setFixedHeight(4)
+        self.progress_bar.setTextVisible(False)
+        self.progress_bar.setStyleSheet(f"""
+            QProgressBar {{
+                border: none; border-radius: 2px;
+                background-color: {t['panel']};
+            }}
+            QProgressBar::chunk {{
+                background: qlineargradient(x1:0, y1:0.5, x2:1, y2:0.5,
+                    stop:0 {t['accent']}, stop:1 {t['accent_2']});
+                border-radius: 2px;
+            }}
+        """)
+
+        center.addWidget(self.title_lbl)
+        center.addWidget(self.meta_lbl)
+        center.addWidget(self.progress_bar)
+
+        # Buttons column
+        btns = QVBoxLayout()
+        btns.setSpacing(3)
+        btns.setContentsMargins(0, 0, 0, 0)
+
+        self.expand_btn = QPushButton("⬆")
+        self.expand_btn.setFixedSize(24, 24)
+        self.expand_btn.setToolTip("Show Main Window")
+        self.expand_btn.clicked.connect(self.showMainRequested.emit)
+        self.expand_btn.setStyleSheet(self._btn_style(t))
+
+        self.pause_btn = QPushButton("⏸")
+        self.pause_btn.setFixedSize(24, 24)
+        self.pause_btn.setToolTip("Pause All")
+        self.pause_btn.clicked.connect(self.pauseRequested.emit)
+        self.pause_btn.setStyleSheet(self._btn_style(t))
+
+        self.close_mini_btn = QPushButton("✕")
+        self.close_mini_btn.setFixedSize(24, 24)
+        self.close_mini_btn.setToolTip("Hide Mini Mode")
+        self.close_mini_btn.clicked.connect(self.hide)
+        self.close_mini_btn.setStyleSheet(self._btn_style(t))
+
+        btns.addWidget(self.expand_btn)
+        btns.addWidget(self.pause_btn)
+        btns.addWidget(self.close_mini_btn)
+
+        outer.addWidget(self.icon_lbl)
+        outer.addLayout(center, 1)
+        outer.addLayout(btns)
+
+    def _btn_style(self, t: dict) -> str:
+        return (
+            f"QPushButton {{ background-color: {t['panel']}; color: {t['muted']}; "
+            f"border: 1px solid {t['border']}; border-radius: 6px; font-size: 10px; font-weight: 700; }}"
+            f"QPushButton:hover {{ background-color: {t['panel_soft']}; color: {t['accent']}; }}"
+        )
+
+    def _default_colors(self) -> dict:
+        return {
+            "bg": "#050D1A",
+            "panel": "#0A1628",
+            "panel_alt": "#0F1E35",
+            "panel_soft": "#1A2B4A",
+            "text": "#E8F4FF",
+            "muted": "#6B8DB5",
+            "accent": "#00F0FF",
+            "accent_2": "#FF6B9D",
+            "border": "#1A2E4A",
+        }
+
+    # ── Public API ────────────────────────────────────────────────────────────
+
+    def update_progress(self, title: str, progress: float, speed: str, eta: str, total_active: int = 1):
+        self._active_title = title[:38] + "…" if len(title) > 38 else title
+        self._progress = max(0, min(100, int(progress)))
+        self._speed = speed or "--"
+        self._eta = eta or "--:--"
+        self._total_active = total_active
+
+        self.title_lbl.setText(
+            f"[{total_active} active] {self._active_title}" if total_active > 1 else self._active_title
+        )
+        self.meta_lbl.setText(f"⚡ {self._speed}  ⏱ {self._eta}")
+        self.progress_bar.setValue(self._progress)
+
+    def update_theme(self, theme_colors: dict):
+        self.t = theme_colors
+        self._build_ui()
+
+    def set_idle(self):
+        """Show idle state when no downloads are active."""
+        self.title_lbl.setText("No active downloads")
+        self.meta_lbl.setText("SnapDownloader ready")
+        self.progress_bar.setValue(0)
+        self.icon_lbl.setText("✓")
+
+    # ── Painting ──────────────────────────────────────────────────────────────
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        t = self.t
+
+        path = QPainterPath()
+        path.addRoundedRect(0, 0, self.width(), self.height(), 10, 10)
+        painter.fillPath(path, QColor(t["panel_alt"]))
+        painter.setPen(QColor(t["border"]))
+        painter.drawPath(path)
+        painter.end()
+
+    def _tick_pulse(self):
+        """Pulse the icon when downloading."""
+        if self._total_active > 0:
+            self._pulse_offset = (self._pulse_offset + 10) % 360
+            alpha = int(128 + 127 * abs(self._pulse_offset / 180.0 - 1.0))
+            self.icon_lbl.setStyleSheet(
+                f"background-color: {self.t['accent']}; color: {self.t['bg']}; "
+                f"border-radius: 8px; font-size: 13px; font-weight: 800;"
+            )
+
+    # ── Drag ─────────────────────────────────────────────────────────────────
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self._drag_pos = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
+            event.accept()
+
+    def mouseMoveEvent(self, event):
+        if self._drag_pos and event.buttons() == Qt.MouseButton.LeftButton:
+            self.move(event.globalPosition().toPoint() - self._drag_pos)
+            event.accept()
+
+    def mouseReleaseEvent(self, event):
+        self._drag_pos = None
+
+    def mouseDoubleClickEvent(self, event):
+        self.showMainRequested.emit()
+
+    def _position_bottom_right(self):
+        screen = QApplication.primaryScreen().geometry()
+        x = screen.width() - self.width() - 20
+        y = screen.height() - self.height() - 60
+        self.move(x, y)
+
+
+
+
+====================================================================================================
+FILE: ui\models.py
+====================================================================================================
+
+
+"""
+ui/models.py — Custom Qt Models for SnapDownloader
+Implements efficient data handling for large lists (playlist, downloads).
+"""
+try:
+    from PySide6.QtCore import QAbstractListModel, Qt, QModelIndex, QSize
+except ImportError:
+    from PyQt6.QtCore import QAbstractListModel, Qt, QModelIndex, QSize
+
+class DownloadListModel(QAbstractListModel):
+    def __init__(self, items=None):
+        super().__init__()
+        self._items = items or []
+
+    def rowCount(self, parent=QModelIndex()):
+        return len(self._items)
+
+    def data(self, index, role=Qt.ItemDataRole.DisplayRole):
+        if not index.isValid() or index.row() >= len(self._items):
+            return None
+        
+        item = self._items[index.row()]
+        if role == Qt.ItemDataRole.DisplayRole:
+            return str(item.get("title", "") or item.get("url", "") or "")
+        if role == Qt.ItemDataRole.SizeHintRole:
+            if item.get("_empty"):
+                return QSize(0, 340)
+            return QSize(0, 128)
+        if role == Qt.ItemDataRole.UserRole:
+            return item
+        return None
+
+    def update_items(self, new_items):
+        self.beginResetModel()
+        self._items = new_items
+        self.endResetModel()
+
+    def get_item(self, row):
+        if 0 <= row < len(self._items):
+            return self._items[row]
+        return None
+
+
+class PlaylistListModel(QAbstractListModel):
+    def __init__(self, items=None):
+        super().__init__()
+        self._items = items or []
+
+    def rowCount(self, parent=QModelIndex()):
+        return len(self._items)
+
+    def data(self, index, role=Qt.ItemDataRole.DisplayRole):
+        if not index.isValid() or index.row() >= len(self._items):
+            return None
+        item = self._items[index.row()]
+        if role == Qt.ItemDataRole.DisplayRole:
+            return str(item.get("title", "") or item.get("url", "") or "")
+        if role == Qt.ItemDataRole.SizeHintRole:
+            return QSize(0, 94)
+        if role == Qt.ItemDataRole.UserRole:
+            return item
+        return None
+
+    def update_items(self, new_items):
+        self.beginResetModel()
+        self._items = new_items
+        self.endResetModel()
+
+
+
+
+====================================================================================================
+FILE: ui\overlay.py
+====================================================================================================
+
+
+"""
+ui/overlay.py - Professional Notification Overlay Widget
+
+Provides a customizable, animated overlay for showing notifications (info, success, warning, error).
+"""
+import logging
+
+try:
+    from PySide6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve, QPoint
+    from PySide6.QtGui import QIcon
+    from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFrame, QApplication
+except ImportError:
+    from PyQt6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve, QPoint
+    from PyQt6.QtGui import QIcon
+    from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFrame, QApplication
+
+logger = logging.getLogger("SnapDownloader.Overlay")
+
+STYLES = {
+    "base": """
+        QFrame#overlay_frame {
+            background-color: rgba(35, 39, 42, 0.95);
+            border-radius: 12px;
+            border: 1px solid #4f545c;
+        }
+        QLabel#overlay_title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #ffffff;
+        }
+        QLabel#overlay_message {
+            font-size: 13px;
+            color: #dcddde;
+        }
+    """,
+    "icon_colors": {
+        "success": "#2ecc71",
+        "info": "#3498db",
+        "warning": "#f1c40f",
+        "error": "#e74c3c",
+    }
+}
+
+ICONS = {
+    "success": "✅",
+    "info": "ℹ️",
+    "warning": "⚠️",
+    "error": "❌",
+}
+
+class NotificationOverlay(QFrame):
+    def __init__(self, parent: QWidget):
+        super().__init__(parent)
+        self.setObjectName("overlay_frame")
+        self.setFrameShape(QFrame.Shape.StyledPanel)
+        self.setMinimumWidth(350)
+        self.setMaximumWidth(450)
+        self.hide()
+
+        self._build_ui()
+        self.setStyleSheet(STYLES["base"])
+        self.animation = QPropertyAnimation(self, b"pos")
+        self.animation.setEasingCurve(QEasingCurve.Type.OutCubic)
+        self.animation.setDuration(400)
+
+    def _build_ui(self):
+        main_layout = QHBoxLayout(self)
+        main_layout.setContentsMargins(20, 20, 20, 20)
+        main_layout.setSpacing(15)
+
+        self.icon_label = QLabel("")
+        self.icon_label.setObjectName("overlay_icon")
+        self.icon_label.setFixedSize(32, 32)
+        self.icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        
+        text_layout = QVBoxLayout()
+        text_layout.setSpacing(4)
+        self.title_label = QLabel("")
+        self.title_label.setObjectName("overlay_title")
+        self.title_label.setWordWrap(True)
+        self.message_label = QLabel("")
+        self.message_label.setObjectName("overlay_message")
+        self.message_label.setWordWrap(True)
+        text_layout.addWidget(self.title_label)
+        text_layout.addWidget(self.message_label)
+        text_layout.addStretch(1)
+
+        main_layout.addWidget(self.icon_label)
+        main_layout.addLayout(text_layout)
+
+    def show_message(self, title: str, message: str, level: str = "info", duration_ms: int = 4000):
+        """Displays the notification with animation."""
+        self.title_label.setText(title)
+        self.message_label.setText(message)
+
+        icon_char = ICONS.get(level, "ℹ️")
+        icon_color = STYLES["icon_colors"].get(level, "#3498db")
+        self.icon_label.setText(icon_char)
+        self.icon_label.setStyleSheet(f"font-size: 20px; color: {icon_color};")
+
+        self.adjustSize()
+        self.show_animated()
+
+        if duration_ms > 0:
+            QTimer.singleShot(duration_ms, self.hide_animated)
+
+    def show_animated(self):
+        self.show()
+        parent_size = self.parent().size()
+        self.move(int((parent_size.width() - self.width()) / 2), -self.height())
+        self.animation.setStartValue(self.pos())
+        self.animation.setEndValue(QPoint(int((parent_size.width() - self.width()) / 2), 20))
+        self.animation.start()
+
+    def hide_animated(self):
+        self.animation.setStartValue(self.pos())
+        self.animation.setEndValue(QPoint(int((self.parent().width() - self.width()) / 2), -self.height()))
+        self.animation.finished.connect(self.hide)
+        self.animation.start()
+
+
+
+
+====================================================================================================
+FILE: ui\playlist_view.py
+====================================================================================================
+
+
+"""
+ui/playlist_view.py — Dedicated Playlist Management UI
+Provides advanced playlist fetching, selection, and batch download capabilities.
+"""
+import re
+import urllib.request
+from core.constants import VIDEO_FORMATS, AUDIO_FORMATS, SUBTITLE_OPTIONS
+from core.i18n import _
+from ui.models import PlaylistListModel
+
+try:
+    from PySide6.QtCore import Qt, Signal, QTimer, QUrl
+    from PySide6.QtGui import QPixmap
+    from PySide6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
+    from PySide6.QtWidgets import (
+        QWidget, QFrame, QVBoxLayout, QHBoxLayout, QLabel,
+        QPushButton, QLineEdit, QListView,
+        QComboBox, QCheckBox, QScrollArea, QMessageBox, QProgressBar,
+        QGridLayout
+    )
+except ImportError:
+    from PyQt6.QtCore import Qt, pyqtSignal as Signal, QTimer, QUrl
+    from PyQt6.QtGui import QPixmap
+    from PyQt6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
+    from PyQt6.QtWidgets import (
+        QWidget, QFrame, QVBoxLayout, QHBoxLayout, QLabel,
+        QPushButton, QLineEdit, QListView,
+        QComboBox, QCheckBox, QScrollArea, QMessageBox, QProgressBar,
+        QGridLayout
+    )
+
+class PlaylistView(QWidget):
+    """
+    Dedicated view for analyzing and downloading playlists.
+    Signals:
+        analyzeRequested(str) - Emitted when user wants to fetch a playlist
+        downloadRequested(list) - Emitted with a list of task dicts to download
+    """
+    analyzeRequested = Signal(str)
+    downloadRequested = Signal(list)
+
+    def __init__(self, parent=None, net_manager=None):
+        super().__init__(parent)
+        self.playlist_items = []
+        self.playlist_rows = []
+        self.thumbnail_cache = {}
+        self.net_manager = net_manager or QNetworkAccessManager(self)
+        self._render_generation = 0
+        self._render_cursor = 0
+        self._render_items = []
+        self._build_ui()
+
+    def _build_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(8)
+
+        # Header
+        hdr = QHBoxLayout()
+        title = QLabel("📑 Playlist Manager")
+        title.setObjectName("single_title")
+        desc = QLabel(_("Fetch full playlists, select specific videos, and download in batch"))
+        desc.setObjectName("single_sub")
+        hdr.addWidget(title)
+        hdr.addStretch(1)
+        layout.addLayout(hdr)
+        layout.addWidget(desc)
+
+        # Input Area
+        input_container = QFrame()
+        input_container.setObjectName("search_bar_container")
+        input_container.setFixedHeight(58)
+        input_layout = QHBoxLayout(input_container)
+        input_layout.setContentsMargins(10, 0, 10, 0)
+        input_layout.setSpacing(8)
+
+        self.url_input = QLineEdit()
+        self.url_input.setObjectName("search_input")
+        self.url_input.setPlaceholderText(_("Paste YouTube/SoundCloud Playlist URL here..."))
+        self.url_input.returnPressed.connect(self._on_analyze_clicked)
+
+        self.analyze_btn = QPushButton(_("Analyze Playlist"))
+        self.analyze_btn.setObjectName("search_btn")
+        self.analyze_btn.clicked.connect(self._on_analyze_clicked)
+
+        input_layout.addWidget(self.url_input, 1)
+        input_layout.addWidget(self.analyze_btn)
+        layout.addWidget(input_container)
+
+        # Global Settings & Select All Header
+        settings_frame = QFrame()
+        settings_frame.setObjectName("playlist_header")
+        settings_layout = QHBoxLayout(settings_frame)
+        settings_layout.setContentsMargins(10, 6, 10, 6)
+        settings_layout.setSpacing(8)
+
+        self.select_all_cb = QCheckBox(_("Select All"))
+        self.select_all_cb.toggled.connect(self._toggle_select_all)
+        self.select_all_cb.setEnabled(False)
+
+        self.global_format = QComboBox()
+        self.global_format.addItems(VIDEO_FORMATS + AUDIO_FORMATS)
+        self.global_format.setCurrentText("MP4")
+        self.global_format.currentTextChanged.connect(self._on_global_format_changed)
+        
+        self.global_quality = QComboBox()
+        self._refresh_global_quality_options("MP4")
+        self.global_quality.currentTextChanged.connect(self._apply_global_quality)
+
+        self.global_subtitle = QComboBox()
+        self.global_subtitle.addItems(SUBTITLE_OPTIONS)
+        self.global_subtitle.setCurrentText("None")
+
+        self.status_lbl = QLabel(_("Ready"))
+        self.status_lbl.setObjectName("single_sub")
+        self.total_size_lbl = QLabel(_("Total Size: --"))
+        self.total_size_lbl.setObjectName("single_sub")
+
+        settings_layout.addWidget(self.select_all_cb)
+        settings_layout.addWidget(QLabel(_("Format:")))
+        settings_layout.addWidget(self.global_format)
+        settings_layout.addWidget(QLabel(_("Quality:")))
+        settings_layout.addWidget(self.global_quality)
+        settings_layout.addWidget(QLabel(_("Subtitles:")))
+        settings_layout.addWidget(self.global_subtitle)
+        settings_layout.addStretch(1)
+        settings_layout.addWidget(self.total_size_lbl)
+        settings_layout.addWidget(self.status_lbl)
+
+        layout.addWidget(settings_frame)
+
+        # List Widget for Videos
+        self.list_widget = QListView()
+        self.list_model = PlaylistListModel([])
+        self.list_widget.setModel(self.list_model)
+        self.list_widget.setObjectName("playlist_list")
+        self.list_widget.setFrameShape(QFrame.Shape.NoFrame)
+        self.list_widget.setVerticalScrollMode(QListView.ScrollMode.ScrollPerPixel)
+        self.list_widget.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        
+        # Give list widget maximum possible space in the layout
+        layout.addWidget(self.list_widget, stretch=14)
+
+        # Footer
+        footer = QHBoxLayout()
+        self.download_btn = QPushButton(f"{_('Download Selected')} (0/0)")
+        self.download_btn.setObjectName("action_download")
+        self.download_btn.setEnabled(False)
+        self.download_btn.setMinimumWidth(200)
+        self.download_btn.setFixedHeight(44)
+        self.download_btn.clicked.connect(self._on_download_clicked)
+        
+        footer.addStretch(1)
+        footer.addWidget(self.download_btn)
+        layout.addLayout(footer)
+
+    # ── Actions ───────────────────────────────────────────────────────────────
+
+    def _on_analyze_clicked(self):
+        url = self.url_input.text().strip()
+        if not url:
+            return
+        self.analyze_btn.setEnabled(False)
+        self.analyze_btn.setText(_("Analyzing..."))
+        self.status_lbl.setText(_("Fetching playlist data..."))
+        self._clear_list()
+        self.analyzeRequested.emit(url)
+
+    def set_loading_state(self, is_loading: bool):
+        if is_loading:
+            self.analyze_btn.setEnabled(False)
+            self.analyze_btn.setText(_("Analyzing..."))
+            self.status_lbl.setText(_("Fetching playlist data..."))
+        else:
+            self.analyze_btn.setEnabled(True)
+            self.analyze_btn.setText(_("Analyze Playlist"))
+            self.status_lbl.setText(_("Ready"))
+
+    def _clear_list(self):
+        self.list_model.update_items([])
+        self.playlist_items.clear()
+        self.playlist_rows.clear()
+        self._render_generation += 1
+        self._render_cursor = 0
+        self._render_items = []
+        self.select_all_cb.setEnabled(False)
+        self.select_all_cb.setChecked(False)
+        self.download_btn.setEnabled(False)
+        self.download_btn.setText(f"{_('Download Selected')} (0/0)")
+        self.total_size_lbl.setText(_("Total Size: --"))
+
+    def set_playlist_data(self, payload: dict, items: list):
+        self._clear_list()
+        self.playlist_items = items
+        if not items:
+            self.status_lbl.setText(_("Playlist is empty or invalid."))
+            return
+
+        self.status_lbl.setText(_("Playlist loaded successfully"))
+        self.select_all_cb.setEnabled(True)
+        self.download_btn.setEnabled(True)
+        
+        self._render_generation += 1
+        self._render_cursor = 0
+        self._render_items = items
+        self.list_model.update_items(items)
+        self._render_batch(self._render_generation)
+
+    def _render_batch(self, generation: int, batch_size: int = 15):
+        if generation != self._render_generation:
+            return
+        
+        total = len(self._render_items)
+        start = self._render_cursor
+        end = min(total, start + batch_size)
+        
+        for i in range(start, end):
+            self._add_item_card(i, self._render_items[i])
+            
+        self._render_cursor = end
+        if end < total:
+            QTimer.singleShot(10, lambda: self._render_batch(generation, batch_size))
+        else:
+            self.select_all_cb.setChecked(True)
+            self._update_download_button()
+            self._update_total_size()
+
+    def _add_item_card(self, row_index: int, row_data: dict):
+        model_index = self.list_model.index(row_index, 0)
+        card = QFrame()
+        card.setObjectName("playlist_row")
+        card.setFixedHeight(84)
+        h = QHBoxLayout(card)
+        h.setContentsMargins(8, 4, 8, 4)
+        h.setSpacing(10)
+
+        cb = QCheckBox()
+        cb.setChecked(True)
+        cb.toggled.connect(self._update_download_button)
+
+        thumb_lbl = QLabel()
+        thumb_lbl.setObjectName("thumb_preview")
+        thumb_lbl.setFixedSize(96, 54)
+        thumb_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        thumb_lbl.setStyleSheet("font-size: 18px;")
+        
+        # Async thumbnail loading
+        thumb_url = row_data.get("thumbnail", "")
+        if thumb_url in self.thumbnail_cache:
+            thumb_lbl.setPixmap(self.thumbnail_cache[thumb_url])
+        else:
+            thumb_lbl.setText("🎬")
+            if thumb_url:
+                self._async_load_thumbnail(thumb_url, thumb_lbl)
+
+        title_lbl = QLabel(row_data.get("title", _("Unknown Title")))
+        title_lbl.setObjectName("playlist_title")
+        title_lbl.setWordWrap(True)
+        title_lbl.setStyleSheet("font-size:12px; font-weight:600;")
+
+        dur_lbl = QLabel(self._format_duration(row_data.get("duration_seconds", 0)))
+        dur_lbl.setObjectName("single_sub")
+        size_lbl = QLabel("--")
+        size_lbl.setObjectName("single_sub")
+
+        fmt = QComboBox()
+        fmt.addItems(VIDEO_FORMATS + AUDIO_FORMATS)
+        fmt.setCurrentText(self.global_format.currentText())
+        fmt.setFixedWidth(100)
+
+        quality = QComboBox()
+        quality.addItems(self._quality_options_for_format(fmt.currentText()))
+        quality.setCurrentText(self.global_quality.currentText())
+        quality.setFixedWidth(100)
+        
+        meta_col = QVBoxLayout()
+        meta_col.setContentsMargins(0, 0, 0, 0)
+        meta_col.setSpacing(2)
+        meta_col.addWidget(dur_lbl, 0, Qt.AlignmentFlag.AlignRight)
+        meta_col.addWidget(size_lbl, 0, Qt.AlignmentFlag.AlignRight)
+
+        h.addWidget(cb)
+        h.addWidget(thumb_lbl)
+        h.addWidget(title_lbl, 1)
+        h.addLayout(meta_col)
+        h.addWidget(fmt)
+        h.addWidget(quality)
+
+        self.list_widget.setIndexWidget(model_index, card)
+
+        row_ref = {
+            "check": cb,
+            "format": fmt,
+            "quality": quality,
+            "item": row_data,
+            "size_lbl": size_lbl,
+        }
+        fmt.currentTextChanged.connect(lambda val, q=quality, r=row_ref: (self._on_row_format_changed(val, q), self._update_row_size(r), self._update_total_size()))
+        quality.currentTextChanged.connect(lambda _, r=row_ref: (self._update_row_size(r), self._update_total_size()))
+        cb.toggled.connect(lambda _, r=row_ref: self._update_total_size())
+        self._update_row_size(row_ref)
+        self.playlist_rows.append(row_ref)
+
+    def _async_load_thumbnail(self, url: str, label: QLabel):
+        request = QNetworkRequest(QUrl(url))
+        reply = self.net_manager.get(request)
+        reply.finished.connect(lambda: self._on_thumbnail_loaded(reply, label, url))
+
+    def _on_thumbnail_loaded(self, reply: QNetworkReply, label: QLabel, url: str):
+        if reply.error() == QNetworkReply.NetworkError.NoError:
+            data = reply.readAll()
+            pixmap = QPixmap()
+            if pixmap.loadFromData(data):
+                scaled = pixmap.scaled(96, 54, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+                self.thumbnail_cache[url] = scaled
+                label.setPixmap(scaled)
+        reply.deleteLater()
+
+    def _format_duration(self, seconds: int) -> str:
+        if not seconds: return "--:--"
+        m, s = divmod(seconds, 60)
+        h, m = divmod(m, 60)
+        if h > 0: return f"{h}:{m:02d}:{s:02d}"
+        return f"{m:02d}:{s:02d}"
+
+    # ── Global Settings Logic ────────────────────────────────────────────────
+
+    def _quality_options_for_format(self, fmt: str) -> list:
+        if fmt in AUDIO_FORMATS:
+            return ["320kbps", "256kbps", "192kbps", "128kbps", "96kbps"]
+        return ["8K", "4K", "1440p", "1080p", "720p", "480p", "360p"]
+
+    def _refresh_global_quality_options(self, fmt: str):
+        self.global_quality.blockSignals(True)
+        self.global_quality.clear()
+        self.global_quality.addItems(self._quality_options_for_format(fmt))
+        self.global_quality.setCurrentIndex(0)
+        self.global_quality.blockSignals(False)
+
+    def _on_global_format_changed(self, value: str):
+        self._refresh_global_quality_options(value)
+        selected_quality = self.global_quality.currentText()
+        for row in self.playlist_rows:
+            row["format"].setCurrentText(value)
+            row["quality"].blockSignals(True)
+            row["quality"].clear()
+            row["quality"].addItems(self._quality_options_for_format(value))
+            if selected_quality in [row["quality"].itemText(i) for i in range(row["quality"].count())]:
+                row["quality"].setCurrentText(selected_quality)
+            row["quality"].blockSignals(False)
+            self._update_row_size(row)
+        self._update_total_size()
+
+    def _apply_global_quality(self, value: str):
+        if not value: return
+        for row in self.playlist_rows:
+            q_combo = row["quality"]
+            if value in [q_combo.itemText(i) for i in range(q_combo.count())]:
+                q_combo.setCurrentText(value)
+                self._update_row_size(row)
+        self._update_total_size()
+
+    def _on_row_format_changed(self, value: str, quality_combo: QComboBox):
+        quality_combo.blockSignals(True)
+        quality_combo.clear()
+        quality_combo.addItems(self._quality_options_for_format(value))
+        quality_combo.setCurrentIndex(0)
+        quality_combo.blockSignals(False)
+
+    def _toggle_select_all(self, checked: bool):
+        for row in self.playlist_rows:
+            row["check"].blockSignals(True)
+            row["check"].setChecked(checked)
+            row["check"].blockSignals(False)
+        self._update_download_button()
+        self._update_total_size()
+
+    def _update_download_button(self):
+        selected = sum(1 for r in self.playlist_rows if r["check"].isChecked())
+        total = len(self.playlist_rows)
+        self.download_btn.setText(f"{_('Download Selected')} ({selected}/{total})")
+        self.download_btn.setEnabled(selected > 0)
+
+    def _estimate_size_bytes(self, duration_seconds: int, fmt: str, quality: str) -> int:
+        seconds = int(duration_seconds or 0)
+        if seconds <= 0:
+            return 0
+        fmt_text = str(fmt or "").strip()
+        q_text = str(quality or "").strip().lower()
+        if fmt_text in AUDIO_FORMATS:
+            m = re.search(r"(\d+)", q_text)
+            kbps = int(m.group(1)) if m else 192
+            return int((seconds * kbps * 1000) / 8)
+        if "8k" in q_text:
+            mbps = 32
+        elif "4k" in q_text or "2160" in q_text:
+            mbps = 20
+        elif "1440" in q_text:
+            mbps = 12
+        elif "1080" in q_text:
+            mbps = 8
+        elif "720" in q_text:
+            mbps = 5
+        elif "480" in q_text:
+            mbps = 2.5
+        else:
+            mbps = 1.5
+        return int((seconds * mbps * 1_000_000) / 8)
+
+    def _format_size(self, size_bytes: int) -> str:
+        value = float(size_bytes or 0)
+        if value >= 1024 ** 3:
+            return f"{value / (1024 ** 3):.2f} GB"
+        if value >= 1024 ** 2:
+            return f"{value / (1024 ** 2):.1f} MB"
+        if value >= 1024:
+            return f"{value / 1024:.1f} KB"
+        return f"{int(value)} B"
+
+    def _update_row_size(self, row: dict):
+        item = row.get("item", {})
+        fmt = row.get("format").currentText() if row.get("format") else "MP4"
+        quality = row.get("quality").currentText() if row.get("quality") else "1080p"
+        size_bytes = self._estimate_size_bytes(item.get("duration_seconds", 0), fmt, quality)
+        item["estimated_size_bytes"] = size_bytes
+        if row.get("size_lbl"):
+            row["size_lbl"].setText(self._format_size(size_bytes))
+
+    def _update_total_size(self):
+        total = 0
+        for row in self.playlist_rows:
+            if row.get("check") and row["check"].isChecked():
+                item = row.get("item", {})
+                if "estimated_size_bytes" not in item:
+                    self._update_row_size(row)
+                total += int(item.get("estimated_size_bytes", 0) or 0)
+        self.total_size_lbl.setText(_("Total Size: {value}").format(value=self._format_size(total)))
+
+    def _on_download_clicked(self):
+        selected_rows = [r for r in self.playlist_rows if r["check"].isChecked()]
+        if not selected_rows:
+            return
+            
+        tasks = []
+        subtitle = self.global_subtitle.currentText()
+        for row in selected_rows:
+            item = row["item"]
+            fmt = row["format"].currentText()
+            quality = row["quality"].currentText().replace(" kbps", "kbps")
+            
+            task = {
+                "url": item.get("url", ""),
+                "title": item.get("title", "Unknown"),
+                "thumbnail": item.get("thumbnail", ""),
+                "duration_seconds": int(item.get("duration_seconds", 0)),
+                "format": fmt,
+                "quality": quality,
+                "subtitle": subtitle,
+                "status": "pending",
+                "retries": 3
+            }
+            tasks.append(task)
+            
+        self.downloadRequested.emit(tasks)
+
+
+
+
+====================================================================================================
+FILE: ui\stats_view.py
+====================================================================================================
+
+
+# ui/stats_view.py
+import logging
+import random
+from datetime import datetime
+from collections import defaultdict
+
+from PySide6.QtCore import Qt, QRect, QPoint, QSize, QThread, Signal
+from PySide6.QtGui import (
+    QPainter, QPen, QBrush, QColor, QFont, QLinearGradient, QPolygon
+)
+from PySide6.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame
+)
+
+from ui.themes import get_theme
+from core.i18n import _
+from core.database import get_all_stats, get_history_stats_snapshot
+
+logger = logging.getLogger("SnapDownloader.Stats")
+
+class StatsWorker(QThread):
+    finished = Signal(dict)
+
+    def run(self):
+        results = {
+            "total_bytes": 0,
+            "peak_kbps": 0.0,
+            "success_rate": 0.0,
+            "chart_data": [],
+            "total_videos": 0,
+            "total_audios": 0,
+            "history_count": 0,
+        }
+        try:
+            stats = get_all_stats()
+            snapshot = get_history_stats_snapshot(days=7)
+            total_count = int(snapshot.get("total_count", 0) or 0)
+            success_count = int(snapshot.get("success_count", 0) or 0)
+
+            # Calculations
+            total_bytes = int(snapshot.get("total_bytes", 0) or 0)
+            peak_kbps = float(stats.get("peak_speed_kbps", 0) or 0)
+            success_rate = (success_count / float(total_count)) * 100.0 if total_count > 0 else 0.0
+            total_videos = int(stats.get("total_videos", 0) or 0)
+            total_audios = int(stats.get("total_audios", 0) or 0)
+
+            # Chart data calculation
+            chart_data = list(snapshot.get("chart_data", []) or [])
+
+            results.update({
+                "total_bytes": total_bytes,
+                "peak_kbps": peak_kbps,
+                "success_rate": success_rate,
+                "chart_data": chart_data,
+                "total_videos": total_videos,
+                "total_audios": total_audios,
+                "history_count": success_count,
+            })
+        except Exception as exc:
+            logger.warning(f"[StatsWorker] Failed to build stats: {exc}")
+        finally:
+            self.finished.emit(results)
+
+
+
+class PremiumChart(QWidget):
+    def __init__(self, theme_name="Modern Dark"):
+        super().__init__()
+        self.theme_name = theme_name
+        self.data = [random.randint(20, 80) for _ in range(7)]
+        self.setMinimumHeight(150)
+        self._cache_key = None
+        self._cache = {}
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        
+        t = get_theme(self.theme_name)
+        w, h = self.width(), self.height()
+        key = (self.theme_name, int(w), int(h), tuple(int(x or 0) for x in (self.data or [])))
+        if key != self._cache_key:
+            self._cache_key = key
+            rows = 5
+            grid_lines = [int(h * i / (rows - 1)) for i in range(rows)]
+            data = list(self.data or [])
+            points = []
+            if len(data) >= 2 and w > 0 and h > 0:
+                step = w / (len(data) - 1)
+                for i, val in enumerate(data):
+                    px = int(i * step)
+                    py = int(h - (float(val) / 100.0 * h))
+                    points.append(QPoint(px, py))
+            pen_grid = QPen(QColor(t["border"]))
+            pen_grid.setWidth(1)
+            pen_grid.setStyle(Qt.PenStyle.DashLine)
+            pen_path = QPen(QColor(t["accent"]))
+            pen_path.setWidth(4)
+            pen_path.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+            gradient = QLinearGradient(0, 0, 0, h)
+            gradient.setColorAt(0, QColor(t["accent"] + "88"))
+            gradient.setColorAt(1, QColor(t["accent"] + "00"))
+            poly_points = [QPoint(0, h)] + points + [QPoint(w, h)] if points else []
+            self._cache = {
+                "grid_lines": grid_lines,
+                "pen_grid": pen_grid,
+                "pen_path": pen_path,
+                "fill_brush": QBrush(gradient),
+                "points": points,
+                "poly": QPolygon(poly_points) if poly_points else QPolygon(),
+                "dot_brush": QBrush(QColor(t["text"])),
+            }
+        
+        # Grid lines
+        painter.setPen(self._cache["pen_grid"])
+        for y in self._cache["grid_lines"]:
+            painter.drawLine(0, y, w, y)
+            
+        # Draw area
+        points = self._cache["points"]
+        if not points:
+            return
+            
+        # Path for the line
+        path_pen = self._cache["pen_path"]
+        painter.setPen(path_pen)
+        
+        # Area fill
+        painter.setBrush(self._cache["fill_brush"])
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.drawPolygon(self._cache["poly"])
+        
+        # Line
+        painter.setPen(path_pen)
+        for i in range(len(points) - 1):
+            painter.drawLine(points[i], points[i+1])
+            
+        # Dots
+        painter.setBrush(self._cache["dot_brush"])
+        painter.setPen(path_pen)
+        for p in points:
+            painter.drawEllipse(p, 5, 5)
+
+class StatsView(QWidget):
+    def __init__(self, theme_name="Modern Dark"):
+        super().__init__()
+        self.theme_name = theme_name
+        self.worker = None
+        self._init_ui()
+        self.refresh()
+
+    def _init_ui(self):
+        t = get_theme(self.theme_name)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(25)
+        
+        title = QLabel(_("Insights Dashboard"))
+        title.setStyleSheet(f"font-size: 24px; font-weight: 900; color: {t['text']};")
+        layout.addWidget(title)
+        
+        cards_layout = QHBoxLayout()
+        cards_layout.setSpacing(15)
+        
+        self.card_total = self._create_card(_("Total Downloaded"), "-- GB", "⬇")
+        self.card_speed = self._create_card(_("Peak Speed"), "-- MB/s", "⚡")
+        self.card_success = self._create_card(_("Success Rate"), "--%", "✅")
+        
+        cards_layout.addWidget(self.card_total)
+        cards_layout.addWidget(self.card_speed)
+        cards_layout.addWidget(self.card_success)
+        layout.addLayout(cards_layout)
+        
+        # Chart Section
+        chart_container = QFrame()
+        chart_container.setStyleSheet(f"background: {t['panel_alt']}; border: 1px solid {t['border']}; border-radius: 20px;")
+        chart_layout = QVBoxLayout(chart_container)
+        chart_layout.setContentsMargins(20, 20, 20, 20)
+        
+        chart_title = QLabel(_("The Pulse (Activity Trends)"))
+        chart_title.setStyleSheet(f"font-size: 14px; font-weight: 800; color: {t['accent_2']};")
+        chart_layout.addWidget(chart_title)
+        
+        self.chart = PremiumChart(self.theme_name)
+        chart_layout.addWidget(self.chart)
+        
+        layout.addWidget(chart_container)
+        
+        history_title = QLabel(_("Recent Download Activity"))
+        history_title.setStyleSheet(f"font-size: 16px; font-weight: 800; color: {t['text']}; margin-top: 10px;")
+        layout.addWidget(history_title)
+        
+        self.history_summary = QLabel("")
+        self.history_summary.setStyleSheet(f"font-size: 12px; color: {t['muted']};")
+        layout.addWidget(self.history_summary)
+
+    def _create_card(self, title, value, icon):
+        t = get_theme(self.theme_name)
+        card = QFrame()
+        card.setStyleSheet(f"background: {t['panel']}; border: 1px solid {t['border']}; border-radius: 16px;")
+        l = QVBoxLayout(card)
+        l.setContentsMargins(15, 15, 15, 15)
+        
+        row1 = QHBoxLayout()
+        row1.addWidget(QLabel(icon))
+        row1.addStretch(1)
+        title_label = QLabel(title)
+        row1.addWidget(title_label)
+        
+        val = QLabel(value)
+        val.setStyleSheet(f"font-size: 20px; font-weight: 900; color: {t['accent']}; margin-top: 10px;")
+        
+        l.addLayout(row1)
+        l.addWidget(val)
+        card._value_label = val
+        card._title_label = title_label
+        return card
+
+    def refresh(self):
+        # M-08: Run stats calculation in a background thread to keep UI responsive
+        if self.worker and self.worker.isRunning():
+            return # Don't start a new worker if one is already running
+        self.worker = StatsWorker()
+        self.worker.finished.connect(self._on_stats_ready)
+        self.worker.start()
+
+    def _on_stats_ready(self, results: dict):
+        self.card_total._value_label.setText(self._format_bytes(results.get("total_bytes", 0)))
+        self.card_speed._value_label.setText(self._format_speed(results.get("peak_kbps", 0)))
+        self.card_success._value_label.setText(f"{results.get('success_rate', 0.0):.1f}%")
+        self.chart.data = results.get("chart_data", [])
+        self.chart.update()
+        self._update_history_summary(
+            results.get("history_count", 0),
+            results.get("total_videos", 0),
+            results.get("total_audios", 0)
+        )
+
+    def _format_bytes(self, value: int) -> str:
+        b = float(value or 0)
+        units = ["B", "KB", "MB", "GB", "TB"]
+        idx = 0
+        while b >= 1024.0 and idx < len(units) - 1:
+            b /= 1024.0
+            idx += 1
+        if idx == 0:
+            return f"{int(b)} {units[idx]}"
+        return f"{b:.1f} {units[idx]}"
+
+    def _format_speed(self, kbps: float) -> str:
+        v = float(kbps or 0.0)
+        if v <= 0:
+            return "0 MB/s"
+        mb_s = v / 1024.0
+        return f"{mb_s:.1f} MB/s"
+
+    def _update_chart(self, history_rows):
+        buckets = defaultdict(int)
+        for row in history_rows:
+            ts = str(row.get("timestamp", "") or "")
+            if not ts:
+                continue
+            try:
+                day = ts.split("T", 1)[0]
+                datetime.fromisoformat(ts)
+            except Exception:
+                day = ts[:10]
+            if not day:
+                continue
+            buckets[day] += 1
+        if not buckets:
+            self.chart.data = []
+            self.chart.update()
+            return
+        days_sorted = sorted(buckets.keys())[-7:]
+        counts = [buckets[d] for d in days_sorted]
+        max_count = max(counts) or 1
+        scaled = [int((c / float(max_count)) * 100.0) for c in counts]
+        self.chart.data = scaled
+        self.chart.update()
+
+    def _update_history_summary(self, history_count: int, total_videos: int, total_audios: int):
+        text = _(
+            "Completed downloads: {count}  •  Videos: {videos}  •  Audios: {audios}"
+        ).format(count=history_count, videos=total_videos, audios=total_audios)
+        self.history_summary.setText(text)
+
+
+
+
+====================================================================================================
+FILE: ui\subscriptions_view.py
+====================================================================================================
+
+
+"""
+ui/subscriptions_view.py — Smart Channel Subscriptions UI Panel
+Premium panel for managing YouTube channel subscriptions.
+Pluggable into the main QStackedWidget as a new "📺 Subscriptions" tab.
+"""
+try:
+    from PySide6.QtCore import Qt, Signal, QTimer
+    from PySide6.QtWidgets import (
+        QWidget, QFrame, QVBoxLayout, QHBoxLayout, QLabel,
+        QPushButton, QLineEdit, QListWidget, QListWidgetItem,
+        QComboBox, QSpinBox, QCheckBox, QScrollArea,
+    )
+except ImportError:
+    from PyQt6.QtCore import Qt, pyqtSignal as Signal, QTimer
+    from PyQt6.QtWidgets import (
+        QWidget, QFrame, QVBoxLayout, QHBoxLayout, QLabel,
+        QPushButton, QLineEdit, QListWidget, QListWidgetItem,
+        QComboBox, QSpinBox, QCheckBox, QScrollArea,
+    )
+
+from core.channel_subscriptions import subscription_manager, ChannelSubscription
+from core.i18n import _
+from core.error_handler import ErrorHandler
+
+
+class SubscriptionsView(QWidget):
+    """
+    Full subscriptions management panel.
+    Signals:
+        newVideosReady(list[str]) — emitted when new video URLs are found
+    """
+    newVideosReady = Signal(list)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._build_ui()
+        self._refresh_list()
+
+        # Poll UI every 60s to show updated last-check times
+        self._refresh_timer = QTimer(self)
+        self._refresh_timer.timeout.connect(self._refresh_list)
+        self._refresh_timer.start(60_000)
+
+        # Set callback for background detections
+        subscription_manager.set_callback(self._on_new_videos_found)
+        subscription_manager.start()
+
+    # ── UI ────────────────────────────────────────────────────────────────────
+
+    def _build_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(14)
+
+        # Header
+        hdr = QHBoxLayout()
+        title = QLabel(_("📺 Smart Channel Subscriptions"))
+        title.setObjectName("single_title")
+        sub_count = QLabel(_("Auto-downloads new videos from subscribed channels"))
+        sub_count.setObjectName("single_sub")
+        hdr.addWidget(title)
+        hdr.addStretch(1)
+        layout.addLayout(hdr)
+        layout.addWidget(sub_count)
+
+        # ── Add Subscription Form ─────────────────────────────────────────────
+        form = QFrame()
+        form.setObjectName("playlist_header")
+        form_layout = QVBoxLayout(form)
+        form_layout.setContentsMargins(12, 10, 12, 10)
+        form_layout.setSpacing(8)
+
+        row1 = QHBoxLayout()
+        self.url_input = QLineEdit()
+        self.url_input.setPlaceholderText(_("YouTube Channel / Playlist URL …"))
+        self.name_input = QLineEdit()
+        self.name_input.setPlaceholderText(_("Friendly name (optional)"))
+        row1.addWidget(self.url_input, 3)
+        row1.addWidget(self.name_input, 2)
+
+        row2 = QHBoxLayout()
+        self.fmt_combo = QComboBox()
+        self.fmt_combo.addItems(["MP4", "MKV", "MP3", "M4A", "WEBM"])
+        self.quality_combo = QComboBox()
+        self.quality_combo.addItems(["1080p", "720p", "480p", "360p"])
+        self.interval_spin = QSpinBox()
+        self.interval_spin.setRange(1, 168)
+        self.interval_spin.setValue(24)
+        self.interval_spin.setPrefix(_("Check every "))
+        self.interval_spin.setSuffix(_(" h"))
+        self.max_spin = QSpinBox()
+        self.max_spin.setRange(1, 50)
+        self.max_spin.setValue(5)
+        self.max_spin.setPrefix(_("Max "))
+        self.max_spin.setSuffix(_(" per check"))
+        add_btn = QPushButton(_("＋ Subscribe"))
+        add_btn.setObjectName("action_download")
+        add_btn.setFixedWidth(120)
+        add_btn.clicked.connect(self._add_subscription)
+        row2.addWidget(QLabel(_("Format:")))
+        row2.addWidget(self.fmt_combo)
+        row2.addWidget(QLabel(_("Quality:")))
+        row2.addWidget(self.quality_combo)
+        row2.addWidget(self.interval_spin)
+        row2.addWidget(self.max_spin)
+        row2.addStretch(1)
+        row2.addWidget(add_btn)
+
+        form_layout.addLayout(row1)
+        form_layout.addLayout(row2)
+        layout.addWidget(form)
+
+        # ── Subscription List ──────────────────────────────────────────────────
+        list_hdr = QHBoxLayout()
+        list_hdr.addWidget(QLabel(_("Active Subscriptions"), objectName="section_title"))
+        list_hdr.addStretch(1)
+        check_all_btn = QPushButton(_("🔄 Check All Now"))
+        check_all_btn.setObjectName("action_trim")
+        check_all_btn.clicked.connect(self._check_all_now)
+        list_hdr.addWidget(check_all_btn)
+        layout.addLayout(list_hdr)
+
+        self.subs_list = QListWidget()
+        self.subs_list.setSpacing(2)
+        layout.addWidget(self.subs_list, 1)
+
+    # ── Logic ─────────────────────────────────────────────────────────────────
+
+    def _add_subscription(self):
+        url = self.url_input.text().strip()
+        if not url:
+            return
+        name = self.name_input.text().strip() or url[:40]
+        sub = subscription_manager.add(
+            url=url,
+            name=name,
+            fmt=self.fmt_combo.currentText().lower(),
+            quality=self.quality_combo.currentText(),
+            check_interval_h=self.interval_spin.value(),
+            max_downloads=self.max_spin.value(),
+        )
+        self.url_input.clear()
+        self.name_input.clear()
+        self._refresh_list()
+
+    def _check_all_now(self):
+        for sub in subscription_manager.get_all():
+            subscription_manager.check_now(sub)
+
+    def _remove_subscription(self, url: str):
+        if not ErrorHandler.confirm(
+            self,
+            _("Remove Subscription"),
+            _("Remove subscription?\n{url}").format(url=url),
+        ):
+            return
+        subscription_manager.remove(url)
+        self._refresh_list()
+
+    def _refresh_list(self):
+        self.subs_list.clear()
+        subs = subscription_manager.get_all()
+        if not subs:
+            item = QListWidgetItem(_("No subscriptions yet. Add a channel URL above."))
+            item.setFlags(Qt.ItemFlag.NoItemFlags)
+            self.subs_list.addItem(item)
+            return
+
+        for sub in subs:
+            from datetime import datetime
+            last_check_str = (
+                datetime.fromtimestamp(sub.last_check).strftime("%Y-%m-%d %H:%M")
+                if sub.last_check > 0 else _("Never")
+            )
+            card = QFrame()
+            card.setObjectName("playlist_row")
+            h = QHBoxLayout(card)
+            h.setContentsMargins(12, 8, 12, 8)
+            h.setSpacing(12)
+
+            info = QVBoxLayout()
+            name_lbl = QLabel(sub.name)
+            name_lbl.setObjectName("playlist_title")
+            meta_lbl = QLabel(
+                _("📅 {fmt} • {quality} • Every {interval}h • Last: {last} • {seen} seen").format(
+                    fmt=sub.format.upper(),
+                    quality=sub.quality,
+                    interval=sub.check_interval_h,
+                    last=last_check_str,
+                    seen=len(sub.known_ids),
+                )
+            )
+            meta_lbl.setObjectName("single_sub")
+            info.addWidget(name_lbl)
+            info.addWidget(meta_lbl)
+
+            check_btn = QPushButton("🔄")
+            check_btn.setObjectName("icon_btn")
+            check_btn.setFixedSize(32, 32)
+            check_btn.setToolTip(_("Check Now"))
+            check_btn.clicked.connect(lambda _, s=sub: subscription_manager.check_now(s))
+
+            del_btn = QPushButton("🗑")
+            del_btn.setObjectName("icon_btn")
+            del_btn.setFixedSize(32, 32)
+            del_btn.setToolTip(_("Remove Subscription"))
+            del_btn.clicked.connect(lambda _, u=sub.url: self._remove_subscription(u))
+
+            h.addLayout(info, 1)
+            h.addWidget(check_btn)
+            h.addWidget(del_btn)
+
+            item = QListWidgetItem(self.subs_list)
+            item.setSizeHint(card.sizeHint())
+            self.subs_list.setItemWidget(item, card)
+
+    def _on_new_videos_found(self, sub: ChannelSubscription, new_urls: list):
+        """Called from background thread — emit signal so Qt handles it safely."""
+        self.newVideosReady.emit(new_urls)
+        QTimer.singleShot(0, self._refresh_list)
+
+
+
+
+====================================================================================================
+FILE: ui\themes.py
+====================================================================================================
+
+# ui/themes.py
+
+THEMES = {
+    "Modern Dark": {
+        "bg":         "#0F172A",
+        "bg_2":       "#0F172A",
+        "panel":      "#1E293B",
+        "panel_alt":  "#1E293B",
+        "panel_soft": "#334155",
+        "accent":     "#3B82F6",
+        "accent_2":   "#2563EB",
+        "gold":       "#10B981",
+        "text":       "#F8FAFC",
+        "muted":      "#94A3B8",
+        "border":     "#334155",
+        "success":    "#10B981",
+        "danger":     "#EF4444",
+        "warning":    "#F59E0B",
+    },
+    "Ocean Blue": {
+        "bg":         "#0B192C",
+        "bg_2":       "#0B192C",
+        "panel":      "#172A46",
+        "panel_alt":  "#172A46",
+        "panel_soft": "#2A4365",
+        "accent":     "#0EA5E9",
+        "accent_2":   "#0284C7",
+        "gold":       "#14B8A6",
+        "text":       "#F0F9FF",
+        "muted":      "#7DD3FC",
+        "border":     "#1E3A8A",
+        "success":    "#14B8A6",
+        "danger":     "#F43F5E",
+        "warning":    "#F59E0B",
+    },
+    "Cyber Purple": {
+        "bg":         "#170F2A",
+        "bg_2":       "#170F2A",
+        "panel":      "#2D1B4E",
+        "panel_alt":  "#2D1B4E",
+        "panel_soft": "#45277A",
+        "accent":     "#A855F7",
+        "accent_2":   "#9333EA",
+        "gold":       "#F43F5E",
+        "text":       "#FAF5FF",
+        "muted":      "#D8B4FE",
+        "border":     "#581C87",
+        "success":    "#10B981",
+        "danger":     "#F43F5E",
+        "warning":    "#F59E0B",
+    },
+    "Elegant Light": {
+        "bg":         "#F8FAFC",
+        "bg_2":       "#F8FAFC",
+        "panel":      "#FFFFFF",
+        "panel_alt":  "#FFFFFF",
+        "panel_soft": "#F1F5F9",
+        "accent":     "#2563EB",
+        "accent_2":   "#1D4ED8",
+        "gold":       "#059669",
+        "text":       "#0F172A",
+        "muted":      "#64748B",
+        "border":     "#E2E8F0",
+        "success":    "#059669",
+        "danger":     "#DC2626",
+        "warning":    "#D97706",
+    }
+}
+def get_theme(theme_name: str | None):
+    if theme_name in THEMES:
+        return THEMES[theme_name]
+    if "Modern Dark" in THEMES:
+        return THEMES["Modern Dark"]
+    return next(iter(THEMES.values()))
+
+def get_style_sheet(theme_name: str) -> str:
+    t = get_theme(theme_name)
+    return f"""
+    QMainWindow, QWidget#main_root {{
+        background-color: {t['bg']};
+        color: {t['text']};
+        font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        font-size: 13px;
+    }}
+    QWidget {{
+        color: {t['text']};
+    }}
+    QLabel {{
+        background-color: transparent;
+    }}
+    QFrame#page {{
+        background-color: {t['bg']};
+    }}
+    QFrame#sidebar_nav {{
+        background-color: {t['panel']};
+        border-right: 1px solid {t['border']};
+    }}
+    QFrame#title_bar {{
+        background-color: {t['panel']};
+        border-bottom: 1px solid {t['border']};
+    }}
+    QPushButton#title_btn {{
+        background-color: transparent;
+        color: {t['muted']};
+        border: none;
+        font-size: 14px;
+        font-weight: bold;
+    }}
+    QPushButton#title_btn:hover {{
+        background-color: rgba(0, 0, 0, 0.1);
+        color: {t['text']};
+    }}
+    QPushButton#title_btn_close:hover {{
+        background-color: {t['danger']};
+        color: white;
+    }}
+    QLabel#title_label {{
+        font-size: 14px;
+        font-weight: bold;
+        color: {t['text']};
+    }}
+    QPushButton#nav_btn {{
+        background-color: transparent;
+        color: {t['muted']};
+        border: none;
+        padding: 10px 10px;
+        font-weight: 600;
+        font-size: 14px;
+        text-align: left;
+        border-radius: 8px;
+    }}
+    QPushButton#nav_btn[is_collapsed="true"] {{
+        text-align: center;
+        padding: 0px;
+        font-size: 20px;
+    }}
+    QPushButton#nav_btn[is_collapsed="false"] {{
+        font-size: 18px;
+        padding-left: 8px;
+        text-align: left;
+    }}
+    QPushButton#nav_btn:hover {{
+        color: {t['text']};
+        background-color: {t['panel_soft']};
+    }}
+    QPushButton#nav_btn:checked {{
+        color: {t['accent']};
+        background-color: rgba(59, 130, 246, 0.15);
+        font-weight: 700;
+    }}
+    QFrame#search_bar_container {{
+        background-color: {t['bg']};
+        min-height: 80px;
+        max-height: 80px;
+        border-bottom: 1px solid {t['border']};
+    }}
+    QLineEdit#search_input {{
+        background-color: {t['panel']};
+        border: 1px solid {t['border']};
+        border-radius: 8px;
+        padding: 12px 16px;
+        color: {t['text']};
+        font-size: 15px;
+    }}
+    QLineEdit#search_input:focus,
+    QLineEdit#path_input:focus,
+    QSpinBox:focus,
+    QTextEdit:focus,
+    QDateTimeEdit:focus,
+    QComboBox:focus {{
+        border: 1px solid {t['accent']};
+    }}
+    QPushButton#search_btn,
+    QPushButton#btn-accent {{
+        background-color: {t['accent']};
+        color: #FFFFFF;
+        border: none;
+        border-radius: 8px;
+        padding: 10px 24px;
+        font-weight: 700;
+        font-size: 14px;
+    }}
+    QPushButton#search_btn:hover,
+    QPushButton#btn-accent:hover {{
+        background-color: {t['accent_2']};
+    }}
+    QPushButton#action_download,
+    QPushButton#playlist_download_footer,
+    QPushButton#btn-success {{
+        background-color: {t['gold']};
+        color: #FFFFFF;
+        border: none;
+        border-radius: 8px;
+        padding: 12px 24px;
+        font-weight: 700;
+        font-size: 14px;
+    }}
+    QPushButton#action_download:hover,
+    QPushButton#playlist_download_footer:hover,
+    QPushButton#btn-success:hover {{
+        background-color: {t['success']}CC;
+    }}
+    QPushButton#action_schedule {{
+        background-color: {t['panel_soft']};
+        color: {t['text']};
+        border: none;
+        border-radius: 8px;
+        padding: 12px 24px;
+        font-weight: 600;
+        font-size: 14px;
+    }}
+    QPushButton#action_schedule:hover {{
+        background-color: {t['border']};
+    }}
+    QPushButton#action_trim,
+    QPushButton#action_button {{
+        background-color: {t['panel']};
+        color: {t['text']};
+        border: 1px solid {t['border']};
+        border-radius: 8px;
+        padding: 10px 16px;
+        font-weight: 600;
+    }}
+    QPushButton#action_trim:hover,
+    QPushButton#action_button:hover {{
+        border: 1px solid {t['accent']};
+        color: {t['accent']};
+        background-color: rgba(59, 130, 246, 0.05);
+    }}
+    QPushButton#btn-danger {{
+        background-color: {t['danger']};
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 10px 16px;
+        font-weight: 700;
+    }}
+    QPushButton#btn-danger:hover {{
+        background-color: {t['danger']}CC;
+    }}
+    QFrame#single_card,
+    QFrame#playlist_row,
+    QFrame#playlist_header {{
+        background-color: {t['panel']};
+        border-radius: 12px;
+        border: 1px solid {t['border']};
+    }}
+    QLabel#thumb_preview,
+    QLabel[class="thumb_preview"] {{
+        background-color: {t['bg']};
+        border-radius: 8px;
+        border: 1px solid {t['border']};
+        color: {t['muted']};
+    }}
+    QComboBox,
+    QLineEdit#path_input,
+    QSpinBox,
+    QTextEdit,
+    QDateTimeEdit {{
+        background-color: {t['bg']};
+        border: 1px solid {t['border']};
+        border-radius: 6px;
+        color: {t['text']};
+        padding: 8px 12px;
+        font-size: 13px;
+    }}
+    QComboBox::drop-down {{
+        border: none;
+    }}
+    QComboBox QAbstractItemView {{
+        background-color: {t['panel']};
+        color: {t['text']};
+        border: 1px solid {t['border']};
+        selection-background-color: {t['accent']};
+        border-radius: 6px;
+    }}
+    QRadioButton {{
+        color: {t['text']};
+        spacing: 10px;
+        font-size: 13px;
+        font-weight: 500;
+    }}
+    QRadioButton::indicator {{
+        width: 14px;
+        height: 14px;
+        border-radius: 7px;
+        border: 2px solid {t['muted']};
+        background-color: transparent;
+    }}
+    QRadioButton::indicator:checked {{
+        border: 4px solid {t['accent']};
+        background-color: {t['bg']};
+    }}
+    QRadioButton::indicator:hover {{
+        border: 2px solid {t['accent']};
+    }}
+    QLabel#section_title {{
+        color: {t['text']};
+        font-size: 15px;
+        font-weight: 700;
+        padding-bottom: 6px;
+    }}
+    QLabel#single_sub,
+    QLabel#playlist_url,
+    QLabel#bottom_text {{
+        color: {t['muted']};
+        background-color: transparent;
+        font-size: 12px;
+    }}
+    QLabel#single_title,
+    QLabel#playlist_title {{
+        color: {t['text']};
+        font-weight: 700;
+        font-size: 15px;
+    }}
+    QLabel#chip {{
+        background-color: rgba(59, 130, 246, 0.15);
+        color: {t['accent']};
+        border: 1px solid rgba(59, 130, 246, 0.3);
+        border-radius: 6px;
+        padding: 4px 10px;
+        font-size: 12px;
+        font-weight: 600;
+    }}
+    QLabel[class="text-success"] {{
+        color: {t['success']};
+    }}
+    QLabel[class="text-danger"] {{
+        color: {t['danger']};
+    }}
+    QLabel[class="text-warning"] {{
+        color: {t['warning']};
+    }}
+    QLabel[class="text-muted"] {{
+        color: {t['muted']};
+    }}
+    QLabel[class="text-accent"] {{
+        color: {t['accent']};
+    }}
+    QProgressBar {{
+        background-color: {t['panel']};
+        border-radius: 4px;
+        text-align: center;
+        color: transparent;
+        border: none;
+    }}
+    QProgressBar::chunk {{
+        background-color: {t['accent']};
+        border-radius: 4px;
+    }}
+    QListWidget#playlist_list {{
+        background-color: transparent;
+        border: none;
+        outline: none;
+        color: {t['text']};
+        font-size: 13px;
+    }}
+    QListWidget#playlist_list::item {{
+        padding: 12px;
+        border-bottom: 1px solid {t['border']};
+        border-radius: 6px;
+        margin-bottom: 4px;
+    }}
+    QListWidget#playlist_list::item:hover {{
+        background-color: {t['panel_soft']};
+    }}
+    QListWidget#playlist_list::item:selected {{
+        background-color: rgba(59, 130, 246, 0.15);
+        color: {t['accent']};
+        border-left: 4px solid {t['accent']};
+    }}
+    QListWidget {{
+        background-color: transparent;
+        border: none;
+        outline: none;
+    }}
+    QListWidget::item {{
+        background-color: {t['panel']};
+        border: 1px solid {t['border']};
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 10px;
+    }}
+    QListWidget::item:selected {{
+        border: 1px solid {t['accent']};
+        background-color: rgba(59, 130, 246, 0.05);
+    }}
+    QPushButton#more_link {{
+        background: transparent;
+        color: {t['muted']};
+        border: none;
+        text-align: left;
+        padding: 0;
+        font-size: 13px;
+        text-decoration: none;
+    }}
+    QPushButton#more_link:hover {{
+        color: {t['accent']};
+        text-decoration: underline;
+    }}
+    QFrame#v_separator {{
+        color: {t['border']};
+    }}
+    QFrame#debug_log {{
+        background-color: {t['bg']};
+        border: 1px solid {t['border']};
+        color: {t['muted']};
+        border-radius: 8px;
+    }}
+    QPushButton#tab_filter {{
+        background-color: transparent;
+        color: {t['muted']};
+        border: none;
+        border-radius: 20px;
+        padding: 8px 16px;
+        font-size: 13px;
+        font-weight: 600;
+    }}
+    QPushButton#tab_filter:hover {{
+        color: {t['text']};
+        background-color: {t['panel']};
+    }}
+    QPushButton#tab_filter:checked {{
+        background-color: {t['accent']};
+        color: #FFFFFF;
+    }}
+    QFrame#bottom_bar {{
+        background-color: {t['panel']};
+        min-height: 50px;
+        max-height: 50px;
+        border-top: 1px solid {t['border']};
+    }}
+    QLabel#social_icon {{
+        background-color: {t['bg']};
+        color: {t['accent']};
+        padding: 6px 10px;
+        border-radius: 6px;
+        border: 1px solid {t['border']};
+    }}
+    QLabel#empty_icon {{
+        color: {t['border']};
+        font-size: 100px;
+    }}
+    QLabel#empty_title {{
+        color: {t['text']};
+        font-size: 22px;
+        font-weight: 700;
+        margin-top: 10px;
+    }}
+    QLabel#empty_sub {{
+        color: {t['muted']};
+        font-size: 14px;
+    }}
+    QPushButton#icon_btn {{
+        background-color: transparent;
+        color: {t['muted']};
+        border: none;
+        min-width: 36px;
+        max-width: 36px;
+        min-height: 36px;
+        max-height: 36px;
+        font-size: 16px;
+        border-radius: 18px;
+    }}
+    QPushButton#icon_btn:hover {{
+        background-color: {t['panel_soft']};
+        color: {t['text']};
+    }}
+    /* Trim Dialog & Components */
+    QDialog#trim_dialog {{
+        background-color: {t['bg']};
+        border: 1px solid {t['border']};
+        border-radius: 12px;
+    }}
+    QFrame#video_preview_card {{
+        background-color: {t['bg']};
+        border-radius: 8px;
+        border: 1px solid {t['border']};
+    }}
+    QLabel#time_indicator {{
+        color: {t['muted']};
+        font-size: 13px;
+    }}
+    QLineEdit#trim_input {{
+        background-color: {t['panel_soft']};
+        color: {t['text']};
+        padding: 8px;
+        border-radius: 6px;
+        border: 1px solid {t['border']};
+    }}
+    QPushButton#trim_btn_danger {{
+        background-color: {t['danger']};
+        color: white;
+        border-radius: 6px;
+        font-weight: bold;
+    }}
+    QPushButton#trim_btn_accent {{
+        background-color: {t['accent']};
+        color: white;
+        border-radius: 6px;
+        font-weight: bold;
+    }}
+    QPushButton#trim_btn_success {{
+        background-color: {t['success']};
+        color: white;
+        border-radius: 6px;
+        font-weight: bold;
+    }}
+    """
+
+====================================================================================================
+FILE: ui\trim_dialog.py
+====================================================================================================
+
+
+import os
+from PySide6.QtCore import Qt, Signal, QRect, QPoint, QUrl
+from PySide6.QtGui import QPainter, QColor, QPen, QFont, QPixmap, QDesktopServices
+from PySide6.QtNetwork import QNetworkAccessManager, QNetworkRequest
+from PySide6.QtWidgets import (
+    QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
+    QFrame, QWidget, QStackedWidget, QLineEdit, QCheckBox, QGridLayout, QComboBox, QScrollArea
+)
+
+class RangeSlider(QWidget):
+    rangeChanged = Signal(int, int)
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setMinimumHeight(60)
+        self.setMouseTracking(True)
+        self._min = 0
+        self._max = 100
+        self._low = 0
+        self._high = 100
+        self._handle_radius = 12
+        self._active_handle = None
+
+    def setRange(self, minimum, maximum):
+        self._min = minimum
+        self._max = max(minimum + 1, maximum)
+        self._low = minimum
+        self._high = self._max
+        self.update()
+
+    def setValues(self, low, high):
+        low = int(low)
+        high = int(high)
+        if self._max <= self._min:
+            self._low = self._min
+            self._high = self._max
+            self.update()
+            return
+        low = max(self._min, min(low, self._max - 1))
+        high = max(self._min + 1, min(high, self._max))
+        if low >= high:
+            low = max(self._min, min(low, self._max - 1))
+            high = min(self._max, low + 1)
+        self._low = low
+        self._high = high
+        self.update()
+
+    def low(self): return self._low
+    def high(self): return self._high
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        
+        rect = self.rect()
+        h = rect.height()
+        w = rect.width()
+        
+        track_y = h // 2 - 6
+        track_h = 12
+        
+        # Draw background track
+        painter.setPen(Qt.PenStyle.NoPen)
+        from ui.themes import get_theme
+        t = get_theme(None) # Get current theme
+        painter.setBrush(QColor(t['panel_soft']))
+        painter.drawRoundedRect(self._handle_radius, track_y, w - 2*self._handle_radius, track_h, 6, 6)
+        
+        # Draw active track
+        range_w = w - 2*self._handle_radius
+        if self._max > self._min:
+            x1 = self._handle_radius + int((self._low - self._min) / (self._max - self._min) * range_w)
+            x2 = self._handle_radius + int((self._high - self._min) / (self._max - self._min) * range_w)
+        else:
+            x1, x2 = self._handle_radius, w - self._handle_radius
+            
+        painter.setBrush(QColor(t['accent']))
+        painter.drawRoundedRect(x1, track_y, x2 - x1, track_h, 6, 6)
+        
+        # Draw tooltip above slider
+        tooltip_w = 120
+        tooltip_h = 24
+        tooltip_x = x1 + (x2 - x1) // 2 - tooltip_w // 2
+        tooltip_y = track_y - tooltip_h - 10
+        
+        # Draw tooltip bubble
+        painter.setBrush(QColor(t['panel']))
+        painter.drawRoundedRect(tooltip_x, tooltip_y, tooltip_w, tooltip_h, 2, 2)
+        # Draw triangle pointing down
+        polygon = [
+            QPoint(tooltip_x + tooltip_w // 2 - 5, tooltip_y + tooltip_h),
+            QPoint(tooltip_x + tooltip_w // 2 + 5, tooltip_y + tooltip_h),
+            QPoint(tooltip_x + tooltip_w // 2, tooltip_y + tooltip_h + 6)
+        ]
+        painter.drawPolygon(polygon)
+        
+        # Tooltip text
+        painter.setPen(QColor(t['text']))
+        font = QFont()
+        font.setPointSize(9)
+        painter.setFont(font)
+        
+        def fmt(secs):
+            m, s = divmod(int(secs), 60)
+            h, m = divmod(m, 60)
+            return f"{h:02d}:{m:02d}:{s:02d}" if h > 0 else f"{m:02d}:{s:02d}"
+            
+        painter.drawText(tooltip_x, tooltip_y, tooltip_w, tooltip_h, Qt.AlignmentFlag.AlignCenter, f"{fmt(self._low)} to {fmt(self._high)}")
+
+        # Draw handles
+        painter.setPen(Qt.PenStyle.NoPen)
+        # Create a radial gradient for 3D effect on handles
+        for x in (x1, x2):
+            painter.setBrush(QColor("#FFFFFF"))
+            painter.drawEllipse(QPoint(x, track_y + track_h//2), self._handle_radius, self._handle_radius)
+            
+            painter.setBrush(QColor(0, 0, 0, 40))
+            painter.drawEllipse(QPoint(x, track_y + track_h//2 + 1), self._handle_radius-1, self._handle_radius-1)
+            painter.setBrush(QColor("#E0E0E0"))
+            painter.drawEllipse(QPoint(x, track_y + track_h//2), self._handle_radius-2, self._handle_radius-2)
+
+    def mousePressEvent(self, event):
+        pos = event.pos()
+        w = self.width()
+        range_w = w - 2*self._handle_radius
+        if self._max <= self._min: return

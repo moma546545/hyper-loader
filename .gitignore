@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+*.tmp
+*.zip
+.mypy_cache/
+.pytest_cache/
+aria2-1.37.0-win-64bit-build1/
